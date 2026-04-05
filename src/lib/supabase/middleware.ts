@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const publicRoutes = ["/login", "/signup", "/auth/callback"];
+const publicPrefixes = ["/api/webhooks/", "/api/menu/"];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -43,7 +44,9 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (!user && !publicRoutes.includes(pathname) && pathname !== "/") {
+  const isPublicPrefix = publicPrefixes.some((prefix) => pathname.startsWith(prefix));
+
+  if (!user && !publicRoutes.includes(pathname) && pathname !== "/" && !isPublicPrefix) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
