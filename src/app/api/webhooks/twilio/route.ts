@@ -1,414 +1,269 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
-import {
-  validateTwilioRequest,
-  sendWhatsAppMessage,
-  generateTwiMLResponse,
-} from "@/lib/twilio";
+import { sendWhatsAppMessage, generateTwiMLResponse } from "@/lib/twilio";
 import { generateGeminiResponse } from "@/lib/gemini";
-import {
-  TwilioWebhookRequest,
-  Conversation,
-  Message,
-  AiAgent,
-  KnowledgeBase,
-} from "@/lib/types";
 
-interface ExtendedRequest {
+interface TwilioPayload {
   MessageSid: string;
   From: string;
   To: string;
   Body: string;
 }
 
-/**
- * Parse form data from Twilio webhook
- */
-async function parseTwilioWebhook(request: NextRequest): Promise<ExtendedRequest> {
-  const formData = await request.formData();
-  const data: ExtendedRequest = {
-    MessageSid: formData.get("MessageSid") as string,
-    From: formData.get("From") as string,
-    To: formData.get("To") as string,
-    Body: formData.get("Body") as string,
+/** Parse form-encoded Twilio webhook body */
+function parseTwilioBody(bodyText: string): TwilioPayload {
+  const params = new URLSearchParams(bodyText);
+  return {
+    MessageSid: params.get("MessageSid") || "",
+    From: params.get("From") || "",
+    To: params.get("To") || "",
+    Body: params.get("Body") || "",
   };
-  return data;
 }
 
-/**
- * Find or create conversation for the customer
- */
-async function findOrCreateConversation(
-  restaurantId: string,
-  customerPhone: string
-): Promise<Conversation> {
-  // Try to find existing conversation
-  const { data: existingConversation, error: fetchError } = await adminSupabaseClient
+/** Find or create a conversation for this customer */
+async function findOrCreateConversation(restaurantId: string, customerPhone: string) {
+  const { data: existing } = await adminSupabaseClient
     .from("conversations")
     .select("*")
     .eq("restaurant_id", restaurantId)
     .eq("customer_phone", customerPhone)
-    .order("created_at", { ascending: false })
+    .order("started_at", { ascending: false })
     .limit(1)
     .single();
 
-  if (existingConversation) {
-    // Update status to active
+  if (existing) {
     await adminSupabaseClient
       .from("conversations")
-      .update({ status: "active", updated_at: new Date().toISOString() })
-      .eq("id", existingConversation.id);
-
-    return existingConversation;
+      .update({ status: "active", last_message_at: new Date().toISOString() })
+      .eq("id", existing.id);
+    return existing;
   }
 
-  // Create new conversation
-  const { data: newConversation, error: createError } = await adminSupabaseClient
+  const { data: created, error } = await adminSupabaseClient
     .from("conversations")
     .insert({
       restaurant_id: restaurantId,
       customer_phone: customerPhone,
       status: "active",
+      started_at: new Date().toISOString(),
       last_message_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     })
     .select()
     .single();
 
-  if (createError || !newConversation) {
-    throw new Error(`Failed to create conversation: ${createError?.message}`);
-  }
-
-  return newConversation;
+  if (error || !created) throw new Error(`Failed to create conversation: ${error?.message}`);
+  return created;
 }
 
-/**
- * Save message to database
- */
-async function saveMessage(
-  conversationId: string,
-  sender: "customer" | "ai",
-  content: string,
-  language: "ar" | "en"
-): Promise<Message> {
-  const { data, error } = await adminSupabaseClient
+/** Save a message to the DB */
+async function saveMessage(conversationId: string, role: "user" | "assistant", content: string) {
+  const { error } = await adminSupabaseClient
     .from("messages")
     .insert({
       conversation_id: conversationId,
-      sender,
+      role,
       content,
-      language,
+      message_type: "text",
       created_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
-
-  if (error || !data) {
-    throw new Error(`Failed to save message: ${error?.message}`);
-  }
-
-  return data;
+    });
+  if (error) console.error("Failed to save message:", error.message);
 }
 
-/**
- * Get AI agent configuration
- */
-async function getAiAgent(restaurantId: string): Promise<AiAgent> {
-  const { data, error } = await adminSupabaseClient
-    .from("ai_agents")
-    .select("*")
-    .eq("restaurant_id", restaurantId)
-    .single();
-
-  if (error || !data) {
-    throw new Error(`Failed to fetch AI agent: ${error?.message}`);
-  }
-
-  return data;
-}
-
-/**
- * Get conversation history
- */
-async function getConversationHistory(
-  conversationId: string,
-  maxMessages: number
-): Promise<Array<{ role: "user" | "assistant"; content: string }>> {
-  const { data, error } = await adminSupabaseClient
+/** Get conversation history */
+async function getConversationHistory(conversationId: string, limit = 10) {
+  const { data } = await adminSupabaseClient
     .from("messages")
-    .select("sender, content")
+    .select("role, content")
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true })
-    .limit(maxMessages);
+    .limit(limit);
 
-  if (error) {
-    console.error("Failed to fetch conversation history:", error);
-    return [];
-  }
-
-  return (
-    data?.map((msg) => ({
-      role: msg.sender === "customer" ? "user" : ("assistant" as const),
-      content: msg.content,
-    })) || []
-  );
+  return (data || []).map((m) => ({
+    role: m.role as "user" | "assistant",
+    content: m.content,
+  }));
 }
 
-/**
- * Query knowledge base using similarity search
- */
-async function queryKnowledgeBase(
-  restaurantId: string,
-  query: string,
-  limit: number = 3
-): Promise<string> {
+/** Query knowledge base for relevant context */
+async function queryKnowledgeBase(restaurantId: string, query: string): Promise<string> {
   try {
-    // For now, do a simple text search since pgvector embedding might not be set up
-    const { data, error } = await adminSupabaseClient
+    const { data } = await adminSupabaseClient
       .from("knowledge_base")
       .select("content")
       .eq("restaurant_id", restaurantId)
-      .limit(limit);
+      .limit(5);
 
-    if (error) {
-      console.error("Knowledge base query error:", error);
-      return "";
-    }
+    if (!data?.length) return "";
 
-    // Filter by relevance (simple keyword matching)
-    const queryWords = query.toLowerCase().split(" ");
-    const relevantEntries = (data || [])
-      .filter((entry) => {
-        const contentLower = entry.content.toLowerCase();
-        return queryWords.some((word) =>
-          word.length > 2 && contentLower.includes(word)
-        );
-      })
-      .slice(0, limit);
+    const queryWords = query.toLowerCase().split(" ").filter((w) => w.length > 2);
+    const relevant = data.filter((entry) => {
+      const lower = entry.content.toLowerCase();
+      return queryWords.some((word) => lower.includes(word));
+    });
 
-    return relevantEntries.map((entry) => entry.content).join("\n\n");
-  } catch (error) {
-    console.error("Error querying knowledge base:", error);
+    return relevant.map((e) => e.content).join("\n\n");
+  } catch {
     return "";
   }
 }
 
-/**
- * Get menu items for context
- */
-async function getMenuItemsContext(
-  restaurantId: string,
-  limit: number = 5
-): Promise<string> {
+/** Get menu items as context string */
+async function getMenuContext(restaurantId: string): Promise<string> {
   try {
-    const { data, error } = await adminSupabaseClient
+    const { data } = await adminSupabaseClient
       .from("menu_items")
       .select("name, description, price, currency, category")
       .eq("restaurant_id", restaurantId)
       .eq("available", true)
-      .limit(limit);
+      .limit(20);
 
-    if (error || !data) {
-      return "";
+    if (!data?.length) return "";
+
+    const grouped = data.reduce((acc: Record<string, typeof data>, item) => {
+      if (!acc[item.category]) acc[item.category] = [];
+      acc[item.category].push(item);
+      return acc;
+    }, {});
+
+    let ctx = "Available Menu:\n";
+    for (const [category, items] of Object.entries(grouped)) {
+      ctx += `\n${category}:\n`;
+      for (const item of items) {
+        ctx += `- ${item.name}: ${item.price} ${item.currency}`;
+        if (item.description) ctx += ` (${item.description})`;
+        ctx += "\n";
+      }
     }
-
-    const grouped = (data || []).reduce(
-      (acc: Record<string, unknown[]>, item) => {
-        if (!acc[item.category]) acc[item.category] = [];
-        acc[item.category].push(item);
-        return acc;
-      },
-      {}
-    );
-
-    let context = "Available Menu Items:\n";
-    Object.entries(grouped).forEach(([category, items]) => {
-      context += `\n${category}:\n`;
-      (items as unknown[]).forEach((item: any) => {
-        context += `- ${item.name}: ${item.price} ${item.currency}`;
-        if (item.description) context += ` (${item.description})`;
-        context += "\n";
-      });
-    });
-
-    return context;
-  } catch (error) {
-    console.error("Error fetching menu items:", error);
+    return ctx;
+  } catch {
     return "";
   }
 }
 
-/**
- * Detect language from message
- */
+/** Detect language from Arabic Unicode */
 function detectLanguage(text: string): "ar" | "en" {
-  const arabicRegex = /[\u0600-\u06FF]/g;
-  const arabicMatches = text.match(arabicRegex) || [];
-  const arabicRatio = arabicMatches.length / text.length;
-  return arabicRatio > 0.3 ? "ar" : "en";
+  const arabicMatches = (text.match(/[\u0600-\u06FF]/g) || []).length;
+  return arabicMatches / text.length > 0.3 ? "ar" : "en";
 }
 
-/**
- * Main webhook handler
- */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    // Get Twilio signature
-    const twilioSignature = request.headers.get("x-twilio-signature") || "";
-
-    // Get request body as text for signature validation
     const bodyText = await request.text();
-
-    // Validate Twilio signature
-    if (!validateTwilioRequest(request.url, {}, twilioSignature)) {
-      console.warn("Invalid Twilio signature");
-      // Still process but log warning
-    }
-
-    // Parse form data
-    const params = new URLSearchParams(bodyText);
-    const twilioData: ExtendedRequest = {
-      MessageSid: params.get("MessageSid") || "",
-      From: params.get("From") || "",
-      To: params.get("To") || "",
-      Body: params.get("Body") || "",
-    };
-
-    const { From, To, Body, MessageSid } = twilioData;
+    const { MessageSid, From, To, Body } = parseTwilioBody(bodyText);
 
     if (!From || !To || !Body || !MessageSid) {
-      console.error("Missing required Twilio fields", { From, To, Body, MessageSid });
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
+      console.error("Missing required Twilio fields");
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Extract phone numbers (remove 'whatsapp:' prefix)
+    // Strip whatsapp: prefix
     const customerPhone = From.replace("whatsapp:", "");
     const businessPhone = To.replace("whatsapp:", "");
 
-    console.log("Webhook received", {
-      MessageSid,
-      from: customerPhone,
-      to: businessPhone,
-      body: Body.substring(0, 50),
-    });
+    console.log(`[webhook] From: ${customerPhone} | To: ${businessPhone} | Body: ${Body.substring(0, 60)}`);
 
-    // Look up restaurant by business phone number
+    // Look up restaurant by twilio_phone_number
     const { data: restaurant, error: restaurantError } = await adminSupabaseClient
       .from("restaurants")
       .select("*")
-      .eq("whatsapp_number", businessPhone)
+      .eq("twilio_phone_number", businessPhone)
       .single();
 
     if (restaurantError || !restaurant) {
-      console.error("Restaurant not found for phone:", businessPhone);
-      return NextResponse.json(
-        { error: "Restaurant not found" },
-        { status: 404 }
-      );
+      console.error(`[webhook] No restaurant found for phone: ${businessPhone}`);
+      // Send a fallback message so user knows the system received their message
+      const fallback = detectLanguage(Body) === "ar"
+        ? "مرحباً! الخدمة غير متاحة حالياً. يرجى المحاولة لاحقاً."
+        : "Hello! This service is not configured yet. Please try again later.";
+      await sendWhatsAppMessage(customerPhone, fallback).catch(() => {});
+      return new NextResponse(generateTwiMLResponse(fallback), {
+        status: 200,
+        headers: { "Content-Type": "application/xml" },
+      });
     }
 
     // Find or create conversation
-    const conversation = await findOrCreateConversation(
-      restaurant.id,
-      customerPhone
-    );
+    const conversation = await findOrCreateConversation(restaurant.id, customerPhone);
 
     // Save incoming message
-    const userLanguage = detectLanguage(Body);
-    await saveMessage(conversation.id, "customer", Body, userLanguage);
+    await saveMessage(conversation.id, "user", Body);
 
     // Get AI agent config
-    const aiAgent = await getAiAgent(restaurant.id);
+    const { data: aiAgent } = await adminSupabaseClient
+      .from("ai_agents")
+      .select("*")
+      .eq("restaurant_id", restaurant.id)
+      .eq("is_active", true)
+      .single();
+
+    if (!aiAgent) {
+      console.error(`[webhook] No active AI agent for restaurant: ${restaurant.id}`);
+      const msg = detectLanguage(Body) === "ar"
+        ? "مرحباً! المساعد الذكي غير متاح حالياً."
+        : "Hello! The AI assistant is not configured yet.";
+      await saveMessage(conversation.id, "assistant", msg);
+      await sendWhatsAppMessage(customerPhone, msg).catch(() => {});
+      return new NextResponse(generateTwiMLResponse(msg), {
+        status: 200,
+        headers: { "Content-Type": "application/xml" },
+      });
+    }
 
     // Get conversation history
-    const conversationHistory = await getConversationHistory(
-      conversation.id,
-      aiAgent.max_context_messages || 10
-    );
-
-    // Query knowledge base
-    const ragContext = await queryKnowledgeBase(restaurant.id, Body);
-
-    // Get menu items context
-    const menuContext = await getMenuItemsContext(restaurant.id);
+    const history = await getConversationHistory(conversation.id, 10);
 
     // Build RAG context
-    const fullRagContext = [
-      ragContext,
-      menuContext,
-    ]
-      .filter((c) => c.trim().length > 0)
-      .join("\n\n");
+    const ragContext = await queryKnowledgeBase(restaurant.id, Body);
+    const menuContext = await getMenuContext(restaurant.id);
+    const fullContext = [ragContext, menuContext].filter((c) => c.trim()).join("\n\n");
 
     // Generate AI response
     let aiResponse: string;
-    let responseLanguage: "ar" | "en" = userLanguage;
+    const userLang = detectLanguage(Body);
 
     try {
-      const geminiResult = await generateGeminiResponse({
-        systemPrompt: aiAgent.system_prompt,
-        personality: aiAgent.personality,
-        ragContext: fullRagContext,
-        conversationHistory,
+      const result = await generateGeminiResponse({
+        systemPrompt: aiAgent.system_instructions || `You are a helpful customer service assistant for ${restaurant.name} restaurant.`,
+        personality: aiAgent.personality || "friendly",
+        ragContext: fullContext,
+        conversationHistory: history.slice(0, -1), // exclude the message we just saved
         userMessage: Body,
-        languagePreference: aiAgent.language_preference || "auto",
-        offTopicResponse: aiAgent.off_topic_response,
+        languagePreference: (aiAgent.language_preference as "ar" | "en" | "auto") || "auto",
+        offTopicResponse: aiAgent.off_topic_response || (userLang === "ar"
+          ? "عذراً، أنا متخصص فقط في الإجابة على أسئلة المطعم."
+          : "Sorry, I can only answer questions about the restaurant."),
       });
-
-      aiResponse = geminiResult.content;
-      responseLanguage = geminiResult.language;
-    } catch (error) {
-      console.error("Gemini API error:", error);
-      // Fallback response
-      aiResponse =
-        responseLanguage === "ar"
-          ? "عذراً، حدث خطأ في معالجة طلبك. يرجى المحاولة لاحقاً."
-          : "Sorry, there was an error processing your request. Please try again later.";
+      aiResponse = result.content;
+    } catch (err) {
+      console.error("[webhook] Gemini error:", err);
+      aiResponse = userLang === "ar"
+        ? "عذراً، حدث خطأ. يرجى المحاولة لاحقاً."
+        : "Sorry, an error occurred. Please try again later.";
     }
 
-    // Save AI response
-    await saveMessage(conversation.id, "ai", aiResponse, responseLanguage);
-
-    // Update conversation last_message_at
+    // Save AI response & update conversation
+    await saveMessage(conversation.id, "assistant", aiResponse);
     await adminSupabaseClient
       .from("conversations")
       .update({ last_message_at: new Date().toISOString() })
       .eq("id", conversation.id);
 
-    // Send message via Twilio
-    try {
-      const messageSid = await sendWhatsAppMessage(customerPhone, aiResponse);
-      console.log("Message sent via Twilio", { messageSid });
-    } catch (error) {
-      console.error("Failed to send Twilio message:", error);
-    }
+    // Send reply via Twilio
+    await sendWhatsAppMessage(customerPhone, aiResponse).catch((e) =>
+      console.error("[webhook] Failed to send Twilio message:", e)
+    );
 
-    // Return TwiML response
-    const twimlResponse = generateTwiMLResponse(aiResponse);
-
-    return new NextResponse(twimlResponse, {
+    return new NextResponse(generateTwiMLResponse(aiResponse), {
       status: 200,
-      headers: {
-        "Content-Type": "application/xml",
-      },
+      headers: { "Content-Type": "application/xml" },
     });
   } catch (error) {
-    console.error("Webhook error:", error);
-
-    // Return error TwiML
-    const errorMessage =
-      "عذراً، حدث خطأ. يرجى المحاولة لاحقاً. / Sorry, an error occurred. Please try again later.";
-    const twimlResponse = generateTwiMLResponse(errorMessage);
-
-    return new NextResponse(twimlResponse, {
+    console.error("[webhook] Unhandled error:", error);
+    const msg = "عذراً، حدث خطأ. / Sorry, an error occurred.";
+    return new NextResponse(generateTwiMLResponse(msg), {
       status: 500,
-      headers: {
-        "Content-Type": "application/xml",
-      },
+      headers: { "Content-Type": "application/xml" },
     });
   }
 }
