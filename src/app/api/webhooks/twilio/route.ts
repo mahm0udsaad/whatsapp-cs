@@ -57,7 +57,7 @@ async function findOrCreateConversation(restaurantId: string, customerPhone: str
 }
 
 /** Save a message to the DB */
-async function saveMessage(conversationId: string, role: "user" | "assistant", content: string) {
+async function saveMessage(conversationId: string, role: "customer" | "agent" | "system", content: string) {
   const { error } = await adminSupabaseClient
     .from("messages")
     .insert({
@@ -80,7 +80,7 @@ async function getConversationHistory(conversationId: string, limit = 10) {
     .limit(limit);
 
   return (data || []).map((m) => ({
-    role: m.role as "user" | "assistant",
+    role: (m.role === "customer" ? "user" : "assistant") as "user" | "assistant",
     content: m.content,
   }));
 }
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const conversation = await findOrCreateConversation(restaurant.id, customerPhone);
 
     // Save incoming message
-    await saveMessage(conversation.id, "user", Body);
+    await saveMessage(conversation.id, "customer", Body);
 
     // Get AI agent config
     const { data: aiAgent } = await adminSupabaseClient
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const msg = detectLanguage(Body) === "ar"
         ? "مرحباً! المساعد الذكي غير متاح حالياً."
         : "Hello! The AI assistant is not configured yet.";
-      await saveMessage(conversation.id, "assistant", msg);
+      await saveMessage(conversation.id, "agent", msg);
       await sendWhatsAppMessage(customerPhone, msg).catch(() => {});
       return new NextResponse(generateTwiMLResponse(msg), {
         status: 200,
@@ -243,7 +243,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // Save AI response & update conversation
-    await saveMessage(conversation.id, "assistant", aiResponse);
+    await saveMessage(conversation.id, "agent", aiResponse);
     await adminSupabaseClient
       .from("conversations")
       .update({ last_message_at: new Date().toISOString() })
