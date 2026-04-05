@@ -249,11 +249,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .update({ last_message_at: new Date().toISOString() })
       .eq("id", conversation.id);
 
-    // Send reply via Twilio
-    await sendWhatsAppMessage(customerPhone, aiResponse).catch((e) =>
-      console.error("[webhook] Failed to send Twilio message:", e)
-    );
-
+    // Return TwiML response — Twilio will send this as the reply automatically
+    // (Do NOT also call sendWhatsAppMessage here — that causes double-sending)
     return new NextResponse(generateTwiMLResponse(aiResponse), {
       status: 200,
       headers: { "Content-Type": "application/xml" },

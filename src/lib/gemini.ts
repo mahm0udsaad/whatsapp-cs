@@ -50,6 +50,9 @@ async function isRestaurantRelated(
 
   // Common restaurant-related keywords in Arabic and English
   const restaurantKeywords = [
+    // Greetings (always allowed)
+    "hi", "hello", "hey", "good morning", "good evening", "good afternoon",
+    "مرحبا", "اهلا", "أهلا", "هلا", "السلام", "صباح", "مساء", "كيف", "وين", "فين",
     // English
     "menu",
     "order",
