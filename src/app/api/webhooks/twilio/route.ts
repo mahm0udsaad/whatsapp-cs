@@ -224,7 +224,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     try {
       const result = await generateGeminiResponse({
-        systemPrompt: aiAgent.system_instructions || `You are a helpful customer service assistant for ${restaurant.name} restaurant.`,
+        systemPrompt: aiAgent.system_instructions || `You are a friendly and welcoming customer service assistant for ${restaurant.name} restaurant. Always greet customers warmly when they say hello. Help them with menu items, orders, reservations, delivery, and any questions about the restaurant. Be polite, helpful, and make customers feel valued.`,
         personality: aiAgent.personality || "friendly",
         ragContext: fullContext,
         conversationHistory: history.slice(0, -1), // exclude the message we just saved
@@ -249,12 +249,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .update({ last_message_at: new Date().toISOString() })
       .eq("id", conversation.id);
 
-    // Return TwiML response — Twilio will send this as the reply automatically
-    // (Do NOT also call sendWhatsAppMessage here — that causes double-sending)
-    return new NextResponse(generateTwiMLResponse(aiResponse), {
-      status: 200,
-      headers: { "Content-Type": "application/xml" },
-    });
+    // Send reply via Twilio API (more reliable than TwiML for WhatsApp with Unicode)
+    try {
+      const sid = await sendWhatsAppMessage(customerPhone, aiResponse);
+      console.log(`[webhook] Reply sent via Twilio API. SID: ${sid}`);
+    } catch (e) {
+      console.error("[webhook] Failed to send Twilio message:", e);
+    }
+
+    // Return empty TwiML — we already sent via API, don't need Twilio to send it again
+    return new NextResponse(
+      '<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
+      { status: 200, headers: { "Content-Type": "application/xml" } }
+    );
   } catch (error) {
     console.error("[webhook] Unhandled error:", error);
     const msg = "عذراً، حدث خطأ. / Sorry, an error occurred.";

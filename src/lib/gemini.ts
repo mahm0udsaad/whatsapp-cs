@@ -37,87 +37,32 @@ function detectLanguage(text: string): "ar" | "en" {
 }
 
 /**
- * Check if message is restaurant-related
+ * Check if message is clearly off-topic (e.g. asking about politics, coding, etc.)
+ * We use a permissive approach: allow everything EXCEPT clearly unrelated topics.
+ * Greetings, general questions, and anything that could relate to the business are allowed.
  */
-async function isRestaurantRelated(
+async function isOffTopic(
   message: string,
   ragContext: string
 ): Promise<boolean> {
-  // If RAG context is available and relevant, message is likely on-topic
+  // If RAG context is available, message is on-topic
   if (ragContext.trim().length > 50) {
-    return true;
+    return false;
   }
 
-  // Common restaurant-related keywords in Arabic and English
-  const restaurantKeywords = [
-    // Greetings (always allowed)
-    "hi", "hello", "hey", "good morning", "good evening", "good afternoon",
-    "مرحبا", "اهلا", "أهلا", "هلا", "السلام", "صباح", "مساء", "كيف", "وين", "فين",
-    // English
-    "menu",
-    "order",
-    "food",
-    "drink",
-    "price",
-    "delivery",
-    "reservation",
-    "booking",
-    "table",
-    "dish",
-    "cuisine",
-    "restaurant",
-    "opening hours",
-    "hours",
-    "location",
-    "address",
-    "phone",
-    "available",
-    "recommended",
-    "special",
-    "promotion",
-    "discount",
-    "deal",
-    "offer",
-    "allergy",
-    "ingredient",
-    "vegetarian",
-    "vegan",
-    "spicy",
-    "payment",
-    "card",
-    "cash",
-    // Arabic
-    "القائمة",
-    "طلب",
-    "طعام",
-    "شراب",
-    "سعر",
-    "توصيل",
-    "حجز",
-    "طاولة",
-    "طبق",
-    "مطبخ",
-    "مطعم",
-    "ساعات",
-    "موقع",
-    "عنوان",
-    "هاتف",
-    "متوفر",
-    "موصى",
-    "خاص",
-    "عرض",
-    "خصم",
-    "صفقة",
-    "حساسية",
-    "مكون",
-    "نباتي",
-    "حار",
-    "دفع",
-    "بطاقة",
+  // Short messages (greetings, etc.) are always on-topic
+  if (message.trim().length < 30) {
+    return false;
+  }
+
+  // Clearly off-topic keywords (things that have nothing to do with a restaurant)
+  const offTopicKeywords = [
+    "bitcoin", "crypto", "stock market", "programming", "code",
+    "politics", "election", "war", "hack", "password",
   ];
 
   const lowerMessage = message.toLowerCase();
-  return restaurantKeywords.some((keyword) =>
+  return offTopicKeywords.some((keyword) =>
     lowerMessage.includes(keyword)
   );
 }
@@ -138,13 +83,13 @@ export async function generateGeminiResponse(
       responseLanguage = context.languagePreference;
     }
 
-    // Check if the message is restaurant-related
-    const onTopic = await isRestaurantRelated(
+    // Only block clearly off-topic messages
+    const offTopic = await isOffTopic(
       context.userMessage,
       context.ragContext
     );
 
-    if (!onTopic) {
+    if (offTopic) {
       return {
         content: context.offTopicResponse,
         language: responseLanguage,
@@ -194,9 +139,28 @@ export async function generateGeminiResponse(
       content: responseText,
       language: responseLanguage,
     };
-  } catch (error) {
-    console.error("Error generating Gemini response:", error);
-    throw error;
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errStack = error instanceof Error ? error.stack : "";
+    console.error("Error generating Gemini response:", errMsg);
+    console.error("Stack:", errStack);
+
+    // Retry once with a simpler approach if the chat-based call fails
+    try {
+      console.log("[gemini] Retrying with simple generateContent...");
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const simplePrompt = `${context.systemPrompt}\n\nRelevant info:\n${context.ragContext}\n\nCustomer message: ${context.userMessage}\n\nRespond in ${detectLanguage(context.userMessage) === "ar" ? "Arabic" : "English"}. Be helpful and friendly.`;
+      const result = await model.generateContent(simplePrompt);
+      const responseText = result.response.text();
+      return {
+        content: responseText,
+        language: detectLanguage(context.userMessage),
+      };
+    } catch (retryError: unknown) {
+      const retryMsg = retryError instanceof Error ? retryError.message : String(retryError);
+      console.error("Gemini retry also failed:", retryMsg);
+      throw retryError;
+    }
   }
 }
 
