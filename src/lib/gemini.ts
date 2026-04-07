@@ -108,7 +108,7 @@ export async function generateGeminiResponse(
     systemPrompt += "\nBe concise, helpful, and maintain a professional yet friendly tone.";
 
     // Get the model
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
 
     // Convert conversation history to chat format
     const chatHistory = context.conversationHistory.map((msg) => ({
@@ -128,7 +128,10 @@ export async function generateGeminiResponse(
     // Start chat session
     const chat = model.startChat({
       history: allMessages.slice(0, -1),
-      systemInstruction: systemPrompt,
+      systemInstruction: {
+        role: "user",
+        parts: [{ text: systemPrompt }],
+      },
     });
 
     // Send message and get response
@@ -148,7 +151,7 @@ export async function generateGeminiResponse(
     // Retry once with a simpler approach if the chat-based call fails
     try {
       console.log("[gemini] Retrying with simple generateContent...");
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
       const simplePrompt = `${context.systemPrompt}\n\nRelevant info:\n${context.ragContext}\n\nCustomer message: ${context.userMessage}\n\nRespond in ${detectLanguage(context.userMessage) === "ar" ? "Arabic" : "English"}. Be helpful and friendly.`;
       const result = await model.generateContent(simplePrompt);
       const responseText = result.response.text();
