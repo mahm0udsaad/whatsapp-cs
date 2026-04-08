@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -13,57 +13,50 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronRight, ChevronLeft, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Step = 1 | 2 | 3 | 4;
 
 interface OnboardingData {
   restaurantName: string;
+  displayName: string;
   country: string;
   currency: string;
+  websiteUrl: string;
   agentName: string;
   personality: string;
   language: string;
-  whatsappNumber: string;
+  agentInstructions: string;
   menuUrl: string;
 }
 
 const STEPS = [
-  { number: 1, title: "Restaurant Info", icon: "🏪" },
-  { number: 2, title: "AI Agent", icon: "🤖" },
-  { number: 3, title: "WhatsApp Setup", icon: "💬" },
-  { number: 4, title: "Menu Setup", icon: "📋" },
+  { number: 1, title: "Restaurant Info" },
+  { number: 2, title: "AI Agent" },
+  { number: 3, title: "WhatsApp Profile" },
+  { number: 4, title: "Menu Source" },
 ];
 
 export default function OnboardingPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
   const [data, setData] = useState<OnboardingData>({
     restaurantName: "",
-    country: "EG",
-    currency: "EGP",
-    agentName: "Assistant",
+    displayName: "",
+    country: "SA",
+    currency: "SAR",
+    websiteUrl: "",
+    agentName: "Restaurant Assistant",
     personality: "friendly",
-    language: "en",
-    whatsappNumber: "",
+    language: "auto",
+    agentInstructions:
+      "You are the restaurant's WhatsApp assistant. Answer only restaurant-related questions, stay concise, and be friendly.",
     menuUrl: "",
   });
-
-  const handleNext = async () => {
-    if (currentStep === 4) {
-      setLoading(true);
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        router.push("/dashboard");
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      setCurrentStep((currentStep + 1) as Step);
-    }
-  };
 
   const handlePrevious = () => {
     if (currentStep > 1) {
@@ -76,9 +69,11 @@ export default function OnboardingPage() {
       case 1:
         return data.restaurantName.trim() !== "";
       case 2:
-        return data.agentName.trim() !== "";
+        return (
+          data.agentName.trim() !== "" && data.agentInstructions.trim() !== ""
+        );
       case 3:
-        return data.whatsappNumber.trim() !== "";
+        return data.displayName.trim() !== "";
       case 4:
         return true;
       default:
@@ -86,54 +81,101 @@ export default function OnboardingPage() {
     }
   };
 
+  const submitOnboarding = async () => {
+    setLoading(true);
+    setError("");
+    setStatusMessage("");
+
+    try {
+      const response = await fetch("/api/onboarding", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || "Failed to finish onboarding.");
+        return;
+      }
+
+      if (result.assignedPhoneNumber) {
+        setStatusMessage(
+          `Provisioning complete. Your WhatsApp number is ${result.assignedPhoneNumber}.`
+        );
+      } else {
+        setStatusMessage(
+          "Your restaurant and agent are ready. WhatsApp number assignment is pending inventory or sender registration."
+        );
+      }
+
+      router.push("/dashboard");
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "Failed to finish onboarding."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNext = async () => {
+    if (currentStep === 4) {
+      await submitOnboarding();
+      return;
+    }
+
+    setCurrentStep((currentStep + 1) as Step);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-blue-50 dark:from-gray-950 dark:to-gray-900 p-4">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-blue-50 p-4 dark:from-gray-950 dark:to-gray-900">
+      <div className="mx-auto max-w-3xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50 mb-2">
-            Welcome to Your AI Dashboard
+          <h1 className="mb-2 text-3xl font-bold text-gray-900 dark:text-gray-50">
+            Launch Your WhatsApp Assistant
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Let's set up your restaurant's WhatsApp AI agent in 4 simple steps
+            This setup creates your restaurant workspace, AI agent, and the
+            records needed to provision a WhatsApp sender.
           </p>
         </div>
 
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            {STEPS.map((step, index) => (
-              <div key={step.number} className="flex items-center">
-                <div className="flex flex-col items-center">
-                  <div
-                    className={cn(
-                      "w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all",
-                      currentStep >= step.number
-                        ? "bg-emerald-600 text-white"
-                        : "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
-                    )}
-                  >
-                    {currentStep > step.number ? (
-                      <Check size={24} />
-                    ) : (
-                      step.number
-                    )}
-                  </div>
-                  <span className="text-xs font-medium mt-2 text-center hidden sm:block">
-                    {step.title}
-                  </span>
+        <div className="mb-8 flex items-center justify-between">
+          {STEPS.map((step, index) => (
+            <div key={step.number} className="flex items-center">
+              <div className="flex flex-col items-center">
+                <div
+                  className={cn(
+                    "flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold transition-all",
+                    currentStep >= step.number
+                      ? "bg-emerald-600 text-white"
+                      : "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+                  )}
+                >
+                  {currentStep > step.number ? <Check size={24} /> : step.number}
                 </div>
-                {index < STEPS.length - 1 && (
-                  <div
-                    className={cn(
-                      "w-8 h-1 mx-2",
-                      currentStep > step.number
-                        ? "bg-emerald-600"
-                        : "bg-gray-200 dark:bg-gray-700"
-                    )}
-                  />
-                )}
+                <span className="mt-2 hidden text-center text-xs font-medium sm:block">
+                  {step.title}
+                </span>
               </div>
-            ))}
-          </div>
+              {index < STEPS.length - 1 && (
+                <div
+                  className={cn(
+                    "mx-2 h-1 w-8",
+                    currentStep > step.number
+                      ? "bg-emerald-600"
+                      : "bg-gray-200 dark:bg-gray-700"
+                  )}
+                />
+              )}
+            </div>
+          ))}
         </div>
 
         <Card className="border-0 shadow-lg">
@@ -142,27 +184,44 @@ export default function OnboardingPage() {
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {currentStep === 1 && (
+            {error ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+                {error}
+              </div>
+            ) : null}
+
+            {statusMessage ? (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300">
+                {statusMessage}
+              </div>
+            ) : null}
+
+            {currentStep === 1 ? (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Restaurant Name
                   </label>
                   <Input
-                    placeholder="e.g., Delicious Bistro"
+                    placeholder="e.g., Test Restaurant"
                     value={data.restaurantName}
-                    onChange={(e) =>
-                      setData({ ...data, restaurantName: e.target.value })
+                    onChange={(event) =>
+                      setData({ ...data, restaurantName: event.target.value })
                     }
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Country
                     </label>
-                    <Select value={data.country} onValueChange={(value) => setData({ ...data, country: value })}>
+                    <Select
+                      value={data.country}
+                      onValueChange={(value) =>
+                        setData({ ...data, country: value })
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -179,7 +238,12 @@ export default function OnboardingPage() {
                     <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Currency
                     </label>
-                    <Select value={data.currency} onValueChange={(value) => setData({ ...data, currency: value })}>
+                    <Select
+                      value={data.currency}
+                      onValueChange={(value) =>
+                        setData({ ...data, currency: value })
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -192,20 +256,34 @@ export default function OnboardingPage() {
                     </Select>
                   </div>
                 </div>
-              </div>
-            )}
 
-            {currentStep === 2 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Website URL
+                  </label>
+                  <Input
+                    type="url"
+                    placeholder="https://restaurant.com"
+                    value={data.websiteUrl}
+                    onChange={(event) =>
+                      setData({ ...data, websiteUrl: event.target.value })
+                    }
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            {currentStep === 2 ? (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     AI Agent Name
                   </label>
                   <Input
-                    placeholder="e.g., Chef's AI Assistant"
+                    placeholder="e.g., Restaurant Assistant"
                     value={data.agentName}
-                    onChange={(e) =>
-                      setData({ ...data, agentName: e.target.value })
+                    onChange={(event) =>
+                      setData({ ...data, agentName: event.target.value })
                     }
                   />
                 </div>
@@ -216,25 +294,44 @@ export default function OnboardingPage() {
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { value: "friendly", label: "😊 Friendly", desc: "Warm & welcoming" },
-                      { value: "professional", label: "💼 Professional", desc: "Formal & precise" },
-                      { value: "creative", label: "✨ Creative", desc: "Fun & engaging" },
-                      { value: "strict", label: "🎯 Strict", desc: "Direct & efficient" },
+                      {
+                        value: "friendly",
+                        label: "Friendly",
+                        desc: "Warm and welcoming",
+                      },
+                      {
+                        value: "professional",
+                        label: "Professional",
+                        desc: "Clear and precise",
+                      },
+                      {
+                        value: "creative",
+                        label: "Creative",
+                        desc: "More expressive replies",
+                      },
+                      {
+                        value: "strict",
+                        label: "Strict",
+                        desc: "Direct and efficient",
+                      },
                     ].map((option) => (
                       <button
                         key={option.value}
+                        type="button"
                         onClick={() =>
                           setData({ ...data, personality: option.value })
                         }
                         className={cn(
-                          "p-3 rounded-lg border-2 transition-all text-left",
+                          "rounded-lg border-2 p-3 text-left transition-all",
                           data.personality === option.value
                             ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                            : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                            : "border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600"
                         )}
                       >
-                        <div className="font-medium text-sm">{option.label}</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">{option.desc}</div>
+                        <div className="text-sm font-medium">{option.label}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">
+                          {option.desc}
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -244,82 +341,104 @@ export default function OnboardingPage() {
                   <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Preferred Language
                   </label>
-                  <Select value={data.language} onValueChange={(value) => setData({ ...data, language: value })}>
+                  <Select
+                    value={data.language}
+                    onValueChange={(value) =>
+                      setData({ ...data, language: value })
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="auto">Auto-detect</SelectItem>
                       <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="ar">العربية</SelectItem>
-                      <SelectItem value="both">Both</SelectItem>
+                      <SelectItem value="ar">Arabic</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-            )}
 
-            {currentStep === 3 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Agent Instructions
+                  </label>
+                  <Textarea
+                    rows={6}
+                    value={data.agentInstructions}
+                    onChange={(event) =>
+                      setData({
+                        ...data,
+                        agentInstructions: event.target.value,
+                      })
+                    }
+                    placeholder="Describe how the assistant should answer customers."
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            {currentStep === 3 ? (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Twilio Phone Number
+                    WhatsApp Display Name
                   </label>
                   <Input
-                    placeholder="+20123456789"
-                    value={data.whatsappNumber}
-                    onChange={(e) =>
-                      setData({ ...data, whatsappNumber: e.target.value })
+                    placeholder="The business name customers see in WhatsApp"
+                    value={data.displayName}
+                    onChange={(event) =>
+                      setData({ ...data, displayName: event.target.value })
                     }
                   />
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    Your WhatsApp Business Account phone number
+                </div>
+
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
+                  <h4 className="mb-2 text-sm font-semibold text-blue-900 dark:text-blue-200">
+                    What happens after this step
+                  </h4>
+                  <p className="text-sm text-blue-800 dark:text-blue-300">
+                    The system creates your restaurant workspace now. If a ready
+                    WhatsApp sender is available in inventory, it will be
+                    assigned immediately. Otherwise your workspace is created in
+                    a pending WhatsApp state until sender registration is
+                    completed.
                   </p>
                 </div>
-
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                  <h4 className="font-semibold text-sm text-blue-900 dark:text-blue-200 mb-3">
-                    Next Steps
-                  </h4>
-                  <ol className="text-sm text-blue-800 dark:text-blue-300 space-y-2">
-                    <li>1. Create a WhatsApp Business Account</li>
-                    <li>2. Set up Twilio integration</li>
-                    <li>3. Verify your phone number</li>
-                    <li>4. Connect to this dashboard</li>
-                  </ol>
-                </div>
               </div>
-            )}
+            ) : null}
 
-            {currentStep === 4 && (
+            {currentStep === 4 ? (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Digital Menu URL (Optional)
+                    Digital Menu URL
                   </label>
                   <Input
-                    placeholder="https://yourrestaurant.com/menu"
+                    type="url"
+                    placeholder="https://restaurant.com/menu"
                     value={data.menuUrl}
-                    onChange={(e) =>
-                      setData({ ...data, menuUrl: e.target.value })
+                    onChange={(event) =>
+                      setData({ ...data, menuUrl: event.target.value })
                     }
                   />
                   <p className="text-xs text-gray-600 dark:text-gray-400">
-                    We'll crawl and index your menu automatically
+                    Optional. This is stored now and can be crawled later.
                   </p>
                 </div>
 
-                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                  <h4 className="font-semibold text-sm text-green-900 dark:text-green-200 mb-2">
-                    ✓ You're all set!
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-900/20">
+                  <h4 className="mb-2 text-sm font-semibold text-emerald-900 dark:text-emerald-200">
+                    Ready to provision
                   </h4>
-                  <p className="text-sm text-green-800 dark:text-green-300">
-                    We're ready to activate your AI agent. You can add or update your menu anytime from the dashboard.
+                  <p className="text-sm text-emerald-800 dark:text-emerald-300">
+                    Finishing this step creates your tenant records, starter
+                    knowledge base, and active AI agent configuration.
                   </p>
                 </div>
               </div>
-            )}
+            ) : null}
 
-            <div className="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-800">
+            <div className="flex items-center justify-between border-t border-gray-200 pt-6 dark:border-gray-800">
               <Button
                 variant="outline"
                 onClick={handlePrevious}
@@ -333,13 +452,10 @@ export default function OnboardingPage() {
                 Step {currentStep} of {STEPS.length}
               </div>
 
-              <Button
-                onClick={handleNext}
-                disabled={!isStepValid() || loading}
-              >
+              <Button onClick={handleNext} disabled={!isStepValid() || loading}>
                 {currentStep === 4 ? (
                   <>
-                    {loading ? "Setting up..." : "Get Started"}
+                    {loading ? "Provisioning..." : "Finish Setup"}
                     <Check size={18} />
                   </>
                 ) : (

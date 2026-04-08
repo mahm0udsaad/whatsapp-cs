@@ -1,16 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
-import { sendWhatsAppMessage, generateTwiMLResponse } from "@/lib/twilio";
-import { generateGeminiResponse } from "@/lib/gemini";
+import {
+  sendWhatsAppMessage,
+  generateTwiMLResponse,
+  validateTwilioRequest,
+} from "@/lib/twilio";
+import { queueAIReplyJob } from "@/lib/ai-reply-jobs";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+
+const EMPTY_TWIML = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+
+/** Opt-out keywords (case-insensitive) */
+const OPT_OUT_KEYWORDS = ["stop", "unsubscribe", "cancel", "إلغاء", "توقف", "الغاء"];
+const OPT_IN_KEYWORDS = ["start", "subscribe", "اشتراك", "ابدأ"];
 
 interface TwilioPayload {
   MessageSid: string;
   From: string;
   To: string;
   Body: string;
+  ProfileName: string;
 }
 
-/** Parse form-encoded Twilio webhook body */
 function parseTwilioBody(bodyText: string): TwilioPayload {
   const params = new URLSearchParams(bodyText);
   return {
@@ -18,10 +29,10 @@ function parseTwilioBody(bodyText: string): TwilioPayload {
     From: params.get("From") || "",
     To: params.get("To") || "",
     Body: params.get("Body") || "",
+    ProfileName: params.get("ProfileName") || "",
   };
 }
 
-/** Find or create a conversation for this customer */
 async function findOrCreateConversation(restaurantId: string, customerPhone: string) {
   const { data: existing } = await adminSupabaseClient
     .from("conversations")
@@ -32,12 +43,18 @@ async function findOrCreateConversation(restaurantId: string, customerPhone: str
     .limit(1)
     .single();
 
+  const now = new Date().toISOString();
+
   if (existing) {
     await adminSupabaseClient
       .from("conversations")
-      .update({ status: "active", last_message_at: new Date().toISOString() })
+      .update({
+        status: "active",
+        last_message_at: now,
+        last_inbound_at: now,
+      })
       .eq("id", existing.id);
-    return existing;
+    return { ...existing, last_inbound_at: now };
   }
 
   const { data: created, error } = await adminSupabaseClient
@@ -46,8 +63,9 @@ async function findOrCreateConversation(restaurantId: string, customerPhone: str
       restaurant_id: restaurantId,
       customer_phone: customerPhone,
       status: "active",
-      started_at: new Date().toISOString(),
-      last_message_at: new Date().toISOString(),
+      started_at: now,
+      last_message_at: now,
+      last_inbound_at: now,
     })
     .select()
     .single();
@@ -56,104 +74,158 @@ async function findOrCreateConversation(restaurantId: string, customerPhone: str
   return created;
 }
 
-/** Save a message to the DB */
-async function saveMessage(conversationId: string, role: "customer" | "agent" | "system", content: string) {
-  const { error } = await adminSupabaseClient
+async function saveMessage(
+  conversationId: string,
+  role: "customer" | "agent" | "system",
+  content: string,
+  options: {
+    externalMessageSid?: string;
+    deliveryStatus?: string;
+    errorMessage?: string;
+  } = {}
+) {
+  const { data, error } = await adminSupabaseClient
     .from("messages")
     .insert({
       conversation_id: conversationId,
       role,
       content,
       message_type: "text",
+      external_message_sid: options.externalMessageSid,
+      delivery_status: options.deliveryStatus,
+      error_message: options.errorMessage,
       created_at: new Date().toISOString(),
-    });
-  if (error) console.error("Failed to save message:", error.message);
+    })
+    .select("*")
+    .single();
+  if (error) {
+    console.error("Failed to save message:", error.message);
+    return null;
+  }
+  return data;
 }
 
-/** Get conversation history */
-async function getConversationHistory(conversationId: string, limit = 10) {
+async function hasMessageWithExternalSid(messageSid: string) {
   const { data } = await adminSupabaseClient
     .from("messages")
-    .select("role, content")
-    .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: true })
-    .limit(limit);
-
-  return (data || []).map((m) => ({
-    role: (m.role === "customer" ? "user" : "assistant") as "user" | "assistant",
-    content: m.content,
-  }));
+    .select("id")
+    .eq("external_message_sid", messageSid)
+    .limit(1)
+    .maybeSingle();
+  return !!data;
 }
 
-/** Query knowledge base for relevant context */
-async function queryKnowledgeBase(restaurantId: string, query: string): Promise<string> {
+async function resolveRestaurantByIncomingNumber(businessPhone: string) {
   try {
-    const { data } = await adminSupabaseClient
-      .from("knowledge_base")
-      .select("content")
-      .eq("restaurant_id", restaurantId)
-      .limit(5);
+    const { data: sender } = await adminSupabaseClient
+      .from("whatsapp_senders")
+      .select("restaurant_id, phone_number, status")
+      .eq("phone_number", businessPhone)
+      .limit(1)
+      .maybeSingle();
 
-    if (!data?.length) return "";
+    if (sender?.restaurant_id) {
+      const { data: restaurant } = await adminSupabaseClient
+        .from("restaurants")
+        .select("*")
+        .eq("id", sender.restaurant_id)
+        .single();
 
-    const queryWords = query.toLowerCase().split(" ").filter((w) => w.length > 2);
-    const relevant = data.filter((entry) => {
-      const lower = entry.content.toLowerCase();
-      return queryWords.some((word) => lower.includes(word));
-    });
-
-    return relevant.map((e) => e.content).join("\n\n");
-  } catch {
-    return "";
-  }
-}
-
-/** Get menu items as context string */
-async function getMenuContext(restaurantId: string): Promise<string> {
-  try {
-    const { data } = await adminSupabaseClient
-      .from("menu_items")
-      .select("name, description, price, currency, category")
-      .eq("restaurant_id", restaurantId)
-      .eq("available", true)
-      .limit(20);
-
-    if (!data?.length) return "";
-
-    const grouped = data.reduce((acc: Record<string, typeof data>, item) => {
-      if (!acc[item.category]) acc[item.category] = [];
-      acc[item.category].push(item);
-      return acc;
-    }, {});
-
-    let ctx = "Available Menu:\n";
-    for (const [category, items] of Object.entries(grouped)) {
-      ctx += `\n${category}:\n`;
-      for (const item of items) {
-        ctx += `- ${item.name}: ${item.price} ${item.currency}`;
-        if (item.description) ctx += ` (${item.description})`;
-        ctx += "\n";
+      if (restaurant) {
+        return { restaurant, senderPhoneNumber: sender.phone_number as string };
       }
     }
-    return ctx;
   } catch {
-    return "";
+    // whatsapp_senders table may not exist yet. Fall back to legacy lookup.
   }
+
+  const { data: restaurant } = await adminSupabaseClient
+    .from("restaurants")
+    .select("*")
+    .eq("twilio_phone_number", businessPhone)
+    .single();
+
+  return {
+    restaurant,
+    senderPhoneNumber: restaurant?.twilio_phone_number as string | undefined,
+  };
 }
 
-/** Detect language from Arabic Unicode */
 function detectLanguage(text: string): "ar" | "en" {
   const arabicMatches = (text.match(/[\u0600-\u06FF]/g) || []).length;
   return arabicMatches / text.length > 0.3 ? "ar" : "en";
 }
 
+/** Check if a phone number has opted out for a restaurant */
+async function isOptedOut(restaurantId: string, phone: string): Promise<boolean> {
+  const { data } = await adminSupabaseClient
+    .from("opt_outs")
+    .select("id")
+    .eq("restaurant_id", restaurantId)
+    .eq("phone_number", phone)
+    .limit(1)
+    .maybeSingle();
+  return !!data;
+}
+
+/** Handle opt-out request */
+async function handleOptOut(restaurantId: string, phone: string): Promise<void> {
+  await adminSupabaseClient.from("opt_outs").upsert(
+    { restaurant_id: restaurantId, phone_number: phone, reason: "user_request" },
+    { onConflict: "restaurant_id,phone_number" }
+  );
+}
+
+/** Handle opt-in (re-subscribe) request */
+async function handleOptIn(restaurantId: string, phone: string): Promise<void> {
+  await adminSupabaseClient
+    .from("opt_outs")
+    .delete()
+    .eq("restaurant_id", restaurantId)
+    .eq("phone_number", phone);
+}
+
+/** Log webhook event for observability */
+async function logWebhookEvent(
+  eventType: string,
+  messageSid: string | null,
+  restaurantId: string | null,
+  payload: Record<string, unknown>,
+  processingTimeMs: number,
+  error?: string
+) {
+  await adminSupabaseClient
+    .from("webhook_events")
+    .insert({
+      event_type: eventType,
+      message_sid: messageSid,
+      restaurant_id: restaurantId,
+      payload,
+      processing_time_ms: processingTimeMs,
+      error: error || null,
+    })
+    .then(() => {});
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const startTime = Date.now();
+  let restaurantId: string | null = null;
+  let messageSid: string | null = null;
+
   try {
     const bodyText = await request.text();
-    const { MessageSid, From, To, Body } = parseTwilioBody(bodyText);
+    const params = Object.fromEntries(new URLSearchParams(bodyText).entries());
+    const { MessageSid, From, To, Body, ProfileName } = parseTwilioBody(bodyText);
+    messageSid = MessageSid;
+    const twilioSignature = request.headers.get("x-twilio-signature") || "";
+
+    // Validate Twilio signature (required in production)
+    if (twilioSignature && !validateTwilioRequest(request.url, params, twilioSignature)) {
+      logWebhookEvent("signature_invalid", MessageSid, null, {}, Date.now() - startTime, "Invalid signature");
+      return NextResponse.json({ error: "Invalid Twilio signature" }, { status: 403 });
+    }
 
     if (!From || !To || !Body || !MessageSid) {
-      console.error("Missing required Twilio fields");
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -161,33 +233,98 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const customerPhone = From.replace("whatsapp:", "");
     const businessPhone = To.replace("whatsapp:", "");
 
+    // Rate limit by customer phone number
+    const rateLimitResult = checkRateLimit(`webhook:${customerPhone}`, RATE_LIMITS.webhook);
+    if (!rateLimitResult.allowed) {
+      logWebhookEvent("rate_limited", MessageSid, null, { customerPhone }, Date.now() - startTime);
+      return new NextResponse(EMPTY_TWIML, {
+        status: 200,
+        headers: { "Content-Type": "application/xml" },
+      });
+    }
+
+    // Idempotency check
+    if (await hasMessageWithExternalSid(MessageSid)) {
+      return new NextResponse(EMPTY_TWIML, {
+        status: 200,
+        headers: { "Content-Type": "application/xml" },
+      });
+    }
+
     console.log(`[webhook] From: ${customerPhone} | To: ${businessPhone} | Body: ${Body.substring(0, 60)}`);
 
-    // Look up restaurant by twilio_phone_number
-    const { data: restaurant, error: restaurantError } = await adminSupabaseClient
-      .from("restaurants")
-      .select("*")
-      .eq("twilio_phone_number", businessPhone)
-      .single();
+    // Resolve restaurant
+    const { restaurant, senderPhoneNumber } = await resolveRestaurantByIncomingNumber(businessPhone);
 
-    if (restaurantError || !restaurant) {
+    if (!restaurant) {
       console.error(`[webhook] No restaurant found for phone: ${businessPhone}`);
-      // Send a fallback message so user knows the system received their message
       const fallback = detectLanguage(Body) === "ar"
         ? "مرحباً! الخدمة غير متاحة حالياً. يرجى المحاولة لاحقاً."
         : "Hello! This service is not configured yet. Please try again later.";
       await sendWhatsAppMessage(customerPhone, fallback).catch(() => {});
+      logWebhookEvent("no_restaurant", MessageSid, null, { businessPhone }, Date.now() - startTime);
       return new NextResponse(generateTwiMLResponse(fallback), {
         status: 200,
         headers: { "Content-Type": "application/xml" },
       });
     }
 
-    // Find or create conversation
+    restaurantId = restaurant.id;
+    const normalizedBody = Body.trim().toLowerCase();
+
+    // --- Opt-out handling ---
+    if (OPT_OUT_KEYWORDS.includes(normalizedBody)) {
+      await handleOptOut(restaurant.id, customerPhone);
+      const msg = detectLanguage(Body) === "ar"
+        ? "تم إلغاء اشتراكك بنجاح. لن تتلقى رسائل بعد الآن. أرسل 'ابدأ' للاشتراك مرة أخرى."
+        : "You have been unsubscribed. You will no longer receive messages. Send 'start' to re-subscribe.";
+      await sendWhatsAppMessage(customerPhone, msg, { fromPhoneNumber: senderPhoneNumber }).catch(() => {});
+      logWebhookEvent("opt_out", MessageSid, restaurant.id, { customerPhone }, Date.now() - startTime);
+      return new NextResponse(EMPTY_TWIML, {
+        status: 200,
+        headers: { "Content-Type": "application/xml" },
+      });
+    }
+
+    // --- Opt-in handling ---
+    if (OPT_IN_KEYWORDS.includes(normalizedBody)) {
+      await handleOptIn(restaurant.id, customerPhone);
+      const msg = detectLanguage(Body) === "ar"
+        ? "مرحباً بك مجدداً! تم تفعيل اشتراكك. كيف يمكنني مساعدتك؟"
+        : "Welcome back! You have been re-subscribed. How can I help you?";
+      await sendWhatsAppMessage(customerPhone, msg, { fromPhoneNumber: senderPhoneNumber }).catch(() => {});
+      logWebhookEvent("opt_in", MessageSid, restaurant.id, { customerPhone }, Date.now() - startTime);
+      return new NextResponse(EMPTY_TWIML, {
+        status: 200,
+        headers: { "Content-Type": "application/xml" },
+      });
+    }
+
+    // --- Check if user is opted out ---
+    if (await isOptedOut(restaurant.id, customerPhone)) {
+      // Silently ignore messages from opted-out users (don't respond)
+      logWebhookEvent("ignored_opted_out", MessageSid, restaurant.id, { customerPhone }, Date.now() - startTime);
+      return new NextResponse(EMPTY_TWIML, {
+        status: 200,
+        headers: { "Content-Type": "application/xml" },
+      });
+    }
+
+    // Find or create conversation (now tracks last_inbound_at)
     const conversation = await findOrCreateConversation(restaurant.id, customerPhone);
 
     // Save incoming message
-    await saveMessage(conversation.id, "customer", Body);
+    const inboundMessage = await saveMessage(conversation.id, "customer", Body, {
+      externalMessageSid: MessageSid,
+      deliveryStatus: "received",
+    });
+
+    if (ProfileName && !conversation.customer_name) {
+      await adminSupabaseClient
+        .from("conversations")
+        .update({ customer_name: ProfileName })
+        .eq("id", conversation.id);
+    }
 
     // Get AI agent config
     const { data: aiAgent } = await adminSupabaseClient
@@ -202,68 +339,72 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const msg = detectLanguage(Body) === "ar"
         ? "مرحباً! المساعد الذكي غير متاح حالياً."
         : "Hello! The AI assistant is not configured yet.";
-      await saveMessage(conversation.id, "agent", msg);
-      await sendWhatsAppMessage(customerPhone, msg).catch(() => {});
+      let outboundSid: string | undefined;
+      try {
+        outboundSid = await sendWhatsAppMessage(customerPhone, msg, {
+          fromPhoneNumber: senderPhoneNumber,
+          statusCallback: `${request.nextUrl.origin}/api/webhooks/twilio/status`,
+        });
+      } catch {
+        outboundSid = undefined;
+      }
+      await saveMessage(conversation.id, "agent", msg, {
+        externalMessageSid: outboundSid,
+        deliveryStatus: outboundSid ? "queued" : "failed",
+      });
+      logWebhookEvent("no_ai_agent", MessageSid, restaurant.id, {}, Date.now() - startTime);
       return new NextResponse(generateTwiMLResponse(msg), {
         status: 200,
         headers: { "Content-Type": "application/xml" },
       });
     }
 
-    // Get conversation history
-    const history = await getConversationHistory(conversation.id, 10);
+    // Queue AI reply job
+    const queued = inboundMessage
+      ? await queueAIReplyJob({
+          restaurantId: restaurant.id,
+          conversationId: conversation.id,
+          inboundMessageId: inboundMessage.id,
+          customerPhone,
+          senderPhoneNumber,
+        })
+      : { queued: false };
 
-    // Build RAG context
-    const ragContext = await queryKnowledgeBase(restaurant.id, Body);
-    const menuContext = await getMenuContext(restaurant.id);
-    const fullContext = [ragContext, menuContext].filter((c) => c.trim()).join("\n\n");
-
-    // Generate AI response
-    let aiResponse: string;
-    const userLang = detectLanguage(Body);
-
-    try {
-      const result = await generateGeminiResponse({
-        systemPrompt: aiAgent.system_instructions || `You are a friendly and welcoming customer service assistant for ${restaurant.name} restaurant. Always greet customers warmly when they say hello. Help them with menu items, orders, reservations, delivery, and any questions about the restaurant. Be polite, helpful, and make customers feel valued.`,
-        personality: aiAgent.personality || "friendly",
-        ragContext: fullContext,
-        conversationHistory: history.slice(0, -1), // exclude the message we just saved
-        userMessage: Body,
-        languagePreference: (aiAgent.language_preference as "ar" | "en" | "auto") || "auto",
-        offTopicResponse: aiAgent.off_topic_response || (userLang === "ar"
-          ? "عذراً، أنا متخصص فقط في الإجابة على أسئلة المطعم."
-          : "Sorry, I can only answer questions about the restaurant."),
+    if (!queued.queued) {
+      const fallback = detectLanguage(Body) === "ar"
+        ? "عذراً، حدث تأخير مؤقت. يرجى المحاولة لاحقاً."
+        : "Sorry, the assistant is temporarily delayed. Please try again shortly.";
+      let outboundSid: string | undefined;
+      try {
+        outboundSid = await sendWhatsAppMessage(customerPhone, fallback, {
+          fromPhoneNumber: senderPhoneNumber,
+          statusCallback: `${request.nextUrl.origin}/api/webhooks/twilio/status`,
+        });
+      } catch {
+        outboundSid = undefined;
+      }
+      await saveMessage(conversation.id, "agent", fallback, {
+        externalMessageSid: outboundSid,
+        deliveryStatus: outboundSid ? "queued" : "failed",
       });
-      aiResponse = result.content;
-    } catch (err) {
-      console.error("[webhook] Gemini error:", err);
-      aiResponse = userLang === "ar"
-        ? "عذراً، حدث خطأ. يرجى المحاولة لاحقاً."
-        : "Sorry, an error occurred. Please try again later.";
     }
 
-    // Save AI response & update conversation
-    await saveMessage(conversation.id, "agent", aiResponse);
-    await adminSupabaseClient
-      .from("conversations")
-      .update({ last_message_at: new Date().toISOString() })
-      .eq("id", conversation.id);
+    logWebhookEvent("processed", MessageSid, restaurant.id, { queued: queued.queued }, Date.now() - startTime);
 
-    // Send reply via Twilio API (more reliable than TwiML for WhatsApp with Unicode)
-    try {
-      const sid = await sendWhatsAppMessage(customerPhone, aiResponse);
-      console.log(`[webhook] Reply sent via Twilio API. SID: ${sid}`);
-    } catch (e) {
-      console.error("[webhook] Failed to send Twilio message:", e);
-    }
-
-    // Return empty TwiML — we already sent via API, don't need Twilio to send it again
-    return new NextResponse(
-      '<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
-      { status: 200, headers: { "Content-Type": "application/xml" } }
-    );
+    return new NextResponse(EMPTY_TWIML, {
+      status: 200,
+      headers: { "Content-Type": "application/xml" },
+    });
   } catch (error) {
     console.error("[webhook] Unhandled error:", error);
+    logWebhookEvent(
+      "error",
+      messageSid,
+      restaurantId,
+      {},
+      Date.now() - startTime,
+      error instanceof Error ? error.message : "Unknown error"
+    );
     const msg = "عذراً، حدث خطأ. / Sorry, an error occurred.";
     return new NextResponse(generateTwiMLResponse(msg), {
       status: 500,

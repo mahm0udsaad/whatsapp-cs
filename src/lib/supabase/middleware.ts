@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const publicRoutes = ["/login", "/signup", "/auth/callback"];
-const publicPrefixes = ["/api/webhooks/", "/api/menu/"];
+const publicPrefixes = ["/api/webhooks/", "/api/internal/"];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({

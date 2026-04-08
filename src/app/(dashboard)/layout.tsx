@@ -1,34 +1,37 @@
-"use client";
-
 import { ReactNode } from "react";
-import { useRouter } from "next/navigation";
-import { Sidebar } from "@/components/ui/sidebar";
-import { createClient } from "@/lib/supabase/client";
+import { redirect } from "next/navigation";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { getCurrentUser, getTenantContextForUser } from "@/lib/tenant";
 
-export default function DashboardLayout({ children }: { children: ReactNode }) {
-  const router = useRouter();
-  const supabase = createClient();
+export default async function DashboardLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const user = await getCurrentUser();
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
-  };
+  if (!user) {
+    redirect("/login");
+  }
+
+  const tenant = await getTenantContextForUser(user.id);
+
+  if (!tenant?.restaurant) {
+    redirect("/onboarding");
+  }
+
+  if (tenant.setupStatus === "draft" || tenant.setupStatus === "failed") {
+    redirect("/onboarding");
+  }
 
   return (
-    <div className="flex h-full">
-      <Sidebar
-        restaurantName="Delicious Bistro"
-        restaurantLogo={undefined}
-        userName="John Doe"
-        userEmail="john@restaurant.com"
-        onLogout={handleLogout}
-      />
-
-      <main className="flex-1 lg:ml-64 overflow-auto">
-        <div className="min-h-full">
-          {children}
-        </div>
-      </main>
-    </div>
+    <DashboardShell
+      restaurantName={tenant.restaurant.name}
+      restaurantLogo={tenant.restaurant.logo_url}
+      userName={tenant.profile.full_name}
+      userEmail={tenant.profile.email}
+    >
+      {children}
+    </DashboardShell>
   );
 }

@@ -38,17 +38,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ErrorCode,
     });
 
-    // Try to find the message by MessageSid
-    // Since we don't store MessageSid in the messages table yet, we can store it in metadata
-    // For now, we'll just log the status update
-    // In production, you'd want to:
-    // 1. Store the Twilio MessageSid when you send a message
-    // 2. Update the message record with the new status
-    // 3. Update any campaign_recipient records if this is a marketing message
+    const { error: messageUpdateError } = await adminSupabaseClient
+      .from("messages")
+      .update({
+        delivery_status: MessageStatus,
+        error_message: ErrorCode ? `Twilio error code: ${ErrorCode}` : null,
+      })
+      .eq("external_message_sid", MessageSid);
 
-    // Example: Update campaign_recipient if this is a campaign message
+    if (messageUpdateError) {
+      console.error("Failed to update message status:", messageUpdateError);
+    }
+
     if (MessageStatus === "delivered" || MessageStatus === "read") {
-      // Find and update campaign recipient
       const { error: updateError } = await adminSupabaseClient
         .from("campaign_recipients")
         .update({
@@ -63,7 +65,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         console.error("Failed to update campaign recipient:", updateError);
       }
     } else if (MessageStatus === "failed") {
-      // Update failed status in campaign recipient
       const { error: updateError } = await adminSupabaseClient
         .from("campaign_recipients")
         .update({
@@ -77,19 +78,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // Log status for debugging/analytics
     console.log("Message status updated", {
       MessageSid,
       MessageStatus,
       timestamp: new Date().toISOString(),
     });
 
-    // Return 200 OK to acknowledge receipt
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error("Status callback error:", error);
 
-    // Still return 200 to prevent Twilio from retrying
     return NextResponse.json(
       { error: "Failed to process status update" },
       { status: 200 }

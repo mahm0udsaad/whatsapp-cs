@@ -1,13 +1,50 @@
-// Database Types
+export type SetupStatus =
+  | "draft"
+  | "provisioning"
+  | "pending_whatsapp"
+  | "active"
+  | "failed";
+
+export type ProvisioningStatus =
+  | "draft"
+  | "pending_number_assignment"
+  | "pending_embedded_signup"
+  | "pending_sender_registration"
+  | "pending_knowledge_sync"
+  | "active"
+  | "failed";
+
+export interface Profile {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Restaurant {
   id: string;
-  user_id: string;
+  owner_id: string;
   name: string;
-  whatsapp_number: string;
-  whatsapp_business_account_id: string;
-  description?: string;
-  location?: string;
-  cuisine_type?: string;
+  name_ar: string | null;
+  logo_url: string | null;
+  country: string;
+  currency: string;
+  timezone: string;
+  twilio_phone_number: string | null;
+  twilio_account_sid: string | null;
+  twilio_auth_token: string | null;
+  digital_menu_url: string | null;
+  website_url?: string | null;
+  primary_whatsapp_number_id?: string | null;
+  provisioning_status?: ProvisioningStatus;
+  is_active: boolean;
+  setup_status?: SetupStatus;
+  onboarding_completed_at?: string | null;
+  activation_started_at?: string | null;
+  activated_at?: string | null;
+  metadata?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
@@ -16,12 +53,15 @@ export interface AiAgent {
   id: string;
   restaurant_id: string;
   name: string;
-  system_prompt: string;
+  avatar_url: string | null;
   personality: string;
+  system_instructions: string;
+  chat_mode: "text_input" | "hybrid" | "human_handoff" | null;
   language_preference: "ar" | "en" | "auto";
   off_topic_response: string;
-  max_context_messages: number;
-  temperature: number;
+  max_context_messages?: number;
+  temperature?: number;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -29,10 +69,11 @@ export interface AiAgent {
 export interface KnowledgeBase {
   id: string;
   restaurant_id: string;
+  title: string | null;
   content: string;
-  source?: string;
-  category?: string;
-  embedding?: number[];
+  embedding?: number[] | null;
+  source_type: string | null;
+  metadata?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
@@ -40,13 +81,19 @@ export interface KnowledgeBase {
 export interface MenuItem {
   id: string;
   restaurant_id: string;
-  name: string;
-  description?: string;
+  name_ar: string | null;
+  name_en: string | null;
+  description_ar: string | null;
+  description_en: string | null;
   price: number;
+  discounted_price: number | null;
   currency: string;
   category: string;
-  image_url?: string;
-  available: boolean;
+  subcategory: string | null;
+  image_url: string | null;
+  is_available: boolean;
+  sort_order: number | null;
+  crawled_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -55,20 +102,27 @@ export interface Conversation {
   id: string;
   restaurant_id: string;
   customer_phone: string;
-  customer_name?: string;
+  customer_name?: string | null;
   status: "active" | "archived" | "closed";
+  started_at: string;
   last_message_at: string;
-  created_at: string;
-  updated_at: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface Message {
   id: string;
   conversation_id: string;
-  sender: "customer" | "ai";
+  role: "customer" | "agent" | "system";
   content: string;
-  language: "ar" | "en";
-  metadata?: Record<string, unknown>;
+  message_type: string;
+  metadata?: Record<string, unknown> | null;
+  twilio_message_sid?: string | null;
+  twilio_status?: "queued" | "sent" | "delivered" | "read" | "failed" | "undelivered" | null;
+  external_error_code?: string | null;
+  external_message_sid?: string | null;
+  delivery_status?: string | null;
+  channel?: string;
+  error_message?: string | null;
   created_at: string;
 }
 
@@ -76,8 +130,13 @@ export interface MarketingTemplate {
   id: string;
   restaurant_id: string;
   name: string;
-  content: string;
-  variables: string[];
+  template_sid: string | null;
+  content_type: string | null;
+  body_template: string | null;
+  header_image_url: string | null;
+  buttons: Record<string, unknown>[] | null;
+  variables: string[] | null;
+  status: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -85,10 +144,17 @@ export interface MarketingTemplate {
 export interface MarketingCampaign {
   id: string;
   restaurant_id: string;
-  template_id: string;
+  template_id: string | null;
   name: string;
+  scheduled_at?: string | null;
+  audience_file_url?: string | null;
+  audience_json?: Record<string, unknown>[] | null;
+  total_recipients: number;
+  sent_count: number;
+  delivered_count: number;
+  read_count: number;
+  failed_count: number;
   status: "draft" | "scheduled" | "active" | "completed" | "cancelled";
-  scheduled_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -96,22 +162,112 @@ export interface MarketingCampaign {
 export interface CampaignRecipient {
   id: string;
   campaign_id: string;
-  customer_phone: string;
+  phone_number: string;
+  name?: string | null;
+  metadata?: Record<string, unknown> | null;
   status: "pending" | "sent" | "delivered" | "read" | "failed";
-  sent_at?: string;
-  delivered_at?: string;
-  read_at?: string;
-  error_message?: string;
-  created_at: string;
+  twilio_message_sid?: string | null;
+  sent_at?: string | null;
+  delivered_at?: string | null;
+  read_at?: string | null;
+  error_message?: string | null;
 }
 
-// API Request/Response Types
+export interface TwilioSubaccount {
+  id: string;
+  restaurant_id: string;
+  account_sid: string | null;
+  friendly_name: string | null;
+  status: string;
+  metadata?: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WhatsAppNumber {
+  id: string;
+  phone_number: string;
+  provider?: "twilio";
+  source_type?: "pool" | "customer_owned";
+  is_primary?: boolean;
+  assignment_status?: "available" | "reserved" | "assigned" | "active" | "suspended" | "released";
+  onboarding_status?: "unclaimed" | "pending_embedded_signup" | "pending_sender_registration" | "pending_test" | "active" | "failed";
+  label?: string | null;
+  twilio_phone_sid?: string | null;
+  twilio_subaccount_sid?: string | null;
+  messaging_service_sid?: string | null;
+  twilio_messaging_service_sid?: string | null;
+  twilio_whatsapp_sender_sid?: string | null;
+  meta_business_account_id?: string | null;
+  meta_waba_id?: string | null;
+  config?: Record<string, unknown> | null;
+  last_error?: string | null;
+  status: string;
+  is_whatsapp_enabled: boolean;
+  restaurant_id?: string | null;
+  reserved_at?: string | null;
+  assigned_at?: string | null;
+  released_at?: string | null;
+  metadata?: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WhatsAppSender {
+  id: string;
+  restaurant_id: string;
+  twilio_subaccount_id?: string | null;
+  whatsapp_number_id?: string | null;
+  phone_number: string;
+  sender_sid?: string | null;
+  messaging_service_sid?: string | null;
+  waba_id?: string | null;
+  display_name?: string | null;
+  status: string;
+  quality_rating?: string | null;
+  is_primary: boolean;
+  last_synced_at?: string | null;
+  metadata?: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProvisioningRun {
+  id: string;
+  owner_id?: string;
+  restaurant_id: string | null;
+  whatsapp_number_id?: string | null;
+  provider?: string;
+  phase?: string;
+  status: string;
+  current_step?: string;
+  retry_count?: number;
+  last_error?: string | null;
+  external_reference?: string | null;
+  error_code?: string | null;
+  error_detail?: string | null;
+  metadata?: Record<string, unknown> | null;
+  started_at: string;
+  completed_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TenantContext {
+  profile: Profile;
+  restaurant: Restaurant | null;
+  aiAgent: AiAgent | null;
+  primarySender: WhatsAppSender | null;
+  setupStatus: SetupStatus;
+}
+
 export interface TwilioWebhookRequest {
   MessageSid: string;
   AccountSid: string;
   From: string;
   To: string;
   Body: string;
+  ProfileName?: string;
   NumMedia?: string;
   MediaUrl0?: string;
   [key: string]: string | undefined;
@@ -119,7 +275,7 @@ export interface TwilioWebhookRequest {
 
 export interface TwilioStatusCallback {
   MessageSid: string;
-  MessageStatus: "sent" | "delivered" | "read" | "failed" | "undelivered";
+  MessageStatus: "queued" | "sent" | "delivered" | "read" | "failed" | "undelivered";
   ErrorCode?: string;
   [key: string]: string | undefined;
 }
@@ -138,4 +294,17 @@ export interface MenuCrawlResponse {
   items_extracted: number;
   items: MenuItem[];
   knowledge_base_entries: number;
+}
+
+export interface OnboardingPayload {
+  restaurantName: string;
+  displayName: string;
+  country: string;
+  currency: string;
+  websiteUrl?: string;
+  menuUrl?: string;
+  agentName: string;
+  personality: string;
+  language: "ar" | "en" | "auto";
+  agentInstructions: string;
 }

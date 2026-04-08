@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { load } from "cheerio";
+import type { AnyNode } from "domhandler";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { MenuItem, MenuCrawlRequest, MenuCrawlResponse } from "@/lib/types";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
  * Fetch and parse HTML from URL
@@ -72,8 +75,10 @@ function extractMenuItems(
       const item = parseMenuItemElement($, element, restaurantId);
       if (item) {
         items.push(item);
+        const itemName = item.name_ar || item.name_en || "Unknown item";
+        const description = item.description_ar || item.description_en;
         knowledgeBaseEntries.push(
-          `${item.name}${item.description ? " - " + item.description : ""} (${item.price} ${item.currency})`
+          `${itemName}${description ? " - " + description : ""} (${item.price} ${item.currency})`
         );
       }
     });
@@ -87,13 +92,13 @@ function extractMenuItems(
  */
 function parseMenuItemElement(
   $: ReturnType<typeof load>,
-  element: any,
+  element: AnyNode,
   restaurantId: string
 ): MenuItem | null {
   const $el = $(element);
 
   // Try to extract name
-  let nameText: string =
+  const nameText: string =
     $el.find(".name").text() ||
     $el.find(".title").text() ||
     $el.find("h3").text() ||
@@ -101,7 +106,7 @@ function parseMenuItemElement(
     $el.text().split(/\n/)[0] ||
     "";
 
-  let name = nameText.trim().substring(0, 200);
+  const name = nameText.trim().substring(0, 200);
 
   if (!name) {
     return null;
@@ -123,7 +128,7 @@ function parseMenuItemElement(
   }
 
   // Try to extract description
-  let descText: string =
+  const descText: string =
     $el.find(".description").text() ||
     $el.find(".desc").text() ||
     $el.find("p").text() ||
@@ -132,7 +137,7 @@ function parseMenuItemElement(
   const description = descText.trim().substring(0, 500);
 
   // Try to extract category
-  let catText: string =
+  const catText: string =
     ($el.data("category") as string | undefined) ||
     $el.find("[class*='category']").text() ||
     "General";
@@ -154,13 +159,19 @@ function parseMenuItemElement(
   const menuItem: MenuItem = {
     id: `${restaurantId}-${Date.now()}-${Math.random()}`,
     restaurant_id: restaurantId,
-    name,
-    description: description || undefined,
+    name_ar: null,
+    name_en: name,
+    description_ar: null,
+    description_en: description || null,
     price,
+    discounted_price: null,
     currency,
     category,
-    image_url: imageUrl,
-    available: true,
+    subcategory: null,
+    image_url: imageUrl || null,
+    is_available: true,
+    sort_order: null,
+    crawled_at: new Date().toISOString(),
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -197,18 +208,26 @@ function extractFromTables(
           const menuItem: MenuItem = {
             id: `${restaurantId}-${Date.now()}-${Math.random()}`,
             restaurant_id: restaurantId,
-            name,
+            name_ar: null,
+            name_en: name,
+            description_ar: null,
+            description_en: null,
             price,
+            discounted_price: null,
             currency: "SAR",
             category: "General",
-            available: true,
+            subcategory: null,
+            image_url: null,
+            is_available: true,
+            sort_order: null,
+            crawled_at: new Date().toISOString(),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
 
           items.push(menuItem);
           knowledgeBaseEntries.push(
-            `${menuItem.name} - ${menuItem.price} ${menuItem.currency}`
+            `${menuItem.name_en} - ${menuItem.price} ${menuItem.currency}`
           );
         }
       }
@@ -270,11 +289,46 @@ async function createKnowledgeBaseEntries(
   return entries.length;
 }
 
+/** Validate URL is safe (prevent SSRF) */
+function isSafeUrl(urlStr: string): boolean {
+  try {
+    const parsed = new URL(urlStr);
+    // Only allow http/https
+    if (!["http:", "https:"].includes(parsed.protocol)) return false;
+    // Block internal/private IPs
+    const hostname = parsed.hostname.toLowerCase();
+    const blocked = [
+      "localhost", "127.0.0.1", "0.0.0.0", "::1",
+      "metadata.google.internal", "169.254.169.254",
+    ];
+    if (blocked.includes(hostname)) return false;
+    // Block private IP ranges
+    if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(hostname)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Main API endpoint
+ * Main API endpoint (requires authentication)
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    // Authenticate user
+    const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rate limit per user
+    const rl = checkRateLimit(`crawl:${user.id}`, RATE_LIMITS.menuCrawl);
+    if (!rl.allowed) {
+      return NextResponse.json({ error: "Rate limit exceeded. Try again later." }, { status: 429 });
+    }
+
     const body: MenuCrawlRequest = await request.json();
     const { restaurant_id, url } = body;
 
@@ -285,12 +339,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Validate URL format
-    try {
-      new URL(url);
-    } catch {
+    // Validate URL format and SSRF protection
+    if (!isSafeUrl(url)) {
       return NextResponse.json(
-        { error: "Invalid URL format" },
+        { error: "Invalid or blocked URL" },
         { status: 400 }
       );
     }

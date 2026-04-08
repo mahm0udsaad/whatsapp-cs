@@ -1,5 +1,4 @@
 import twilio from "twilio";
-import crypto from "crypto";
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -19,23 +18,39 @@ if (!twilioPhoneNumber) {
 
 const client = twilio(accountSid, authToken);
 
+interface SendWhatsAppMessageOptions {
+  fromPhoneNumber?: string;
+  mediaUrl?: string;
+  statusCallback?: string;
+}
+
 /**
  * Send a WhatsApp message via Twilio
  */
 export async function sendWhatsAppMessage(
   to: string,
   body: string,
-  mediaUrl?: string
+  options: SendWhatsAppMessageOptions = {}
 ): Promise<string> {
   try {
-    const messageData: any = {
-      from: `whatsapp:${twilioPhoneNumber}`,
+    const messageData: {
+      from: string;
+      to: string;
+      body: string;
+      mediaUrl?: string[];
+      statusCallback?: string;
+    } = {
+      from: `whatsapp:${options.fromPhoneNumber || twilioPhoneNumber}`,
       to: `whatsapp:${to}`,
       body,
     };
 
-    if (mediaUrl) {
-      messageData.mediaUrl = [mediaUrl];
+    if (options.mediaUrl) {
+      messageData.mediaUrl = [options.mediaUrl];
+    }
+
+    if (options.statusCallback) {
+      messageData.statusCallback = options.statusCallback;
     }
 
     const message = await client.messages.create(messageData);
@@ -55,22 +70,7 @@ export function validateTwilioRequest(
   twilioSignature: string
 ): boolean {
   try {
-    // Create a sorted list of parameters
-    const params = Object.keys(body)
-      .sort()
-      .reduce((acc: string, key: string) => {
-        acc += key + body[key];
-        return acc;
-      }, "");
-
-    // Compute HMAC-SHA1
-    const hash = crypto
-      .createHmac("sha1", authToken || "")
-      .update(url + params)
-      .digest("base64");
-
-    // Compare signatures
-    return hash === twilioSignature;
+    return twilio.validateRequest(authToken || "", twilioSignature, url, body);
   } catch (error) {
     console.error("Error validating Twilio signature:", error);
     return false;

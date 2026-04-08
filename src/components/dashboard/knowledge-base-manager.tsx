@@ -1,0 +1,323 @@
+"use client";
+
+import { useState } from "react";
+import { Edit2, FileText, Plus, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { KnowledgeBase } from "@/lib/types";
+
+interface KnowledgeBaseManagerProps {
+  initialEntries: KnowledgeBase[];
+}
+
+export function KnowledgeBaseManager({
+  initialEntries,
+}: KnowledgeBaseManagerProps) {
+  const [entries, setEntries] = useState<KnowledgeBase[]>(initialEntries);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    title: "",
+    content: "",
+    sourceType: "manual",
+  });
+
+  const resetForm = () => {
+    setEditingId(null);
+    setFormData({
+      title: "",
+      content: "",
+      sourceType: "manual",
+    });
+  };
+
+  const handleSubmit = async () => {
+    setSaving(true);
+    setError("");
+
+    const url = editingId
+      ? `/api/dashboard/knowledge-base/${editingId}`
+      : "/api/dashboard/knowledge-base";
+    const method = editingId ? "PATCH" : "POST";
+
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: formData.title,
+          content: formData.content,
+          source_type: formData.sourceType,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || "Failed to save entry.");
+        return;
+      }
+
+      if (editingId) {
+        setEntries((prev) =>
+          prev.map((entry) => (entry.id === editingId ? result.entry : entry))
+        );
+      } else {
+        setEntries((prev) => [result.entry, ...prev]);
+      }
+
+      resetForm();
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "Failed to save entry."
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    setError("");
+
+    try {
+      const response = await fetch(`/api/dashboard/knowledge-base/${id}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || "Failed to delete entry.");
+        return;
+      }
+
+      setEntries((prev) => prev.filter((entry) => entry.id !== id));
+      if (editingId === id) {
+        resetForm();
+      }
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Failed to delete entry."
+      );
+    }
+  };
+
+  const handleEdit = (entry: KnowledgeBase) => {
+    setEditingId(entry.id);
+    setFormData({
+      title: entry.title || "",
+      content: entry.content,
+      sourceType: entry.source_type || "manual",
+    });
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Knowledge Entries</CardTitle>
+              <CardDescription>
+                {entries.length} entries available to the assistant
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {entries.length === 0 ? (
+                <div className="py-8 text-center">
+                  <FileText
+                    size={40}
+                    className="mx-auto mb-3 text-gray-400 dark:text-gray-600"
+                  />
+                  <p className="text-gray-600 dark:text-gray-400">
+                    No entries yet. Create your first knowledge base entry.
+                  </p>
+                </div>
+              ) : null}
+
+              {entries.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="rounded-lg border border-gray-200 p-4 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50"
+                >
+                  <div className="mb-2 flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-50">
+                        {entry.title || "Untitled"}
+                      </h3>
+                      <Badge variant="secondary" className="mt-1">
+                        {entry.source_type || "manual"}
+                      </Badge>
+                    </div>
+                    <div className="ml-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(entry)}
+                        className="p-2 text-gray-500 transition-colors hover:text-emerald-600 dark:hover:text-emerald-400"
+                        title="Edit"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(entry.id)}
+                        className="p-2 text-gray-500 transition-colors hover:text-red-600 dark:hover:text-red-400"
+                        title="Delete"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="line-clamp-3 text-sm text-gray-600 dark:text-gray-400">
+                    {entry.content}
+                  </p>
+                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-500">
+                    Updated {new Date(entry.updated_at).toLocaleString()}
+                  </p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Plus size={20} />
+                {editingId ? "Edit Entry" : "Add Entry"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {error ? (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+                  {error}
+                </div>
+              ) : null}
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Title
+                </label>
+                <Input
+                  value={formData.title}
+                  onChange={(event) =>
+                    setFormData({ ...formData, title: event.target.value })
+                  }
+                  placeholder="e.g., Delivery Policy"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Content
+                </label>
+                <Textarea
+                  rows={5}
+                  value={formData.content}
+                  onChange={(event) =>
+                    setFormData({ ...formData, content: event.target.value })
+                  }
+                  placeholder="Write the knowledge entry..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Source Type
+                </label>
+                <select
+                  value={formData.sourceType}
+                  onChange={(event) =>
+                    setFormData({ ...formData, sourceType: event.target.value })
+                  }
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-50"
+                >
+                  <option value="manual">Manual</option>
+                  <option value="policy">Policy</option>
+                  <option value="faq">FAQ</option>
+                  <option value="menu">Menu</option>
+                  <option value="hours">Hours</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Button
+                  className="w-full"
+                  onClick={handleSubmit}
+                  disabled={!formData.title || !formData.content || saving}
+                >
+                  {saving
+                    ? "Saving..."
+                    : editingId
+                    ? "Update Entry"
+                    : "Add Entry"}
+                </Button>
+                {editingId ? (
+                  <Button variant="outline" className="w-full" onClick={resetForm}>
+                    Cancel
+                  </Button>
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Statistics</CardTitle>
+          <CardDescription>Knowledge base coverage</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="rounded-lg bg-emerald-50 p-4 dark:bg-emerald-900/20">
+              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                {entries.length}
+              </div>
+              <div className="text-sm text-emerald-700 dark:text-emerald-300">
+                Total Entries
+              </div>
+            </div>
+            <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {new Set(entries.map((entry) => entry.source_type || "manual")).size}
+              </div>
+              <div className="text-sm text-blue-700 dark:text-blue-300">
+                Source Types
+              </div>
+            </div>
+            <div className="rounded-lg bg-purple-50 p-4 dark:bg-purple-900/20">
+              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                {Math.round(
+                  entries.reduce((acc, entry) => acc + entry.content.length, 0) / 100
+                )}
+              </div>
+              <div className="text-sm text-purple-700 dark:text-purple-300">
+                Approx. Tokens
+              </div>
+            </div>
+            <div className="rounded-lg bg-orange-50 p-4 dark:bg-orange-900/20">
+              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                {entries.filter((entry) => entry.source_type === "policy").length}
+              </div>
+              <div className="text-sm text-orange-700 dark:text-orange-300">
+                Policy Entries
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
