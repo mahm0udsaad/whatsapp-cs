@@ -7,12 +7,16 @@ import { cn } from "@/lib/utils";
 
 interface ImageGeneratorProps {
   prompt: string;
+  restaurantName?: string;
+  language?: "ar" | "en";
   onImageGenerated: (url: string) => void;
   className?: string;
 }
 
 export function ImageGenerator({
   prompt,
+  restaurantName,
+  language,
   onImageGenerated,
   className,
 }: ImageGeneratorProps) {
@@ -29,7 +33,7 @@ export function ImageGenerator({
       const res = await fetch("/api/marketing/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, restaurantName, language }),
       });
 
       if (!res.ok) {

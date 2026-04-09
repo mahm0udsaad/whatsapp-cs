@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
+import { validateTwilioRequest } from "@/lib/twilio";
 import { TwilioStatusCallback } from "@/lib/types";
 
 /**
@@ -11,6 +12,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Parse form data
     const bodyText = await request.text();
     const params = new URLSearchParams(bodyText);
+
+    // Validate Twilio signature
+    const twilioSignature = request.headers.get("x-twilio-signature") || "";
+    const formParams = Object.fromEntries(params.entries());
+    if (!twilioSignature || !validateTwilioRequest(request.url, formParams, twilioSignature)) {
+      console.error("Invalid or missing Twilio signature on status callback");
+      return NextResponse.json({ error: "Invalid Twilio signature" }, { status: 403 });
+    }
 
     const statusData: TwilioStatusCallback = {
       MessageSid: params.get("MessageSid") || "",

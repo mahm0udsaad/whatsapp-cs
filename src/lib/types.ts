@@ -171,7 +171,7 @@ export interface MarketingCampaign {
   read_count: number;
   failed_count: number;
   error_message?: string | null;
-  status: "draft" | "scheduled" | "processing" | "sending" | "completed" | "failed" | "cancelled";
+  status: "draft" | "scheduled" | "processing" | "sending" | "completed" | "partially_completed" | "failed" | "cancelled";
   created_at: string;
   updated_at: string;
 }

@@ -5,7 +5,8 @@ const workerSecret = process.env.AI_REPLY_WORKER_SECRET;
 
 function isAuthorized(request: NextRequest) {
   if (!workerSecret) {
-    return true;
+    console.error("AI_REPLY_WORKER_SECRET not configured — denying access");
+    return false;
   }
 
   const authorization = request.headers.get("authorization") || "";

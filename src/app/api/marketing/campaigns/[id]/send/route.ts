@@ -152,7 +152,8 @@ export async function POST(
               twilio_message_sid: messageSid,
               sent_at: new Date().toISOString(),
             })
-            .eq("id", recipient.id);
+            .eq("id", recipient.id)
+            .eq("campaign_id", id);
 
           sentCount++;
         } catch (err) {
@@ -164,7 +165,8 @@ export async function POST(
               status: "failed",
               error_message: errorMessage,
             })
-            .eq("id", recipient.id);
+            .eq("id", recipient.id)
+            .eq("campaign_id", id);
 
           failedCount++;
         }
@@ -180,7 +182,7 @@ export async function POST(
 
     // Update campaign with final stats
     const completedAt = new Date().toISOString();
-    const finalStatus = failedCount === recipients.length ? "failed" : "completed";
+    const finalStatus = failedCount === recipients.length ? "failed" : failedCount > 0 ? "partially_completed" : "completed";
 
     await adminSupabaseClient
       .from("marketing_campaigns")

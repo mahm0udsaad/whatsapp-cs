@@ -219,9 +219,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     messageSid = MessageSid;
     const twilioSignature = request.headers.get("x-twilio-signature") || "";
 
-    // Validate Twilio signature (required in production)
-    if (twilioSignature && !validateTwilioRequest(request.url, params, twilioSignature)) {
-      logWebhookEvent("signature_invalid", MessageSid, null, {}, Date.now() - startTime, "Invalid signature");
+    // Validate Twilio signature (mandatory)
+    if (!twilioSignature || !validateTwilioRequest(request.url, params, twilioSignature)) {
+      logWebhookEvent("signature_invalid", MessageSid, null, {}, Date.now() - startTime, "Invalid or missing signature");
       return NextResponse.json({ error: "Invalid Twilio signature" }, { status: 403 });
     }
 
