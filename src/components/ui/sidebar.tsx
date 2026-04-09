@@ -4,21 +4,22 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  Store,
   Bot,
   BookOpen,
-  UtensilsCrossed,
-  MessageSquare,
+  LayoutDashboard,
+  LogOut,
   Megaphone,
   Menu,
+  MessageSquare,
+  Store,
+  UtensilsCrossed,
   X,
-  LogOut,
-  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./button";
 import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
+import { LanguageSwitcher } from "./language-switcher";
+import { getClientLocale, createTranslator } from "@/lib/i18n";
 
 interface SidebarProps {
   restaurantName?: string;
@@ -36,44 +37,52 @@ export function Sidebar({
   onLogout,
 }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const pathname = usePathname();
+  const locale = getClientLocale();
+  const t = createTranslator(locale);
 
   const navItems = [
     {
       href: "/dashboard",
-      label: "Overview",
+      label: t("nav.overview"),
+      description: t("nav.overview.desc"),
       icon: LayoutDashboard,
       exact: true,
     },
     {
       href: "/dashboard/restaurant",
-      label: "Restaurant",
+      label: t("nav.restaurant"),
+      description: t("nav.restaurant.desc"),
       icon: Store,
     },
     {
       href: "/dashboard/ai-agent",
-      label: "AI Agent",
+      label: t("nav.aiAgent"),
+      description: t("nav.aiAgent.desc"),
       icon: Bot,
     },
     {
       href: "/dashboard/knowledge-base",
-      label: "Knowledge Base",
+      label: t("nav.knowledgeBase"),
+      description: t("nav.knowledgeBase.desc"),
       icon: BookOpen,
     },
     {
       href: "/dashboard/menu",
-      label: "Menu",
+      label: t("nav.menu"),
+      description: t("nav.menu.desc"),
       icon: UtensilsCrossed,
     },
     {
       href: "/dashboard/conversations",
-      label: "Conversations",
+      label: t("nav.conversations"),
+      description: t("nav.conversations.desc"),
       icon: MessageSquare,
     },
     {
       href: "/dashboard/marketing",
-      label: "Marketing",
+      label: t("nav.marketing"),
+      description: t("nav.marketing.desc"),
       icon: Megaphone,
     },
   ];
@@ -82,13 +91,14 @@ export function Sidebar({
     if (exact) {
       return pathname === href;
     }
+
     return pathname.startsWith(href);
   };
 
   const userInitials = userName
     ? userName
         .split(" ")
-        .map((n) => n[0])
+        .map((name) => name[0])
         .join("")
         .toUpperCase()
     : "U";
@@ -96,44 +106,52 @@ export function Sidebar({
   return (
     <>
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-50 lg:hidden p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800"
+        onClick={() => setIsOpen((open) => !open)}
+        className="fixed start-4 top-4 z-50 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/70 bg-white/80 text-slate-900 shadow-lg backdrop-blur-xl transition-colors hover:bg-white lg:hidden"
+        aria-label="Toggle navigation"
       >
-        {isOpen ? <X size={24} /> : <Menu size={24} />}
+        {isOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-transform duration-300 lg:translate-x-0",
-          isOpen ? "translate-x-0" : "-translate-x-full"
+          "fixed inset-y-0 start-0 z-40 w-72 border-e border-white/10 bg-[#0e1713] text-white shadow-[0_24px_80px_-40px_rgba(0,0,0,0.65)] transition-transform duration-300 lg:translate-x-0",
+          isOpen
+            ? "translate-x-0"
+            : "ltr:-translate-x-full rtl:translate-x-full"
         )}
       >
-        <div className="flex flex-col h-full">
-          <div className="p-6 border-b border-gray-200 dark:border-gray-800">
-            <div className="flex items-center gap-3">
-              {restaurantLogo ? (
-                <img
-                  src={restaurantLogo}
-                  alt={restaurantName}
-                  className="w-10 h-10 rounded-lg"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
-                  <Store size={20} className="text-emerald-600 dark:text-emerald-400" />
+        <div className="flex h-full flex-col">
+          <div className="border-b border-white/10 p-6">
+            <div className="rounded-[28px] border border-white/10 bg-white/5 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+              <div className="mb-5 inline-flex rounded-full border border-white/10 bg-white/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-200/85">
+                {t("sidebar.liveOps")}
+              </div>
+              <div className="flex items-center gap-3">
+                {restaurantLogo ? (
+                  <img
+                    src={restaurantLogo}
+                    alt={restaurantName}
+                    className="h-12 w-12 rounded-2xl object-cover"
+                  />
+                ) : (
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-200">
+                    <Store size={20} />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-base font-semibold text-white">
+                    {restaurantName}
+                  </p>
+                  <p className="mt-1 text-sm text-white/62">
+                    {t("sidebar.serviceCenter")}
+                  </p>
                 </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-50 truncate">
-                  {restaurantName}
-                </p>
-                <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                  Dashboard
-                </p>
               </div>
             </div>
           </div>
 
-          <nav className="flex-1 p-4 overflow-y-auto">
+          <nav className="flex-1 overflow-y-auto px-4 py-5">
             <ul className="space-y-2">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -145,14 +163,33 @@ export function Sidebar({
                       href={item.href}
                       onClick={() => setIsOpen(false)}
                       className={cn(
-                        "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                        "group relative flex items-start gap-3 rounded-3xl px-4 py-3 transition-all duration-200",
                         active
-                          ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
-                          : "text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+                          ? "bg-white text-slate-950 shadow-[0_20px_45px_-30px_rgba(255,255,255,0.7)]"
+                          : "text-white/70 hover:bg-white/6 hover:text-white"
                       )}
                     >
-                      <Icon size={18} />
-                      <span>{item.label}</span>
+                      <div
+                        className={cn(
+                          "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition-colors",
+                          active
+                            ? "border-slate-200 bg-emerald-50 text-emerald-700"
+                            : "border-white/10 bg-white/6 text-white/75 group-hover:border-white/20"
+                        )}
+                      >
+                        <Icon size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold">{item.label}</p>
+                        <p
+                          className={cn(
+                            "mt-1 text-xs leading-5",
+                            active ? "text-slate-500" : "text-white/45"
+                          )}
+                        >
+                          {item.description}
+                        </p>
+                      </div>
                     </Link>
                   </li>
                 );
@@ -160,60 +197,48 @@ export function Sidebar({
             </ul>
           </nav>
 
-          <div className="p-4 border-t border-gray-200 dark:border-gray-800">
-            <div className="relative">
-              <button
-                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              >
-                <Avatar className="h-8 w-8">
+          <div className="border-t border-white/10 p-4">
+            <div className="rounded-[28px] border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-11 w-11 border border-white/10">
                   <AvatarImage src={undefined} />
-                  <AvatarFallback>{userInitials}</AvatarFallback>
+                  <AvatarFallback className="bg-emerald-400/15 text-emerald-100">
+                    {userInitials}
+                  </AvatarFallback>
                 </Avatar>
-                <div className="flex-1 min-w-0 text-left">
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-50 truncate">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-white">
                     {userName || "User"}
                   </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                  <p className="truncate text-xs text-white/58">
                     {userEmail || "user@example.com"}
                   </p>
                 </div>
-                <ChevronDown
-                  size={16}
-                  className={cn(
-                    "transition-transform",
-                    isUserMenuOpen && "rotate-180"
-                  )}
-                />
-              </button>
+              </div>
 
-              {isUserMenuOpen && (
-                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      onLogout?.();
-                      setIsUserMenuOpen(false);
-                    }}
-                    className="w-full justify-start rounded-none first:rounded-t-lg last:rounded-b-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  >
-                    <LogOut size={16} />
-                    Logout
-                  </Button>
-                </div>
-              )}
+              <div className="mt-4 space-y-2">
+                <LanguageSwitcher />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onLogout}
+                  className="w-full justify-start rounded-2xl border border-white/10 bg-white/6 px-4 text-white hover:bg-white/10"
+                >
+                  <LogOut size={16} />
+                  {t("nav.logout")}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </aside>
 
-      {isOpen && (
+      {isOpen ? (
         <div
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-30 bg-black/45 backdrop-blur-sm lg:hidden"
           onClick={() => setIsOpen(false)}
         />
-      )}
+      ) : null}
     </>
   );
 }

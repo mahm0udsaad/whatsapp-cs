@@ -155,7 +155,7 @@ export function ConversationsInbox({
               className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                 statusFilter === s
                   ? "bg-emerald-600 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
               {s.charAt(0).toUpperCase() + s.slice(1)}
@@ -163,10 +163,10 @@ export function ConversationsInbox({
           ))}
         </div>
         {loading ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+          <p className="text-sm text-gray-500">Loading...</p>
         ) : null}
         {!loading && filteredConversations.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-gray-500">
             {conversations.length === 0
               ? "No conversations yet. Send a WhatsApp message to start the first thread."
               : "No conversations match your search."}
@@ -179,8 +179,8 @@ export function ConversationsInbox({
             onClick={() => setSelectedId(conversation.id)}
             className={`rounded-lg border p-3 text-left transition-colors ${
               selectedId === conversation.id
-                ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                : "border-gray-200 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-900"
+                ? "border-emerald-500 bg-emerald-50"
+                : "border-gray-200 hover:bg-gray-50"
             }`}
           >
             <div className="flex items-center justify-between">
@@ -194,7 +194,7 @@ export function ConversationsInbox({
                 {conversation.status}
               </Badge>
             </div>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-xs text-gray-500">
               {new Date(conversation.last_message_at).toLocaleString()}
             </p>
           </button>
@@ -211,7 +211,7 @@ export function ConversationsInbox({
         </CardHeader>
         <CardContent className="flex-1 space-y-3 overflow-y-auto p-4">
           {messages.length === 0 && selectedId ? (
-            <p className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-8 text-center text-sm text-gray-500">
               No messages in this conversation.
             </p>
           ) : null}
@@ -225,7 +225,7 @@ export function ConversationsInbox({
               <div
                 className={`max-w-[70%] rounded-lg px-4 py-2 text-sm ${
                   message.role === "customer"
-                    ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100"
+                    ? "bg-gray-100 text-gray-900"
                     : "bg-emerald-600 text-white"
                 }`}
                 dir={/[\u0600-\u06FF]/.test(message.content) ? "rtl" : "ltr"}

@@ -66,8 +66,8 @@ export default function LoginPage() {
     <Card className="border-0 shadow-lg">
       <CardHeader className="space-y-3 text-center">
         <div className="flex justify-center">
-          <div className="p-3 rounded-lg bg-emerald-100 dark:bg-emerald-900">
-            <MessageCircle size={32} className="text-emerald-600 dark:text-emerald-400" />
+          <div className="p-3 rounded-lg bg-emerald-100">
+            <MessageCircle size={32} className="text-emerald-600" />
           </div>
         </div>
         <div>
@@ -81,13 +81,13 @@ export default function LoginPage() {
       <CardContent>
         <form onSubmit={handleLogin} className="space-y-4">
           {error && (
-            <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
               {error}
             </div>
           )}
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="text-sm font-medium text-gray-700">
               Email
             </label>
             <Input
@@ -101,7 +101,7 @@ export default function LoginPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="text-sm font-medium text-gray-700">
               Password
             </label>
             <Input
@@ -126,10 +126,10 @@ export default function LoginPage() {
 
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-200 dark:border-gray-800" />
+            <div className="w-full border-t border-gray-200" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="bg-white px-2 text-gray-600 dark:bg-gray-900 dark:text-gray-400">
+            <span className="bg-white px-2 text-gray-600">
               Or continue with
             </span>
           </div>
@@ -156,11 +156,11 @@ export default function LoginPage() {
           Google
         </Button>
 
-        <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+        <p className="mt-6 text-center text-sm text-gray-600">
           Don't have an account?{" "}
           <Link
             href="/signup"
-            className="font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+            className="font-medium text-emerald-600 hover:text-emerald-700"
           >
             Sign up
           </Link>

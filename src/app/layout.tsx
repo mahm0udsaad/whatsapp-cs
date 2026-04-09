@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Noto_Sans_Arabic } from "next/font/google";
-import { ThemeProvider } from "next-themes";
+import { getLocale, getDirection } from "@/lib/i18n";
 import "./globals.css";
 
 const inter = Inter({
@@ -23,21 +23,23 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const dir = getDirection(locale);
+
   return (
     <html
-      lang="en"
+      lang={locale}
+      dir={dir}
       suppressHydrationWarning
       className={`${inter.variable} ${notoSansArabic.variable}`}
     >
-      <body className="min-h-full bg-white text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-50">
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-          {children}
-        </ThemeProvider>
+      <body className="min-h-full bg-white text-gray-900 antialiased">
+        {children}
       </body>
     </html>
   );

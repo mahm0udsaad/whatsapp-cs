@@ -1,399 +1,297 @@
-"use client";
-
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  Megaphone,
+  Plus,
+  Send,
+  XCircle,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, Send, Plus, CheckCircle, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CampaignStats } from "@/components/dashboard/campaign-stats";
+import { cn } from "@/lib/utils";
+import { adminSupabaseClient } from "@/lib/supabase/admin";
+import { getCurrentUser, getRestaurantForUserId } from "@/lib/tenant";
+import type { MarketingCampaign } from "@/lib/types";
 
-interface CampaignDraft {
-  id: number;
-  name: string;
-  message: string;
-  audienceSize: number;
-  createdAt: string;
-  status: "draft" | "scheduled" | "sent";
-  sentCount?: number;
+const dateFormatter = new Intl.DateTimeFormat("en", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+function formatDate(value: string | null) {
+  if (!value) return "N/A";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "N/A" : dateFormatter.format(d);
 }
 
-export default function CampaignsPage() {
-  const [campaigns, setCampaigns] = useState<CampaignDraft[]>([
-    {
-      id: 1,
-      name: "Summer Special 50% Off",
-      message:
-        "Hi {{customer_name}}, enjoy 50% off on all main courses this weekend! 🌞",
-      audienceSize: 250,
-      createdAt: "2024-03-15",
-      status: "sent",
-      sentCount: 245,
-    },
-    {
-      id: 2,
-      name: "New Menu Launch",
-      message:
-        "Check out our new menu items! Order now and get a free dessert! 🎉",
-      audienceSize: 250,
-      createdAt: "2024-03-10",
-      status: "sent",
-      sentCount: 250,
-    },
-    {
-      id: 3,
-      name: "Easter Special",
-      message:
-        "Easter celebration with family & friends! Special menu available. Reserve now! 🥚",
-      audienceSize: 180,
-      createdAt: "2024-03-20",
-      status: "draft",
-    },
-  ]);
+const statusBadge: Record<
+  string,
+  { className: string; label: string; icon: typeof CheckCircle2 }
+> = {
+  draft: { className: "bg-slate-200/70 text-slate-700", label: "Draft", icon: Clock },
+  scheduled: { className: "bg-sky-500/12 text-sky-700", label: "Scheduled", icon: Clock },
+  processing: { className: "bg-amber-500/12 text-amber-700", label: "Processing", icon: Loader2 },
+  sending: { className: "bg-amber-500/12 text-amber-700", label: "Sending", icon: Send },
+  completed: { className: "bg-emerald-500/12 text-emerald-700", label: "Completed", icon: CheckCircle2 },
+  failed: { className: "bg-red-500/12 text-red-700", label: "Failed", icon: XCircle },
+  cancelled: { className: "bg-slate-200/70 text-slate-600", label: "Cancelled", icon: XCircle },
+};
 
-  const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    message: "",
-    csvFile: null as File | null,
-  });
-  const [selectedFile, setSelectedFile] = useState<string>("");
+export default async function CampaignsPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFormData({ ...formData, csvFile: file });
-      setSelectedFile(file.name);
+  const restaurant = await getRestaurantForUserId(user.id);
+  if (!restaurant) redirect("/onboarding");
+
+  const { data: campaigns } = await adminSupabaseClient
+    .from("marketing_campaigns")
+    .select("*")
+    .eq("restaurant_id", restaurant.id)
+    .order("created_at", { ascending: false });
+
+  const allCampaigns = (campaigns || []) as MarketingCampaign[];
+
+  // Get template names
+  const templateIds = allCampaigns
+    .map((c) => c.template_id)
+    .filter(Boolean) as string[];
+  let templateNames: Record<string, string> = {};
+  if (templateIds.length > 0) {
+    const { data: templates } = await adminSupabaseClient
+      .from("marketing_templates")
+      .select("id, name")
+      .in("id", templateIds);
+    if (templates) {
+      templateNames = Object.fromEntries(templates.map((t) => [t.id, t.name]));
     }
-  };
+  }
 
-  const handleCreateCampaign = () => {
-    if (formData.name && formData.message && formData.csvFile) {
-      setCampaigns([
-        ...campaigns,
-        {
-          id: Math.max(0, ...campaigns.map((c) => c.id)) + 1,
-          name: formData.name,
-          message: formData.message,
-          audienceSize: Math.floor(Math.random() * 200) + 50,
-          createdAt: new Date().toISOString().split("T")[0],
-          status: "draft",
-        },
-      ]);
-
-      setFormData({
-        name: "",
-        message: "",
-        csvFile: null,
-      });
-      setSelectedFile("");
-      setShowForm(false);
-    }
-  };
-
-  const handleSendCampaign = (id: number) => {
-    setCampaigns(
-      campaigns.map((c) =>
-        c.id === id
-          ? {
-              ...c,
-              status: "sent" as const,
-              sentCount: c.audienceSize - Math.floor(Math.random() * 20),
-            }
-          : c
-      )
-    );
-  };
-
-  const handleScheduleCampaign = (id: number) => {
-    setCampaigns(
-      campaigns.map((c) =>
-        c.id === id ? { ...c, status: "scheduled" as const } : c
-      )
-    );
-  };
-
-  const draftCount = campaigns.filter((c) => c.status === "draft").length;
-  const scheduledCount = campaigns.filter((c) => c.status === "scheduled")
-    .length;
-  const sentCount = campaigns.filter((c) => c.status === "sent").length;
+  const draftCount = allCampaigns.filter((c) => c.status === "draft").length;
+  const scheduledCount = allCampaigns.filter((c) => c.status === "scheduled").length;
+  const sendingCount = allCampaigns.filter((c) =>
+    ["sending", "processing"].includes(c.status)
+  ).length;
+  const completedCount = allCampaigns.filter((c) => c.status === "completed").length;
 
   return (
-    <div className="flex-1 space-y-8 p-4 sm:p-6 lg:p-8">
-      <div className="flex items-center justify-between">
+    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">
+          <h1 className="text-3xl font-semibold tracking-[-0.04em] text-slate-950">
             Campaign Manager
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Create, send, and manage WhatsApp marketing campaigns
+          <p className="mt-1 text-sm text-slate-600">
+            Create, schedule, and track WhatsApp marketing campaigns.
           </p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)} className="gap-2">
-          <Plus size={18} />
-          New Campaign
-        </Button>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard/marketing/calendar">
+            <Button variant="outline" className="gap-2 rounded-full">
+              <Clock size={16} />
+              Calendar
+            </Button>
+          </Link>
+          <Link href="/dashboard/marketing/campaigns/new">
+            <Button className="gap-2 rounded-full">
+              <Plus size={16} />
+              New Campaign
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800">
-          <CardContent className="p-6">
-            <div className="text-3xl font-bold text-blue-900 dark:text-blue-200">
-              {draftCount}
-            </div>
-            <p className="text-sm text-blue-800 dark:text-blue-300">Drafts</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-orange-200 dark:border-orange-800">
-          <CardContent className="p-6">
-            <div className="text-3xl font-bold text-orange-900 dark:text-orange-200">
-              {scheduledCount}
-            </div>
-            <p className="text-sm text-orange-800 dark:text-orange-300">
-              Scheduled
+      {/* Status counts */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: "Draft", count: draftCount, color: "text-slate-600" },
+          { label: "Scheduled", count: scheduledCount, color: "text-sky-600" },
+          { label: "Sending", count: sendingCount, color: "text-amber-600" },
+          { label: "Completed", count: completedCount, color: "text-emerald-600" },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            className="rounded-[24px] border border-slate-200/70 bg-white/70 p-4 text-center"
+          >
+            <p className={cn("text-2xl font-semibold", stat.color)}>
+              {stat.count}
             </p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-800">
-          <CardContent className="p-6">
-            <div className="text-3xl font-bold text-green-900 dark:text-green-200">
-              {sentCount}
-            </div>
-            <p className="text-sm text-green-800 dark:text-green-300">Sent</p>
-          </CardContent>
-        </Card>
+            <p className="text-xs font-medium text-slate-500">{stat.label}</p>
+          </div>
+        ))}
       </div>
 
-      {showForm && (
+      {/* Campaign list */}
+      {allCampaigns.length === 0 ? (
         <Card>
-          <CardHeader>
-            <CardTitle>Create New Campaign</CardTitle>
-            <CardDescription>
-              Design and launch a WhatsApp marketing campaign
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Campaign Name
-              </label>
-              <Input
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                placeholder="e.g., Easter Special"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Message
-              </label>
-              <Textarea
-                value={formData.message}
-                onChange={(e) =>
-                  setFormData({ ...formData, message: e.target.value })
-                }
-                placeholder="Type your message. Use {{customer_name}} for personalization."
-                rows={5}
-              />
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                {formData.message.length} characters. WhatsApp limit is 4096.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Upload Customer List (CSV)
-              </label>
-              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-emerald-500 dark:hover:border-emerald-400 transition-colors cursor-pointer">
-                <input
-                  type="file"
-                  accept=".csv,.xlsx"
-                  onChange={handleFileChange}
-                  className="hidden"
-                  id="file-input"
-                />
-                <label htmlFor="file-input" className="cursor-pointer block">
-                  <Upload size={24} className="mx-auto text-gray-400 mb-2" />
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-50">
-                    {selectedFile || "Click to upload or drag and drop"}
-                  </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    CSV or XLSX file with phone numbers
-                  </p>
-                </label>
-              </div>
-            </div>
-
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <p className="text-sm text-blue-900 dark:text-blue-200 font-medium mb-2">
-                📋 CSV Format
-              </p>
-              <p className="text-xs text-blue-800 dark:text-blue-300">
-                phone, name, email (headers required)
-              </p>
-            </div>
-
-            <div className="flex gap-2">
-              <Button
-                onClick={handleCreateCampaign}
-                disabled={!formData.name || !formData.message || !formData.csvFile}
-              >
-                Create Draft
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <Megaphone size={40} className="mb-4 text-slate-300" />
+            <h3 className="text-lg font-semibold text-slate-900">
+              No campaigns yet
+            </h3>
+            <p className="mt-2 max-w-sm text-center text-sm text-slate-500">
+              Create your first campaign to start reaching your customers with
+              targeted WhatsApp messages.
+            </p>
+            <Link href="/dashboard/marketing/campaigns/new" className="mt-6">
+              <Button className="gap-2 rounded-full">
+                <Plus size={16} />
+                Create Campaign
               </Button>
-              <Button variant="outline" onClick={() => setShowForm(false)}>
-                Cancel
-              </Button>
-            </div>
+            </Link>
           </CardContent>
         </Card>
+      ) : (
+        <div className="space-y-4">
+          {allCampaigns.map((campaign) => {
+            const badge = statusBadge[campaign.status] || statusBadge.draft;
+            const BadgeIcon = badge.icon;
+            const templateName = campaign.template_id
+              ? templateNames[campaign.template_id] || "Unknown template"
+              : "No template";
+            const progress =
+              campaign.total_recipients > 0
+                ? Math.round(
+                    (campaign.sent_count / campaign.total_recipients) * 100
+                  )
+                : 0;
+
+            return (
+              <Card key={campaign.id}>
+                <CardContent className="p-6">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    {/* Left: campaign info */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-base font-semibold text-slate-950">
+                          {campaign.name}
+                        </h3>
+                        <Badge
+                          className={cn(
+                            "rounded-full px-2.5 py-1 text-[11px] font-medium",
+                            badge.className
+                          )}
+                        >
+                          <BadgeIcon size={12} className="me-1" />
+                          {badge.label}
+                        </Badge>
+                      </div>
+
+                      <p className="mt-1 text-sm text-slate-500">
+                        Template: {templateName}
+                      </p>
+
+                      {/* Schedule info */}
+                      <div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-500">
+                        {campaign.scheduled_at && (
+                          <span className="inline-flex items-center gap-1.5">
+                            <Clock size={12} />
+                            Scheduled: {formatDate(campaign.scheduled_at)}
+                          </span>
+                        )}
+                        <span>
+                          Created: {formatDate(campaign.created_at)}
+                        </span>
+                        <span>
+                          {campaign.total_recipients.toLocaleString()} recipients
+                        </span>
+                      </div>
+
+                      {/* Progress bar for non-draft */}
+                      {campaign.total_recipients > 0 &&
+                        campaign.status !== "draft" && (
+                          <div className="mt-4 max-w-md">
+                            <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5">
+                              <span>
+                                {campaign.sent_count.toLocaleString()}/
+                                {campaign.total_recipients.toLocaleString()} sent
+                              </span>
+                              <span>{progress}%</span>
+                            </div>
+                            <div className="h-2 rounded-full bg-slate-100">
+                              <div
+                                className={cn(
+                                  "h-full rounded-full transition-all",
+                                  campaign.status === "failed"
+                                    ? "bg-red-500"
+                                    : "bg-emerald-500"
+                                )}
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                    </div>
+
+                    {/* Right: stats + actions */}
+                    <div className="flex flex-col items-end gap-3">
+                      {/* Delivery stats for completed/sending */}
+                      {(campaign.status === "completed" ||
+                        campaign.status === "sending") &&
+                        campaign.total_recipients > 0 && (
+                          <div className="w-full min-w-[220px] lg:w-[240px]">
+                            <CampaignStats
+                              total={campaign.total_recipients}
+                              sent={campaign.sent_count}
+                              delivered={campaign.delivered_count}
+                              read={campaign.read_count}
+                              failed={campaign.failed_count}
+                            />
+                          </div>
+                        )}
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2">
+                        {(campaign.status === "draft" ||
+                          campaign.status === "scheduled") && (
+                          <form
+                            action={`/api/marketing/campaigns/${campaign.id}/send`}
+                            method="POST"
+                          >
+                            <Button
+                              type="submit"
+                              size="sm"
+                              className="gap-1.5 rounded-full text-xs"
+                            >
+                              <Send size={12} />
+                              Send Now
+                            </Button>
+                          </form>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Error message */}
+                  {campaign.error_message && (
+                    <div className="mt-4 rounded-xl bg-red-50 border border-red-200 p-3">
+                      <p className="text-xs text-red-700">
+                        {campaign.error_message}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       )}
-
-      <Tabs defaultValue="all" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="all">All ({campaigns.length})</TabsTrigger>
-          <TabsTrigger value="draft">Draft ({draftCount})</TabsTrigger>
-          <TabsTrigger value="sent">Sent ({sentCount})</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="all" className="space-y-3 mt-4">
-          {campaigns.map((campaign) => (
-            <CampaignCard
-              key={campaign.id}
-              campaign={campaign}
-              onSend={() => handleSendCampaign(campaign.id)}
-              onSchedule={() => handleScheduleCampaign(campaign.id)}
-            />
-          ))}
-        </TabsContent>
-
-        <TabsContent value="draft" className="space-y-3 mt-4">
-          {campaigns
-            .filter((c) => c.status === "draft")
-            .map((campaign) => (
-              <CampaignCard
-                key={campaign.id}
-                campaign={campaign}
-                onSend={() => handleSendCampaign(campaign.id)}
-                onSchedule={() => handleScheduleCampaign(campaign.id)}
-              />
-            ))}
-        </TabsContent>
-
-        <TabsContent value="sent" className="space-y-3 mt-4">
-          {campaigns
-            .filter((c) => c.status === "sent")
-            .map((campaign) => (
-              <CampaignCard
-                key={campaign.id}
-                campaign={campaign}
-                onSend={() => handleSendCampaign(campaign.id)}
-                onSchedule={() => handleScheduleCampaign(campaign.id)}
-              />
-            ))}
-        </TabsContent>
-      </Tabs>
     </div>
-  );
-}
-
-interface CampaignCardProps {
-  campaign: CampaignDraft;
-  onSend: () => void;
-  onSchedule: () => void;
-}
-
-function CampaignCard({ campaign, onSend, onSchedule }: CampaignCardProps) {
-  return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-50">
-              {campaign.name}
-            </h3>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge
-                variant={
-                  campaign.status === "sent"
-                    ? "default"
-                    : campaign.status === "scheduled"
-                    ? "secondary"
-                    : "outline"
-                }
-              >
-                {campaign.status === "sent" && (
-                  <>
-                    <CheckCircle size={12} className="mr-1" />
-                    Sent
-                  </>
-                )}
-                {campaign.status === "scheduled" && (
-                  <>
-                    <Clock size={12} className="mr-1" />
-                    Scheduled
-                  </>
-                )}
-                {campaign.status === "draft" && "Draft"}
-              </Badge>
-              <span className="text-xs text-gray-600 dark:text-gray-400">
-                {campaign.audienceSize} contacts
-              </span>
-            </div>
-          </div>
-          {campaign.status === "sent" && campaign.sentCount && (
-            <div className="text-right">
-              <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                {campaign.sentCount} sent
-              </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">
-                {Math.round((campaign.sentCount / campaign.audienceSize) * 100)}%
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4">
-          <p className="text-sm text-gray-700 dark:text-gray-300">
-            {campaign.message}
-          </p>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-gray-500 dark:text-gray-500">
-            Created {campaign.createdAt}
-          </p>
-          <div className="flex gap-2">
-            {campaign.status === "draft" && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onSchedule}
-                  className="gap-1"
-                >
-                  <Clock size={14} />
-                  Schedule
-                </Button>
-                <Button size="sm" onClick={onSend} className="gap-1">
-                  <Send size={14} />
-                  Send Now
-                </Button>
-              </>
-            )}
-            {campaign.status === "sent" && (
-              <Button variant="outline" size="sm">
-                View Analytics
-              </Button>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }

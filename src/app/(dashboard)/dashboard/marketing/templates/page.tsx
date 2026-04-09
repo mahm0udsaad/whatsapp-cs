@@ -1,275 +1,290 @@
-"use client";
-
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Edit,
+  Eye,
+  FileText,
+  Megaphone,
+  Send,
+  Sparkles,
+  XCircle,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, Trash2, Copy } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { adminSupabaseClient } from "@/lib/supabase/admin";
+import { getCurrentUser, getRestaurantForUserId } from "@/lib/tenant";
+import type { MarketingTemplate } from "@/lib/types";
 
-interface Template {
-  id: number;
-  name: string;
-  category: string;
-  content: string;
-  variables: string[];
-  preview: string;
-  createdAt: string;
-}
+const statusConfig: Record<
+  string,
+  { className: string; label: string; icon: typeof CheckCircle2 }
+> = {
+  draft: { className: "bg-slate-200/70 text-slate-700", label: "Draft", icon: FileText },
+  submitted: { className: "bg-amber-500/12 text-amber-700", label: "Submitted", icon: Clock },
+  pending: { className: "bg-amber-500/12 text-amber-700", label: "Pending", icon: Clock },
+  approved: { className: "bg-emerald-500/12 text-emerald-700", label: "Approved", icon: CheckCircle2 },
+  rejected: { className: "bg-red-500/12 text-red-700", label: "Rejected", icon: XCircle },
+  paused: { className: "bg-orange-500/12 text-orange-700", label: "Paused", icon: AlertCircle },
+  disabled: { className: "bg-slate-200/70 text-slate-600", label: "Disabled", icon: XCircle },
+};
 
-export default function TemplatesPage() {
-  const [templates, setTemplates] = useState<Template[]>([
-    {
-      id: 1,
-      name: "Order Confirmation",
-      category: "Transactional",
-      content:
-        "Hi {{customer_name}}, your order #{{order_id}} has been confirmed. Total: {{amount}} EGP. Delivery in {{time}} mins.",
-      variables: ["customer_name", "order_id", "amount", "time"],
-      preview:
-        "Hi Ahmed, your order #12345 has been confirmed. Total: 250 EGP. Delivery in 45 mins.",
-      createdAt: "2024-03-15",
-    },
-    {
-      id: 2,
-      name: "Special Offer",
-      category: "Promotional",
-      content:
-        "🎉 {{customer_name}}, enjoy {{discount}}% off on {{item}}! Valid until {{date}}. Order now!",
-      variables: ["customer_name", "discount", "item", "date"],
-      preview:
-        "🎉 Ahmed, enjoy 30% off on Grilled Salmon! Valid until 2024-03-31. Order now!",
-      createdAt: "2024-03-10",
-    },
-    {
-      id: 3,
-      name: "Delivery Update",
-      category: "Informational",
-      content:
-        "Your order is on the way! Driver {{driver_name}} will arrive in {{mins}} minutes. Track: {{link}}",
-      variables: ["driver_name", "mins", "link"],
-      preview:
-        "Your order is on the way! Driver Ahmed will arrive in 10 minutes. Track: https://...",
-      createdAt: "2024-03-05",
-    },
-  ]);
+const categoryColors: Record<string, string> = {
+  MARKETING: "bg-violet-500/12 text-violet-700",
+  UTILITY: "bg-sky-500/12 text-sky-700",
+  AUTHENTICATION: "bg-orange-500/12 text-orange-700",
+};
 
-  const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    category: "Promotional",
-    content: "",
-  });
+export default async function TemplatesPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
 
-  const handleAddTemplate = () => {
-    if (formData.name && formData.content) {
-      const variables = formData.content
-        .match(/{{(\w+)}}/g)
-        ?.map((v) => v.slice(2, -2)) || [];
+  const restaurant = await getRestaurantForUserId(user.id);
+  if (!restaurant) redirect("/onboarding");
 
-      setTemplates([
-        ...templates,
-        {
-          id: Math.max(0, ...templates.map((t) => t.id)) + 1,
-          ...formData,
-          variables,
-          preview: formData.content,
-          createdAt: new Date().toISOString().split("T")[0],
-        },
-      ]);
+  const { data: templates } = await adminSupabaseClient
+    .from("marketing_templates")
+    .select("*")
+    .eq("restaurant_id", restaurant.id)
+    .order("created_at", { ascending: false });
 
-      setFormData({
-        name: "",
-        category: "Promotional",
-        content: "",
-      });
-      setShowForm(false);
-    }
-  };
+  const allTemplates = (templates || []) as MarketingTemplate[];
 
-  const handleDeleteTemplate = (id: number) => {
-    setTemplates(templates.filter((t) => t.id !== id));
-  };
-
-  const handleCopyTemplate = (id: number) => {
-    const template = templates.find((t) => t.id === id);
-    if (template) {
-      navigator.clipboard.writeText(template.content);
-    }
-  };
-
-  const categoryCounts = {
-    Promotional: templates.filter((t) => t.category === "Promotional").length,
-    Transactional: templates.filter((t) => t.category === "Transactional")
-      .length,
-    Informational: templates.filter((t) => t.category === "Informational")
-      .length,
-  };
+  const draftCount = allTemplates.filter((t) => t.approval_status === "draft").length;
+  const pendingCount = allTemplates.filter((t) =>
+    ["submitted", "pending"].includes(t.approval_status)
+  ).length;
+  const approvedCount = allTemplates.filter((t) => t.approval_status === "approved").length;
+  const rejectedCount = allTemplates.filter((t) => t.approval_status === "rejected").length;
 
   return (
-    <div className="flex-1 space-y-8 p-4 sm:p-6 lg:p-8">
-      <div className="flex items-center justify-between">
+    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">
-            WhatsApp Templates
+          <h1 className="text-3xl font-semibold tracking-[-0.04em] text-slate-950">
+            Message Templates
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Create and manage WhatsApp message templates
+          <p className="mt-1 text-sm text-slate-600">
+            Create, manage, and submit WhatsApp templates for approval.
           </p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)} className="gap-2">
-          <Plus size={18} />
-          New Template
-        </Button>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard/marketing/templates/new">
+            <Button className="gap-2 rounded-full">
+              <Sparkles size={16} />
+              Create with AI
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {Object.entries(categoryCounts).map(([category, count]) => (
-          <Card key={category}>
-            <CardContent className="p-6">
-              <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-                {count}
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {category} Templates
-              </p>
-            </CardContent>
-          </Card>
+      {/* Status counts */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: "Draft", count: draftCount, color: "text-slate-600" },
+          { label: "Pending", count: pendingCount, color: "text-amber-600" },
+          { label: "Approved", count: approvedCount, color: "text-emerald-600" },
+          { label: "Rejected", count: rejectedCount, color: "text-red-600" },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            className="rounded-[24px] border border-slate-200/70 bg-white/70 p-4 text-center"
+          >
+            <p className={cn("text-2xl font-semibold", stat.color)}>
+              {stat.count}
+            </p>
+            <p className="text-xs font-medium text-slate-500">{stat.label}</p>
+          </div>
         ))}
       </div>
 
-      {showForm && (
+      {/* Template grid */}
+      {allTemplates.length === 0 ? (
         <Card>
-          <CardHeader>
-            <CardTitle>Create New Template</CardTitle>
-            <CardDescription>
-              {"Use {{variable}} syntax for dynamic content"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Template Name
-              </label>
-              <Input
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                placeholder="e.g., Order Confirmation"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Category
-              </label>
-              <select
-                value={formData.category}
-                onChange={(e) =>
-                  setFormData({ ...formData, category: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-50"
-              >
-                <option>Promotional</option>
-                <option>Transactional</option>
-                <option>Informational</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Message Content
-              </label>
-              <Textarea
-                value={formData.content}
-                onChange={(e) =>
-                  setFormData({ ...formData, content: e.target.value })
-                }
-                placeholder="Type your message. Use {{variable_name}} for dynamic content."
-                rows={6}
-              />
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                {"Supported variables: {{customer_name}}, {{order_id}}, {{amount}}, {{time}}, etc."}
-              </p>
-            </div>
-
-            <div className="flex gap-2">
-              <Button onClick={handleAddTemplate} disabled={!formData.name || !formData.content}>
-                Create Template
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <FileText size={40} className="mb-4 text-slate-300" />
+            <h3 className="text-lg font-semibold text-slate-900">
+              No templates yet
+            </h3>
+            <p className="mt-2 max-w-sm text-center text-sm text-slate-500">
+              Create your first WhatsApp template using our AI builder or start
+              from scratch.
+            </p>
+            <Link href="/dashboard/marketing/templates/new" className="mt-6">
+              <Button className="gap-2 rounded-full">
+                <Sparkles size={16} />
+                Create with AI
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => setShowForm(false)}
-              >
-                Cancel
-              </Button>
-            </div>
+            </Link>
           </CardContent>
         </Card>
-      )}
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {allTemplates.map((template) => {
+            const status = statusConfig[template.approval_status] || statusConfig.draft;
+            const catColor = categoryColors[template.category] || "bg-slate-200/70 text-slate-700";
+            const StatusIcon = status.icon;
 
-      <div className="space-y-3">
-        {templates.map((template) => (
-          <Card key={template.id}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-50">
-                    {template.name}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="secondary">{template.category}</Badge>
-                    {template.variables.length > 0 && (
-                      <Badge variant="outline" className="text-xs">
-                        {template.variables.length} variables
-                      </Badge>
+            return (
+              <Card key={template.id} className="group relative overflow-hidden">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <CardTitle className="text-base truncate">
+                        {template.name}
+                      </CardTitle>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <Badge
+                          className={cn(
+                            "rounded-full px-2.5 py-1 text-[11px] font-medium",
+                            status.className
+                          )}
+                        >
+                          <StatusIcon size={12} className="me-1" />
+                          {status.label}
+                        </Badge>
+                        <Badge
+                          className={cn(
+                            "rounded-full px-2.5 py-1 text-[11px] font-medium",
+                            catColor
+                          )}
+                        >
+                          {template.category}
+                        </Badge>
+                        <Badge className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                          {template.language.toUpperCase()}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {/* Body preview */}
+                  {template.body_template && (
+                    <div className="rounded-xl bg-slate-50 p-3 mb-4">
+                      <p className="line-clamp-3 text-sm leading-6 text-slate-700">
+                        {template.body_template}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Rejection reason */}
+                  {template.approval_status === "rejected" &&
+                    template.rejection_reason && (
+                      <div className="rounded-xl bg-red-50 border border-red-200 p-3 mb-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-red-500 mb-1">
+                          Rejection reason
+                        </p>
+                        <p className="text-xs text-red-700">
+                          {template.rejection_reason}
+                        </p>
+                      </div>
+                    )}
+
+                  {/* Actions */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Draft actions */}
+                    {template.approval_status === "draft" && (
+                      <>
+                        <form
+                          action={`/api/marketing/templates/${template.id}/submit`}
+                          method="POST"
+                        >
+                          <Button
+                            type="submit"
+                            size="sm"
+                            className="gap-1.5 rounded-full text-xs"
+                          >
+                            <Send size={12} />
+                            Submit
+                          </Button>
+                        </form>
+                        <Link
+                          href={`/dashboard/marketing/templates/new?edit=${template.id}`}
+                        >
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5 rounded-full text-xs"
+                          >
+                            <Edit size={12} />
+                            Edit
+                          </Button>
+                        </Link>
+                      </>
+                    )}
+
+                    {/* Pending/Submitted - view only */}
+                    {["submitted", "pending"].includes(
+                      template.approval_status
+                    ) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 rounded-full text-xs"
+                      >
+                        <Eye size={12} />
+                        View
+                      </Button>
+                    )}
+
+                    {/* Approved - use in campaign */}
+                    {template.approval_status === "approved" && (
+                      <Link
+                        href={`/dashboard/marketing/campaigns/new?template=${template.id}`}
+                      >
+                        <Button
+                          size="sm"
+                          className="gap-1.5 rounded-full text-xs"
+                        >
+                          <Megaphone size={12} />
+                          Use in Campaign
+                        </Button>
+                      </Link>
+                    )}
+
+                    {/* Rejected - edit and resubmit */}
+                    {template.approval_status === "rejected" && (
+                      <Link
+                        href={`/dashboard/marketing/templates/new?edit=${template.id}`}
+                      >
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 rounded-full text-xs"
+                        >
+                          <Edit size={12} />
+                          Edit & Resubmit
+                        </Button>
+                      </Link>
                     )}
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleCopyTemplate(template.id)}
-                    className="p-2 text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-                    title="Copy"
-                  >
-                    <Copy size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteTemplate(template.id)}
-                    className="p-2 text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                    title="Delete"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
 
-              <div className="space-y-3">
-                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-                  <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                    {template.content}
+                  {/* Meta: date */}
+                  <p className="mt-3 text-[11px] text-slate-400">
+                    Created{" "}
+                    {new Date(template.created_at).toLocaleDateString("en", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
                   </p>
-                </div>
-
-                <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-4 border border-emerald-200 dark:border-emerald-800">
-                  <p className="text-xs font-medium text-emerald-900 dark:text-emerald-200 mb-1">
-                    Preview
-                  </p>
-                  <p className="text-sm text-emerald-800 dark:text-emerald-300">
-                    {template.preview}
-                  </p>
-                </div>
-              </div>
-
-              <p className="text-xs text-gray-500 dark:text-gray-500 mt-3">
-                Created {template.createdAt}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

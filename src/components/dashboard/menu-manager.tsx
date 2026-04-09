@@ -195,20 +195,20 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           {error ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {error}
             </div>
           ) : null}
 
           {crawlMessage ? (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
               {crawlMessage}
             </div>
           ) : null}
 
           <div className="flex items-end gap-3">
             <div className="flex-1">
-              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label className="mb-2 block text-sm font-medium text-gray-700">
                 Menu URL
               </label>
               <Input
@@ -244,7 +244,7 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
 
             <TabsContent value="all" className="mt-4 space-y-3">
               {items.length === 0 ? (
-                <div className="py-8 text-center text-gray-600 dark:text-gray-400">
+                <div className="py-8 text-center text-gray-600">
                   No items yet. Add the first menu item or import from a menu URL.
                 </div>
               ) : null}
@@ -292,7 +292,7 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="text-sm font-medium text-gray-700">
                   Name
                 </label>
                 <Input
@@ -305,7 +305,7 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="text-sm font-medium text-gray-700">
                   Description
                 </label>
                 <Input
@@ -322,7 +322,7 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label className="text-sm font-medium text-gray-700">
                     Price
                   </label>
                   <Input
@@ -335,7 +335,7 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label className="text-sm font-medium text-gray-700">
                     Category
                   </label>
                   <select
@@ -343,7 +343,7 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
                     onChange={(event) =>
                       setFormData({ ...formData, category: event.target.value })
                     }
-                    className="w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-50"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm text-gray-900"
                   >
                     <option>General</option>
                     <option>Main Course</option>
@@ -367,7 +367,7 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
                   }
                   className="h-4 w-4"
                 />
-                <span className="text-sm text-gray-700 dark:text-gray-300">
+                <span className="text-sm text-gray-700">
                   Available
                 </span>
               </label>
@@ -411,24 +411,24 @@ function MenuItemCard({
   const description = item.description_en || item.description_ar || "";
 
   return (
-    <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+    <div className="rounded-lg border border-gray-200 p-4">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="mb-1 flex items-center gap-2">
-            <h4 className="font-semibold text-gray-900 dark:text-gray-50">
+            <h4 className="font-semibold text-gray-900">
               {name}
             </h4>
             <Badge variant={item.is_available ? "default" : "secondary"}>
               {item.is_available ? "Available" : "Unavailable"}
             </Badge>
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-gray-600">
             {description || "No description"}
           </p>
-          <p className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-50">
+          <p className="mt-2 text-sm font-medium text-gray-900">
             {item.price} {item.currency}
           </p>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
+          <p className="mt-1 text-xs text-gray-500">
             {item.category}
           </p>
         </div>
@@ -436,7 +436,7 @@ function MenuItemCard({
           <button
             type="button"
             onClick={onEdit}
-            className="p-2 text-gray-500 transition-colors hover:text-emerald-600 dark:hover:text-emerald-400"
+            className="p-2 text-gray-500 transition-colors hover:text-emerald-600"
             title="Edit"
           >
             <Edit2 size={16} />
@@ -444,7 +444,7 @@ function MenuItemCard({
           <button
             type="button"
             onClick={onDelete}
-            className="p-2 text-gray-500 transition-colors hover:text-red-600 dark:hover:text-red-400"
+            className="p-2 text-gray-500 transition-colors hover:text-red-600"
             title="Delete"
           >
             <Trash2 size={16} />

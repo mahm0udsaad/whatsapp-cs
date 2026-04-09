@@ -137,9 +137,9 @@ export function KnowledgeBaseManager({
                 <div className="py-8 text-center">
                   <FileText
                     size={40}
-                    className="mx-auto mb-3 text-gray-400 dark:text-gray-600"
+                    className="mx-auto mb-3 text-gray-400"
                   />
-                  <p className="text-gray-600 dark:text-gray-400">
+                  <p className="text-gray-600">
                     No entries yet. Create your first knowledge base entry.
                   </p>
                 </div>
@@ -148,11 +148,11 @@ export function KnowledgeBaseManager({
               {entries.map((entry) => (
                 <div
                   key={entry.id}
-                  className="rounded-lg border border-gray-200 p-4 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50"
+                  className="rounded-lg border border-gray-200 p-4 transition-colors hover:bg-gray-50"
                 >
                   <div className="mb-2 flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-50">
+                      <h3 className="font-semibold text-gray-900">
                         {entry.title || "Untitled"}
                       </h3>
                       <Badge variant="secondary" className="mt-1">
@@ -163,7 +163,7 @@ export function KnowledgeBaseManager({
                       <button
                         type="button"
                         onClick={() => handleEdit(entry)}
-                        className="p-2 text-gray-500 transition-colors hover:text-emerald-600 dark:hover:text-emerald-400"
+                        className="p-2 text-gray-500 transition-colors hover:text-emerald-600"
                         title="Edit"
                       >
                         <Edit2 size={16} />
@@ -171,17 +171,17 @@ export function KnowledgeBaseManager({
                       <button
                         type="button"
                         onClick={() => handleDelete(entry.id)}
-                        className="p-2 text-gray-500 transition-colors hover:text-red-600 dark:hover:text-red-400"
+                        className="p-2 text-gray-500 transition-colors hover:text-red-600"
                         title="Delete"
                       >
                         <Trash2 size={16} />
                       </button>
                     </div>
                   </div>
-                  <p className="line-clamp-3 text-sm text-gray-600 dark:text-gray-400">
+                  <p className="line-clamp-3 text-sm text-gray-600">
                     {entry.content}
                   </p>
-                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-500">
+                  <p className="mt-2 text-xs text-gray-500">
                     Updated {new Date(entry.updated_at).toLocaleString()}
                   </p>
                 </div>
@@ -200,13 +200,13 @@ export function KnowledgeBaseManager({
             </CardHeader>
             <CardContent className="space-y-4">
               {error ? (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                   {error}
                 </div>
               ) : null}
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="text-sm font-medium text-gray-700">
                   Title
                 </label>
                 <Input
@@ -219,7 +219,7 @@ export function KnowledgeBaseManager({
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="text-sm font-medium text-gray-700">
                   Content
                 </label>
                 <Textarea
@@ -233,7 +233,7 @@ export function KnowledgeBaseManager({
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="text-sm font-medium text-gray-700">
                   Source Type
                 </label>
                 <select
@@ -241,7 +241,7 @@ export function KnowledgeBaseManager({
                   onChange={(event) =>
                     setFormData({ ...formData, sourceType: event.target.value })
                   }
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-50"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900"
                 >
                   <option value="manual">Manual</option>
                   <option value="policy">Policy</option>
@@ -281,37 +281,37 @@ export function KnowledgeBaseManager({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <div className="rounded-lg bg-emerald-50 p-4 dark:bg-emerald-900/20">
-              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+            <div className="rounded-lg bg-emerald-50 p-4">
+              <div className="text-2xl font-bold text-emerald-600">
                 {entries.length}
               </div>
-              <div className="text-sm text-emerald-700 dark:text-emerald-300">
+              <div className="text-sm text-emerald-700">
                 Total Entries
               </div>
             </div>
-            <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+            <div className="rounded-lg bg-blue-50 p-4">
+              <div className="text-2xl font-bold text-blue-600">
                 {new Set(entries.map((entry) => entry.source_type || "manual")).size}
               </div>
-              <div className="text-sm text-blue-700 dark:text-blue-300">
+              <div className="text-sm text-blue-700">
                 Source Types
               </div>
             </div>
-            <div className="rounded-lg bg-purple-50 p-4 dark:bg-purple-900/20">
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+            <div className="rounded-lg bg-purple-50 p-4">
+              <div className="text-2xl font-bold text-purple-600">
                 {Math.round(
                   entries.reduce((acc, entry) => acc + entry.content.length, 0) / 100
                 )}
               </div>
-              <div className="text-sm text-purple-700 dark:text-purple-300">
+              <div className="text-sm text-purple-700">
                 Approx. Tokens
               </div>
             </div>
-            <div className="rounded-lg bg-orange-50 p-4 dark:bg-orange-900/20">
-              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+            <div className="rounded-lg bg-orange-50 p-4">
+              <div className="text-2xl font-bold text-orange-600">
                 {entries.filter((entry) => entry.source_type === "policy").length}
               </div>
-              <div className="text-sm text-orange-700 dark:text-orange-300">
+              <div className="text-sm text-orange-700">
                 Policy Entries
               </div>
             </div>

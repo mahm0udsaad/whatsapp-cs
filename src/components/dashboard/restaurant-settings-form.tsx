@@ -128,7 +128,7 @@ export function RestaurantSettingsForm({
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="text-sm font-medium text-gray-700">
                   Restaurant Name
                 </label>
                 <Input
@@ -140,7 +140,7 @@ export function RestaurantSettingsForm({
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="text-sm font-medium text-gray-700">
                   Arabic Name
                 </label>
                 <Input
@@ -154,7 +154,7 @@ export function RestaurantSettingsForm({
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="text-sm font-medium text-gray-700">
                   Country
                 </label>
                 <Select
@@ -176,7 +176,7 @@ export function RestaurantSettingsForm({
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="text-sm font-medium text-gray-700">
                   Currency
                 </label>
                 <Select
@@ -209,7 +209,7 @@ export function RestaurantSettingsForm({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label className="text-sm font-medium text-gray-700">
                 Website URL
               </label>
               <Input
@@ -222,7 +222,7 @@ export function RestaurantSettingsForm({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label className="text-sm font-medium text-gray-700">
                 Menu URL
               </label>
               <Input
@@ -244,36 +244,36 @@ export function RestaurantSettingsForm({
           </CardHeader>
           <CardContent className="space-y-4">
             {error ? (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                 {error}
               </div>
             ) : null}
 
             {saved ? (
-              <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400">
+              <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
                 <Check size={16} />
                 Changes saved.
               </div>
             ) : null}
 
             {provisioningMessage ? (
-              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300">
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
                 {provisioningMessage}
               </div>
             ) : null}
 
-            <div className="rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
+            <div className="rounded-lg bg-gray-50 p-3 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-gray-600 dark:text-gray-400">Setup</span>
-                <span className="font-medium text-gray-900 dark:text-gray-50">
+                <span className="text-gray-600">Setup</span>
+                <span className="font-medium text-gray-900">
                   {restaurant.setup_status || "draft"}
                 </span>
               </div>
               <div className="mt-2 flex items-center justify-between">
-                <span className="text-gray-600 dark:text-gray-400">
+                <span className="text-gray-600">
                   WhatsApp Number
                 </span>
-                <span className="font-medium text-gray-900 dark:text-gray-50">
+                <span className="font-medium text-gray-900">
                   {restaurant.twilio_phone_number || "Pending"}
                 </span>
               </div>

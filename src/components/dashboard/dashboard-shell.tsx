@@ -29,7 +29,7 @@ export function DashboardShell({
   };
 
   return (
-    <div className="flex h-full">
+    <div className="min-h-screen bg-transparent">
       <Sidebar
         restaurantName={restaurantName}
         restaurantLogo={restaurantLogo ?? undefined}
@@ -38,8 +38,9 @@ export function DashboardShell({
         onLogout={handleLogout}
       />
 
-      <main className="flex-1 overflow-auto lg:ml-64">
-        <div className="min-h-full">{children}</div>
+      <main className="relative flex-1 overflow-x-hidden lg:ms-72">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(15,138,95,0.12),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(15,138,95,0.08),transparent_32%)]" />
+        <div className="relative min-h-screen">{children}</div>
       </main>
     </div>
   );

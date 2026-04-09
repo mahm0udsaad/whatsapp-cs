@@ -106,7 +106,7 @@ export function AIAgentSettingsForm({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label className="text-sm font-medium text-gray-700">
                 Agent Name
               </label>
               <Input
@@ -118,7 +118,7 @@ export function AIAgentSettingsForm({
             </div>
 
             <div className="space-y-3">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label className="text-sm font-medium text-gray-700">
                 Personality Style
               </label>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -134,15 +134,15 @@ export function AIAgentSettingsForm({
                     }
                     className={`rounded-lg border-2 p-4 text-left transition-all ${
                       formData.personality === personality.value
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                        : "border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600"
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
                     <div className="text-sm font-medium">{personality.label}</div>
-                    <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                    <div className="mt-1 text-xs text-gray-600">
                       {personality.desc}
                     </div>
-                    <div className="mt-2 text-xs italic text-gray-500 dark:text-gray-500">
+                    <div className="mt-2 text-xs italic text-gray-500">
                       &quot;{personality.sample}&quot;
                     </div>
                   </button>
@@ -172,7 +172,7 @@ export function AIAgentSettingsForm({
             />
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label className="text-sm font-medium text-gray-700">
                 Language Preference
               </label>
               <select
@@ -183,7 +183,7 @@ export function AIAgentSettingsForm({
                     languagePreference: event.target.value as "ar" | "en" | "auto",
                   })
                 }
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-50"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900"
               >
                 <option value="auto">Auto-detect</option>
                 <option value="en">English</option>
@@ -192,7 +192,7 @@ export function AIAgentSettingsForm({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label className="text-sm font-medium text-gray-700">
                 Off-topic Response
               </label>
               <Textarea
@@ -220,33 +220,33 @@ export function AIAgentSettingsForm({
           </CardHeader>
           <CardContent className="space-y-4">
             {error ? (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                 {error}
               </div>
             ) : null}
 
             {saved ? (
-              <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400">
+              <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
                 Configuration saved.
               </div>
             ) : null}
 
-            <div className="space-y-3 rounded-lg bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 dark:from-emerald-900/20 dark:to-emerald-800/20">
+            <div className="space-y-3 rounded-lg bg-gradient-to-br from-emerald-50 to-emerald-100 p-4">
               <div className="flex items-center gap-2">
-                <MessageCircle size={16} className="text-emerald-600 dark:text-emerald-400" />
-                <span className="text-sm font-medium text-emerald-900 dark:text-emerald-200">
+                <MessageCircle size={16} className="text-emerald-600" />
+                <span className="text-sm font-medium text-emerald-900">
                   {formData.name}
                 </span>
               </div>
               <div className="space-y-2">
-                <div className="rounded bg-white p-2 text-xs text-emerald-700 dark:bg-gray-800 dark:text-emerald-300">
+                <div className="rounded bg-white p-2 text-xs text-emerald-700">
                   <p className="mb-1 font-medium">Sample conversation:</p>
-                  <p className="text-emerald-900 dark:text-emerald-100">
+                  <p className="text-emerald-900">
                     Customer: What are your hours?
                   </p>
                 </div>
-                <div className="ml-6 rounded border-l-2 border-emerald-600 bg-emerald-100 p-2 text-xs dark:bg-emerald-900/40">
-                  <p className="text-emerald-900 dark:text-emerald-200">
+                <div className="ml-6 rounded border-l-2 border-emerald-600 bg-emerald-100 p-2 text-xs">
+                  <p className="text-emerald-900">
                     {formData.personality === "friendly"
                       ? "We’re happy to help with our hours and menu questions."
                       : formData.personality === "professional"
@@ -259,7 +259,7 @@ export function AIAgentSettingsForm({
               </div>
             </div>
 
-            <div className="space-y-1 rounded-lg bg-gray-50 p-3 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+            <div className="space-y-1 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
               <div>
                 <span className="font-medium">Personality:</span>{" "}
                 <Badge variant="default" className="ml-1">
@@ -287,14 +287,14 @@ export function AIAgentSettingsForm({
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-gray-600 dark:text-gray-400">Agent Status</span>
+              <span className="text-gray-600">Agent Status</span>
               <Badge variant="default">Active</Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-gray-600 dark:text-gray-400">
+              <span className="text-gray-600">
                 Last Updated
               </span>
-              <span className="font-medium text-gray-900 dark:text-gray-50">
+              <span className="font-medium text-gray-900">
                 {new Date(aiAgent.updated_at).toLocaleString()}
               </span>
             </div>

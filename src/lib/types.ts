@@ -126,16 +126,30 @@ export interface Message {
   created_at: string;
 }
 
+export type TemplateCategory = "MARKETING" | "UTILITY" | "AUTHENTICATION";
+export type TemplateApprovalStatus = "draft" | "submitted" | "pending" | "approved" | "rejected" | "paused" | "disabled";
+export type TemplateHeaderType = "none" | "text" | "image";
+
 export interface MarketingTemplate {
   id: string;
   restaurant_id: string;
   name: string;
   template_sid: string | null;
+  twilio_content_sid: string | null;
   content_type: string | null;
   body_template: string | null;
   header_image_url: string | null;
+  header_type: TemplateHeaderType;
+  header_text: string | null;
+  footer_text: string | null;
   buttons: Record<string, unknown>[] | null;
   variables: string[] | null;
+  language: string;
+  category: TemplateCategory;
+  approval_status: TemplateApprovalStatus;
+  rejection_reason: string | null;
+  ai_generated: boolean;
+  image_asset_url: string | null;
   status: string | null;
   created_at: string;
   updated_at: string;
@@ -147,6 +161,8 @@ export interface MarketingCampaign {
   template_id: string | null;
   name: string;
   scheduled_at?: string | null;
+  sending_started_at?: string | null;
+  sending_completed_at?: string | null;
   audience_file_url?: string | null;
   audience_json?: Record<string, unknown>[] | null;
   total_recipients: number;
@@ -154,7 +170,8 @@ export interface MarketingCampaign {
   delivered_count: number;
   read_count: number;
   failed_count: number;
-  status: "draft" | "scheduled" | "active" | "completed" | "cancelled";
+  error_message?: string | null;
+  status: "draft" | "scheduled" | "processing" | "sending" | "completed" | "failed" | "cancelled";
   created_at: string;
   updated_at: string;
 }
@@ -307,4 +324,81 @@ export interface OnboardingPayload {
   personality: string;
   language: "ar" | "en" | "auto";
   agentInstructions: string;
+}
+
+// --- Marketing Campaign Types ---
+
+export interface TemplateApprovalPoll {
+  id: string;
+  template_id: string;
+  restaurant_id: string;
+  twilio_content_sid: string;
+  poll_count: number;
+  next_poll_at: string;
+  status: "polling" | "completed" | "abandoned";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TwilioContentTypes {
+  "twilio/text"?: { body: string };
+  "twilio/quick-reply"?: {
+    body: string;
+    actions: Array<{ title: string; id: string }>;
+  };
+  "whatsapp/card"?: {
+    body: string;
+    header_text?: string | null;
+    media?: string[];
+    footer?: string;
+    actions: Array<{
+      type: "URL" | "QUICK_REPLY" | "PHONE_NUMBER" | "COPY_CODE";
+      title: string;
+      url?: string;
+      phone?: string;
+      code?: string;
+      id?: string;
+    }>;
+  };
+}
+
+export interface AITemplateBuilderMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface AITemplateCollectedData {
+  campaignType?: string;
+  mainMessage?: string;
+  includeImage?: boolean;
+  imagePrompt?: string;
+  buttons?: Array<{ type: string; title: string; url?: string; id?: string }>;
+  language?: "ar" | "en";
+  variables?: string[];
+  footerText?: string;
+  category?: TemplateCategory;
+}
+
+export interface AITemplateBuilderRequest {
+  messages: AITemplateBuilderMessage[];
+  collectedData: AITemplateCollectedData;
+  restaurantName: string;
+}
+
+export interface AITemplateBuilderResponse {
+  message: string;
+  collectedData: AITemplateCollectedData;
+  status: "collecting" | "generating" | "complete";
+  template?: {
+    name: string;
+    body: string;
+    headerType: TemplateHeaderType;
+    headerText?: string;
+    footerText?: string;
+    buttons?: Array<{ type: string; title: string; url?: string; id?: string }>;
+    variables: string[];
+    language: string;
+    category: TemplateCategory;
+    imagePrompt?: string;
+  };
 }
