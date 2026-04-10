@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 import { getCurrentUser, getRestaurantForUserId } from "@/lib/tenant";
 import { createContentTemplate } from "@/lib/twilio-content";
+import { processPendingTemplateApprovalPolls } from "@/lib/template-approval-poller";
 import type { TemplateCategory, TemplateHeaderType, TwilioContentTypes } from "@/lib/types";
 
 export async function GET() {
@@ -25,6 +26,11 @@ export async function GET() {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    // Lazily poll for template approval status updates (replaces the cron job)
+    processPendingTemplateApprovalPolls().catch((err) =>
+      console.error("[templates] approval poll error:", err)
+    );
 
     return NextResponse.json({ templates }, { status: 200 });
   } catch (error) {

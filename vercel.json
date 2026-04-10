@@ -1,12 +1,1 @@
-{
-  "crons": [
-    {
-      "path": "/api/internal/poll-template-approvals",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/internal/process-ai-replies",
-      "schedule": "* * * * *"
-    }
-  ]
-}
+{}
