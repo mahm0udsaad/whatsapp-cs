@@ -371,7 +371,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       : { queued: false };
 
     if (queued.queued) {
-      processPendingAIReplyJobs(1).catch((err) =>
+      await processPendingAIReplyJobs(1).catch((err) =>
         console.error("[webhook] processPendingAIReplyJobs error:", err)
       );
     }
