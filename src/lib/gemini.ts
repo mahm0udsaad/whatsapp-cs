@@ -152,7 +152,10 @@ export async function generateGeminiResponse(
     try {
       console.log("[gemini] Retrying with simple generateContent...");
       const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
-      const simplePrompt = `${context.systemPrompt}\n\nRelevant info:\n${context.ragContext}\n\nCustomer message: ${context.userMessage}\n\nRespond in ${detectLanguage(context.userMessage) === "ar" ? "Arabic" : "English"}. Be helpful and friendly.`;
+      const historyText = context.conversationHistory
+        .map((msg) => `${msg.role === "user" ? "Customer" : "Assistant"}: ${msg.content}`)
+        .join("\n");
+      const simplePrompt = `${context.systemPrompt}\n\nRelevant info:\n${context.ragContext}\n\n${historyText ? `Conversation so far:\n${historyText}\n\n` : ""}Customer message: ${context.userMessage}\n\nRespond in ${detectLanguage(context.userMessage) === "ar" ? "Arabic" : "English"}. Be helpful and friendly.`;
       const result = await model.generateContent(simplePrompt);
       const responseText = result.response.text();
       return {

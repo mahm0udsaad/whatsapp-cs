@@ -44,15 +44,17 @@ async function getConversationHistory(conversationId: string, limit = 12) {
     .from("messages")
     .select("role, content")
     .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: true })
+    .order("created_at", { ascending: false })
     .limit(limit);
 
-  return (data || []).map((message) => ({
-    role: (message.role === "customer" ? "user" : "assistant") as
-      | "user"
-      | "assistant",
-    content: message.content,
-  }));
+  return (data || [])
+    .reverse()
+    .map((message) => ({
+      role: (message.role === "customer" ? "user" : "assistant") as
+        | "user"
+        | "assistant",
+      content: message.content,
+    }));
 }
 
 async function queryKnowledgeBase(restaurantId: string, query: string) {
