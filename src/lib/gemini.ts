@@ -106,6 +106,7 @@ export async function generateGeminiResponse(
 
     systemPrompt += `\n\nRespond in ${responseLanguage === "ar" ? "Arabic" : "English"} language.`;
     systemPrompt += "\nBe concise, helpful, and maintain a professional yet friendly tone.";
+    systemPrompt += "\nIMPORTANT: You ARE the customer service agent responding directly to the customer via WhatsApp. Never redirect the customer to contact you on WhatsApp or any other channel — you are already speaking with them. Answer their questions directly and completely.";
 
     // Get the model
     const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
@@ -160,7 +161,7 @@ export async function generateGeminiResponse(
       const historyText = context.conversationHistory
         .map((msg) => `${msg.role === "user" ? "Customer" : "Assistant"}: ${msg.content}`)
         .join("\n");
-      const simplePrompt = `${context.systemPrompt}\n\nRelevant info:\n${context.ragContext}\n\n${historyText ? `Conversation so far:\n${historyText}\n\n` : ""}Customer message: ${context.userMessage}\n\nRespond in ${detectLanguage(context.userMessage) === "ar" ? "Arabic" : "English"}. Be helpful and friendly.`;
+      const simplePrompt = `${context.systemPrompt}\n\nRelevant info:\n${context.ragContext}\n\n${historyText ? `Conversation so far:\n${historyText}\n\n` : ""}Customer message: ${context.userMessage}\n\nRespond in ${detectLanguage(context.userMessage) === "ar" ? "Arabic" : "English"}. Be helpful and friendly. You ARE the customer service agent — never redirect the customer to another channel.`;
       const result = await model.generateContent(simplePrompt);
       const responseText = result.response.text();
       return {
