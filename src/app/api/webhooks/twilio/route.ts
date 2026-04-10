@@ -5,7 +5,7 @@ import {
   generateTwiMLResponse,
   validateTwilioRequest,
 } from "@/lib/twilio";
-import { queueAIReplyJob } from "@/lib/ai-reply-jobs";
+import { queueAIReplyJob, processPendingAIReplyJobs } from "@/lib/ai-reply-jobs";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 const EMPTY_TWIML = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
@@ -359,7 +359,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    // Queue AI reply job
+    // Queue AI reply job then process it immediately
     const queued = inboundMessage
       ? await queueAIReplyJob({
           restaurantId: restaurant.id,
@@ -369,6 +369,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           senderPhoneNumber,
         })
       : { queued: false };
+
+    if (queued.queued) {
+      processPendingAIReplyJobs(1).catch((err) =>
+        console.error("[webhook] processPendingAIReplyJobs error:", err)
+      );
+    }
 
     if (!queued.queued) {
       const fallback = detectLanguage(Body) === "ar"

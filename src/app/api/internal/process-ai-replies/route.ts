@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processPendingAIReplyJobs } from "@/lib/ai-reply-jobs";
 
-const workerSecret = process.env.AI_REPLY_WORKER_SECRET;
-
 function isAuthorized(request: NextRequest) {
-  if (!workerSecret) {
-    console.error("AI_REPLY_WORKER_SECRET not configured — denying access");
-    return false;
+  const authorization = request.headers.get("authorization") || "";
+  const bearer = authorization.replace(/^Bearer\s+/i, "");
+
+  // Accept Vercel's auto-injected CRON_SECRET (used by vercel.json cron jobs)
+  if (process.env.CRON_SECRET && bearer === process.env.CRON_SECRET) {
+    return true;
   }
 
-  const authorization = request.headers.get("authorization") || "";
-  return authorization === `Bearer ${workerSecret}`;
+  // Also accept a manually configured worker secret for external callers
+  if (process.env.AI_REPLY_WORKER_SECRET && bearer === process.env.AI_REPLY_WORKER_SECRET) {
+    return true;
+  }
+
+  return false;
 }
 
 export async function POST(request: NextRequest) {

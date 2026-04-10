@@ -1,6 +1,8 @@
 import { load } from "cheerio";
 
 const MAX_ENTRIES = 30;
+const MAX_ENTRIES_MULTI = 100;
+const MAX_PAGES = 10;
 const MIN_CONTENT_LENGTH = 60;
 const MAX_CONTENT_LENGTH = 2000;
 
@@ -232,6 +234,109 @@ function extractAboutFallback(
   return null;
 }
 
+/**
+ * Extracts all same-domain links from a fetched page.
+ */
+function extractInternalLinks(
+  $: ReturnType<typeof load>,
+  baseUrl: string
+): string[] {
+  const base = new URL(baseUrl);
+  const links: string[] = [];
+
+  $("a[href]").each((_i, el) => {
+    const href = $(el).attr("href");
+    if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+
+    try {
+      const url = new URL(href, baseUrl);
+      if (url.hostname !== base.hostname) return;
+      // Skip asset/non-content URLs
+      if (/\.(pdf|jpg|jpeg|png|gif|svg|webp|css|js|ico|xml|json|zip|mp4|mp3)$/i.test(url.pathname)) return;
+      url.hash = "";
+      url.search = "";
+      const normalized = url.toString().replace(/\/$/, "") || base.origin;
+      links.push(normalized);
+    } catch {
+      // invalid url
+    }
+  });
+
+  return [...new Set(links)];
+}
+
+/**
+ * Fetches a single page and extracts KB entries from it.
+ * Returns the entries plus internal links discovered on the page.
+ */
+async function crawlSinglePage(
+  url: string,
+  restaurantId: string
+): Promise<{ entries: WebsiteKBEntry[]; links: string[] }> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  let html: string;
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+      signal: controller.signal,
+    });
+    if (!response.ok) return { entries: [], links: [] };
+    html = await response.text();
+  } catch {
+    return { entries: [], links: [] };
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  const $ = load(html);
+  const links = extractInternalLinks($, url);
+
+  $(
+    "nav, footer, header, script, style, noscript, " +
+    "[class*='cookie'], [class*='banner'], [class*='popup'], " +
+    "[id*='cookie'], [id*='banner'], [class*='ad-'], [id*='ad-'], " +
+    "[class*='newsletter'], [class*='subscribe']"
+  ).remove();
+
+  const headingSections = extractHeadingSections($);
+  const faqs = extractFaqs($);
+  const featureLists = extractFeatureLists($);
+  const aboutFallback = extractAboutFallback($, headingSections);
+
+  const raw: KBEntry[] = [
+    ...(aboutFallback ? [aboutFallback] : []),
+    ...headingSections,
+    ...faqs,
+    ...featureLists,
+  ];
+
+  const seen = new Set<string>();
+  const deduped = raw.filter((entry) => {
+    const key = entry.title.toLowerCase().replace(/\s+/g, " ").slice(0, 80);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const now = new Date().toISOString();
+  const entries: WebsiteKBEntry[] = deduped.slice(0, 20).map((entry) => ({
+    restaurant_id: restaurantId,
+    title: entry.title,
+    content: entry.content,
+    source_type: "website_crawl",
+    metadata: { section: entry.section, source_url: url },
+    created_at: now,
+    updated_at: now,
+  }));
+
+  return { entries, links };
+}
+
 export interface WebsiteKBEntry {
   restaurant_id: string;
   title: string;
@@ -319,4 +424,57 @@ export async function crawlWebsiteForKnowledgeBase(
     created_at: now,
     updated_at: now,
   }));
+}
+
+/**
+ * Crawls up to MAX_PAGES internal pages of a website, starting from
+ * websiteUrl. Extracts and deduplicates knowledge base entries across
+ * all pages, returning up to MAX_ENTRIES_MULTI entries total.
+ */
+export async function crawlWebsiteMultiPage(
+  websiteUrl: string,
+  restaurantId: string
+): Promise<{ entries: WebsiteKBEntry[]; pagesCrawled: number }> {
+  const visited = new Set<string>();
+  const queue: string[] = [];
+  const allEntries: WebsiteKBEntry[] = [];
+  const globalSeenTitles = new Set<string>();
+
+  // Normalize the seed URL
+  try {
+    const seed = new URL(websiteUrl);
+    seed.hash = "";
+    seed.search = "";
+    queue.push(seed.toString().replace(/\/$/, "") || seed.origin);
+  } catch {
+    return { entries: [], pagesCrawled: 0 };
+  }
+
+  while (queue.length > 0 && visited.size < MAX_PAGES) {
+    const url = queue.shift()!;
+    if (visited.has(url)) continue;
+    visited.add(url);
+
+    const { entries, links } = await crawlSinglePage(url, restaurantId);
+
+    // Add entries, skipping cross-page title duplicates
+    for (const entry of entries) {
+      const titleKey = entry.title.toLowerCase().replace(/\s+/g, " ").slice(0, 80);
+      if (globalSeenTitles.has(titleKey)) continue;
+      globalSeenTitles.add(titleKey);
+      allEntries.push(entry);
+      if (allEntries.length >= MAX_ENTRIES_MULTI) break;
+    }
+
+    if (allEntries.length >= MAX_ENTRIES_MULTI) break;
+
+    // Enqueue unvisited internal links
+    for (const link of links) {
+      if (!visited.has(link) && !queue.includes(link)) {
+        queue.push(link);
+      }
+    }
+  }
+
+  return { entries: allEntries.slice(0, MAX_ENTRIES_MULTI), pagesCrawled: visited.size };
 }

@@ -37,7 +37,10 @@ export default async function KnowledgeBasePage() {
         </p>
       </div>
 
-      <KnowledgeBaseManager initialEntries={(data || []) as KnowledgeBase[]} />
+      <KnowledgeBaseManager
+        initialEntries={(data || []) as KnowledgeBase[]}
+        websiteUrl={restaurant.website_url}
+      />
     </div>
   );
 }

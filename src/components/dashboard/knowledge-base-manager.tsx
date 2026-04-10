@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Edit2, FileText, Plus, Trash2 } from "lucide-react";
+import { Edit2, FileText, Globe, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,10 +11,12 @@ import { KnowledgeBase } from "@/lib/types";
 
 interface KnowledgeBaseManagerProps {
   initialEntries: KnowledgeBase[];
+  websiteUrl?: string | null;
 }
 
 export function KnowledgeBaseManager({
   initialEntries,
+  websiteUrl,
 }: KnowledgeBaseManagerProps) {
   const [entries, setEntries] = useState<KnowledgeBase[]>(initialEntries);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -25,6 +27,15 @@ export function KnowledgeBaseManager({
     content: "",
     sourceType: "manual",
   });
+
+  // Crawl state
+  const [crawlUrl, setCrawlUrl] = useState(websiteUrl || "");
+  const [crawling, setCrawling] = useState(false);
+  const [crawlResult, setCrawlResult] = useState<{
+    entries_created: number;
+    pages_crawled: number;
+  } | null>(null);
+  const [crawlError, setCrawlError] = useState("");
 
   const resetForm = () => {
     setEditingId(null);
@@ -119,6 +130,40 @@ export function KnowledgeBaseManager({
       content: entry.content,
       sourceType: entry.source_type || "manual",
     });
+  };
+
+  const handleCrawl = async () => {
+    if (!crawlUrl.trim()) return;
+    setCrawling(true);
+    setCrawlError("");
+    setCrawlResult(null);
+
+    try {
+      const response = await fetch("/api/dashboard/knowledge-base/crawl", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: crawlUrl.trim() }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setCrawlError(result.error || "Crawl failed.");
+        return;
+      }
+
+      setEntries((prev) => [...(result.entries as KnowledgeBase[]), ...prev]);
+      setCrawlResult({
+        entries_created: result.entries_created,
+        pages_crawled: result.pages_crawled,
+      });
+    } catch (crawlErr) {
+      setCrawlError(
+        crawlErr instanceof Error ? crawlErr.message : "Crawl failed."
+      );
+    } finally {
+      setCrawling(false);
+    }
   };
 
   return (
@@ -273,6 +318,53 @@ export function KnowledgeBaseManager({
           </Card>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe size={20} />
+            Crawl Website
+          </CardTitle>
+          <CardDescription>
+            Automatically extract knowledge base entries from your website. Crawls up to 10 pages.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {crawlError ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {crawlError}
+            </div>
+          ) : null}
+          {crawlResult ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+              Done! Created <strong>{crawlResult.entries_created}</strong> entries from{" "}
+              <strong>{crawlResult.pages_crawled}</strong> pages.
+            </div>
+          ) : null}
+          <div className="flex gap-3">
+            <Input
+              className="flex-1"
+              value={crawlUrl}
+              onChange={(e) => setCrawlUrl(e.target.value)}
+              placeholder="https://yourwebsite.com"
+              type="url"
+              disabled={crawling}
+            />
+            <Button
+              onClick={handleCrawl}
+              disabled={!crawlUrl.trim() || crawling}
+              className="shrink-0"
+            >
+              {crawling ? "Crawling…" : "Crawl"}
+            </Button>
+          </div>
+          {crawling ? (
+            <p className="text-sm text-gray-500">
+              Crawling pages and extracting content — this may take up to 30 seconds…
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
