@@ -6,6 +6,165 @@ const MAX_PAGES = 10;
 const MIN_CONTENT_LENGTH = 60;
 const MAX_CONTENT_LENGTH = 2000;
 
+// ---------------------------------------------------------------------------
+// Rekaz platform extractor
+// Rekaz pages embed all data in a TanStack Router hydration script as inline
+// JS objects. We extract service records and business settings from it.
+// ---------------------------------------------------------------------------
+
+function isRekazPage(html: string): boolean {
+  return html.includes("window.__TENANT__") || html.includes("rekaz.io");
+}
+
+/**
+ * Cleans HTML markup that leaks into Rekaz description fields.
+ * The hydration script stores HTML as hex-escaped strings (\x3Cp>, \x3Cspan>, etc.)
+ * and may also contain Windows carriage returns encoded as _x000d_.
+ */
+function cleanRekazDescription(text: string): string {
+  if (!text) return "";
+  let t = text
+    // Unescape hex-encoded HTML tags (\x3C = <, \x3E = >)
+    .replace(/\\x3C/gi, "<")
+    .replace(/\\x3E/gi, ">")
+    .replace(/\\x26/gi, "&")
+    .replace(/\\x22/gi, '"')
+    .replace(/\\x27/gi, "'")
+    // Strip all HTML tags
+    .replace(/<[^>]+>/g, " ")
+    // Decode common HTML entities
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    // Remove Windows carriage return encoding
+    .replace(/_x000d_/gi, "\n")
+    // Remove leftover literal \n escape sequences from JS strings
+    .replace(/\\n/g, "\n")
+    // Collapse excessive whitespace
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return t;
+}
+
+function extractRekazSettings(html: string): Record<string, string> {
+  const settings: Record<string, string> = {};
+  // Matches: key:"Platform.X.Y",value:"Z"
+  const kv = /key:"(Platform\.[^"]+)",value:"([^"]+)"/g;
+  let m: RegExpExecArray | null;
+  while ((m = kv.exec(html)) !== null) settings[m[1]] = m[2];
+  return settings;
+}
+
+function rekazCategory(name: string): string {
+  // Massage — check before nails/hair to avoid false matches
+  if (/مساج|تدليك|massage/i.test(name)) return "Massage Services";
+  // Nails — both Arabic spellings of pedicure/manicure, plus أظافر with and without hamza
+  if (/مناكير|باديكير|بديكير|أظافر|اظافر|nail|pedicure|manicure/i.test(name)) return "Nails & Foot Care";
+  // Hair — treatments, bond repair, blowout, haircut, scalp, detox, extensions
+  if (/شعر|كيراتين|تريتمنت|ترميم|روابط|استشوار|فروه|فروة|ديتوكس|اكستنشن|hair|keratin|treatment|blowout/i.test(name)) return "Hair Treatments";
+  // Waxing — Arabic واكس is common alongside شمع
+  if (/شمع|واكس|wax/i.test(name)) return "Waxing";
+  // Facial & skin — بشره (without taa marbuta diacritic) is a common alternate spelling
+  if (/وجه|بشرة|بشره|حواجب|تنظيف البشر|facial|eyebrow/i.test(name)) return "Facial & Skin";
+  // Body treatments — برافين is the common Arabised spelling, not بارافين
+  if (/برافين|بارافين|حمام|سكراب|paraffin|scrub/i.test(name)) return "Body Treatments";
+  // Packages & bundles
+  if (/باقة|بكج|بكـج|كبلز|package|bundle/i.test(name)) return "Packages";
+  if (/حجامة|cupping/i.test(name)) return "Cupping";
+  return "Other Services";
+}
+
+function extractRekazEntries(html: string): KBEntry[] {
+  const entries: KBEntry[] = [];
+
+  // 1. Business info from platform settings
+  const s = extractRekazSettings(html);
+  const bizName = s["Platform.Invoice.BrandName"] || s["Platform.Invoice.CommercialName"] || "";
+  const arabicName = s["Platform.Invoice.CommercialName"] || "";
+  const phone = s["Platform.Contact.MobileNumber"] || s["Platform.Contact.Whatsapp"] || "";
+  const city = s["Platform.Contact.City"] || "";
+  const country = s["Platform.Contact.Country"] || "";
+  const instagram = s["Platform.Contact.Instagram"] || "";
+  const banner = s["Platform.Banner.Text"] || "";
+
+  if (bizName) {
+    const parts: string[] = [`Business: ${bizName}`];
+    if (arabicName && arabicName !== bizName) parts.push(`Arabic name: ${arabicName}`);
+    if (phone) parts.push(`Phone / WhatsApp: +${phone}`);
+    if (city || country) parts.push(`Location: ${[city, country].filter(Boolean).join(", ")}`);
+    if (instagram) parts.push(`Instagram: ${instagram}`);
+    if (banner) parts.push(`Note: ${banner}`);
+    entries.push({ title: "Business Information", content: parts.join("\n"), section: "about" });
+  }
+
+  // 2. Services — pattern: name:"...", ..., amount:N,duration:N (they appear adjacent in Rekaz)
+  interface Svc { name: string; description: string; amount: number; duration: number }
+  const services: Svc[] = [];
+  const seen = new Set<string>();
+  const nameRe = /\bname:"([^"]{2,150})"/g;
+  let m: RegExpExecArray | null;
+
+  while ((m = nameRe.exec(html)) !== null) {
+    const rawName = m[1];
+    // Look ahead up to 1500 chars but stay within the same service object.
+    // In Rekaz hydration, amount and duration always appear together: amount:N,duration:N
+    const ahead = html.slice(m.index, m.index + 1500);
+
+    // Find amount:N,duration:N as a pair (they are always adjacent in Rekaz output)
+    const pairM = /\bamount:(\d+(?:\.\d+)?),duration:(\d+)\b/.exec(ahead);
+    if (!pairM) continue;
+
+    const amount = parseFloat(pairM[1]);
+    const duration = parseInt(pairM[2]);
+
+    // Sanity check: duration > 480 min (8h) is definitely a wrong field match
+    if (duration > 480) continue;
+
+    // Ensure the amount:duration pair appears before the next service name boundary
+    const nextName = ahead.indexOf('name:"', 1);
+    if (nextName !== -1 && pairM.index > nextName) continue;
+
+    const cleanName = rawName.replace(/^[-\s]+/, "").replace(/[\u{1F300}-\u{1FFFF}]/gu, "").trim();
+    if (!cleanName || seen.has(cleanName.toLowerCase())) continue;
+    seen.add(cleanName.toLowerCase());
+
+    // Extract description (appears before amount: in the object)
+    const descM = /\bdescription:"([^"]{5,})"/.exec(ahead);
+    const rawDesc = descM?.[1] || "";
+
+    services.push({
+      name: cleanName,
+      description: cleanRekazDescription(rawDesc),
+      amount,
+      duration,
+    });
+  }
+
+  // 3. Group services by category
+  const byCategory = new Map<string, Svc[]>();
+  for (const svc of services) {
+    const cat = rekazCategory(svc.name);
+    if (!byCategory.has(cat)) byCategory.set(cat, []);
+    byCategory.get(cat)!.push(svc);
+  }
+
+  for (const [cat, items] of byCategory) {
+    const lines = items.map((svc) => {
+      let line = `• ${svc.name}: ${svc.amount} SAR`;
+      if (svc.duration > 0) line += ` (${svc.duration} min)`;
+      if (svc.description) line += `\n  ${svc.description}`;
+      return line;
+    });
+    entries.push({ title: cat, content: lines.join("\n"), section: "services" });
+  }
+
+  return entries;
+}
+
 // Section classifiers — broad enough to cover any business type
 const SECTION_KEYWORDS: Record<string, string[]> = {
   about: [
@@ -296,24 +455,31 @@ async function crawlSinglePage(
   const $ = load(html);
   const links = extractInternalLinks($, url);
 
-  $(
-    "nav, footer, header, script, style, noscript, " +
-    "[class*='cookie'], [class*='banner'], [class*='popup'], " +
-    "[id*='cookie'], [id*='banner'], [class*='ad-'], [id*='ad-'], " +
-    "[class*='newsletter'], [class*='subscribe']"
-  ).remove();
+  // Use Rekaz-specific extractor when applicable — it parses the hydration
+  // script directly for structured service + settings data.
+  let raw: KBEntry[];
+  if (isRekazPage(html)) {
+    raw = extractRekazEntries(html);
+  } else {
+    $(
+      "nav, footer, header, script, style, noscript, " +
+      "[class*='cookie'], [class*='banner'], [class*='popup'], " +
+      "[id*='cookie'], [id*='banner'], [class*='ad-'], [id*='ad-'], " +
+      "[class*='newsletter'], [class*='subscribe']"
+    ).remove();
 
-  const headingSections = extractHeadingSections($);
-  const faqs = extractFaqs($);
-  const featureLists = extractFeatureLists($);
-  const aboutFallback = extractAboutFallback($, headingSections);
+    const headingSections = extractHeadingSections($);
+    const faqs = extractFaqs($);
+    const featureLists = extractFeatureLists($);
+    const aboutFallback = extractAboutFallback($, headingSections);
 
-  const raw: KBEntry[] = [
-    ...(aboutFallback ? [aboutFallback] : []),
-    ...headingSections,
-    ...faqs,
-    ...featureLists,
-  ];
+    raw = [
+      ...(aboutFallback ? [aboutFallback] : []),
+      ...headingSections,
+      ...faqs,
+      ...featureLists,
+    ];
+  }
 
   const seen = new Set<string>();
   const deduped = raw.filter((entry) => {
@@ -328,7 +494,7 @@ async function crawlSinglePage(
     restaurant_id: restaurantId,
     title: entry.title,
     content: entry.content,
-    source_type: "website_crawl",
+    source_type: "crawled",
     metadata: { section: entry.section, source_url: url },
     created_at: now,
     updated_at: now,
@@ -382,27 +548,30 @@ export async function crawlWebsiteForKnowledgeBase(
     clearTimeout(timeout);
   }
 
-  const $ = load(html);
+  // Use Rekaz-specific extractor when applicable
+  let raw: KBEntry[];
+  if (isRekazPage(html)) {
+    raw = extractRekazEntries(html);
+  } else {
+    const $ = load(html);
+    $(
+      "nav, footer, header, script, style, noscript, " +
+      "[class*='cookie'], [class*='banner'], [class*='popup'], " +
+      "[id*='cookie'], [id*='banner'], [class*='ad-'], [id*='ad-'], " +
+      "[class*='newsletter'], [class*='subscribe']"
+    ).remove();
 
-  // Remove noise before extraction
-  $(
-    "nav, footer, header, script, style, noscript, " +
-    "[class*='cookie'], [class*='banner'], [class*='popup'], " +
-    "[id*='cookie'], [id*='banner'], [class*='ad-'], [id*='ad-'], " +
-    "[class*='newsletter'], [class*='subscribe']"
-  ).remove();
-
-  const headingSections = extractHeadingSections($);
-  const faqs = extractFaqs($);
-  const featureLists = extractFeatureLists($);
-  const aboutFallback = extractAboutFallback($, headingSections);
-
-  const raw: KBEntry[] = [
-    ...(aboutFallback ? [aboutFallback] : []),
-    ...headingSections,
-    ...faqs,
-    ...featureLists,
-  ];
+    const headingSections = extractHeadingSections($);
+    const faqs = extractFaqs($);
+    const featureLists = extractFeatureLists($);
+    const aboutFallback = extractAboutFallback($, headingSections);
+    raw = [
+      ...(aboutFallback ? [aboutFallback] : []),
+      ...headingSections,
+      ...faqs,
+      ...featureLists,
+    ];
+  }
 
   // Deduplicate by normalised title (keep first occurrence)
   const seen = new Set<string>();
@@ -419,7 +588,7 @@ export async function crawlWebsiteForKnowledgeBase(
     restaurant_id: restaurantId,
     title: entry.title,
     content: entry.content,
-    source_type: "website_crawl",
+    source_type: "crawled",
     metadata: { section: entry.section, source_url: websiteUrl },
     created_at: now,
     updated_at: now,

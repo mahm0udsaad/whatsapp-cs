@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { unstable_noStore as noStore } from "next/cache";
 import { KnowledgeBaseManager } from "@/components/dashboard/knowledge-base-manager";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 import { getCurrentUser, getRestaurantForUserId } from "@/lib/tenant";
@@ -6,6 +7,7 @@ import { KnowledgeBase } from "@/lib/types";
 import { getLocale, createTranslator } from "@/lib/i18n";
 
 export default async function KnowledgeBasePage() {
+  noStore();
   const locale = await getLocale();
   const t = createTranslator(locale);
   const user = await getCurrentUser();

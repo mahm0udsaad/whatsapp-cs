@@ -98,7 +98,7 @@ export async function POST(
 
     // Determine the sending phone number
     const fromNumber = restaurant.twilio_phone_number || process.env.TWILIO_PHONE_NUMBER!;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")).replace(/\/$/, "");
     const statusCallback = `${appUrl}/api/webhooks/twilio/status`;
 
     // Update campaign status to sending

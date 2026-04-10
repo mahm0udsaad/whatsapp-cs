@@ -289,10 +289,9 @@ export function KnowledgeBaseManager({
                   className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900"
                 >
                   <option value="manual">Manual</option>
-                  <option value="policy">Policy</option>
-                  <option value="faq">FAQ</option>
                   <option value="menu">Menu</option>
-                  <option value="hours">Hours</option>
+                  <option value="crawled">Crawled</option>
+                  <option value="document">Document</option>
                 </select>
               </div>
 
@@ -401,10 +400,10 @@ export function KnowledgeBaseManager({
             </div>
             <div className="rounded-lg bg-orange-50 p-4">
               <div className="text-2xl font-bold text-orange-600">
-                {entries.filter((entry) => entry.source_type === "policy").length}
+                {entries.filter((entry) => entry.source_type === "document").length}
               </div>
               <div className="text-sm text-orange-700">
-                Policy Entries
+                Documents
               </div>
             </div>
           </div>
