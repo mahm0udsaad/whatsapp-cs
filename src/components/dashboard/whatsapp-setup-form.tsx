@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CheckCircle2, Loader2, Smartphone } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -33,12 +33,20 @@ export function WhatsAppSetupForm({
   const [acknowledged, setAcknowledged] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const isAlreadyActive = existingStatus === "active";
+  const isPendingVerification =
+    !!existingSenderSid && existingStatus === "pending_test";
   const isStuckPending =
-    !!existingSenderSid && !isAlreadyActive && existingStatus !== null;
+    !!existingSenderSid &&
+    !isAlreadyActive &&
+    !isPendingVerification &&
+    existingStatus !== null;
 
   const handleDelete = async () => {
     if (
@@ -69,6 +77,86 @@ export function WhatsAppSetupForm({
       );
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleSync = async () => {
+    setError(null);
+    setSuccessMessage(null);
+    setSyncing(true);
+    try {
+      const response = await fetch("/api/dashboard/whatsapp/sync-sender-status", {
+        method: "POST",
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "Failed to sync status.");
+        return;
+      }
+      if (result.onboardingStatus === "active") {
+        setSuccessMessage("Status synced — your sender is now active!");
+        router.refresh();
+        setTimeout(() => router.push("/dashboard"), 1500);
+      } else {
+        setSuccessMessage(
+          `Twilio status: ${result.twilioStatus}. Not active yet — try again in a moment.`
+        );
+        router.refresh();
+      }
+    } catch (syncError) {
+      setError(
+        syncError instanceof Error ? syncError.message : "Network error while syncing."
+      );
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleVerify = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+
+    if (!verificationCode.trim()) {
+      setError("Please enter the verification code you received via SMS.");
+      return;
+    }
+
+    setVerifying(true);
+    try {
+      const response = await fetch("/api/dashboard/whatsapp/verify-sender", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          senderSid: existingSenderSid,
+          verificationCode: verificationCode.trim(),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || "Verification failed.");
+        return;
+      }
+
+      setSuccessMessage(
+        result.onboardingStatus === "active"
+          ? "WhatsApp sender verified and active!"
+          : "Code submitted. Waiting for Twilio to confirm activation."
+      );
+      router.refresh();
+      if (result.onboardingStatus === "active") {
+        setTimeout(() => router.push("/dashboard"), 1500);
+      }
+    } catch (verifyError) {
+      setError(
+        verifyError instanceof Error
+          ? verifyError.message
+          : "Network error while verifying."
+      );
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -207,6 +295,87 @@ export function WhatsAppSetupForm({
                   Last error: {existingError}
                 </p>
               ) : null}
+              {!isAlreadyActive ? (
+                <div className="mt-3 border-t border-slate-200 pt-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSync}
+                    disabled={syncing}
+                  >
+                    {syncing ? (
+                      <>
+                        <Loader2 size={14} className="mr-2 animate-spin" />
+                        Checking…
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw size={14} className="mr-2" />
+                        Sync status from Twilio
+                      </>
+                    )}
+                  </Button>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Already verified in the Twilio Console? Click to pull the
+                    latest status.
+                  </p>
+                </div>
+              ) : null}
+              {isPendingVerification ? (
+                <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
+                  <p className="text-sm leading-5 text-slate-700">
+                    Twilio sent a verification code to this number via{" "}
+                    <strong>SMS</strong>. Enter it below to activate your
+                    WhatsApp sender.
+                  </p>
+                  <form onSubmit={handleVerify} className="flex gap-2">
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={8}
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value)}
+                      placeholder="123456"
+                      disabled={verifying}
+                      className="w-36"
+                      dir="ltr"
+                    />
+                    <Button type="submit" disabled={verifying}>
+                      {verifying ? (
+                        <>
+                          <Loader2 size={16} className="mr-2 animate-spin" />
+                          Verifying…
+                        </>
+                      ) : (
+                        "Submit code"
+                      )}
+                    </Button>
+                  </form>
+                  <div className="border-t border-slate-200 pt-3">
+                    <p className="text-xs text-slate-500">
+                      Didn&apos;t receive a code or entered the wrong number?
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleDelete}
+                      disabled={deleting || verifying}
+                      className="mt-2 border-rose-300 text-rose-700 hover:bg-rose-50"
+                    >
+                      {deleting ? (
+                        <>
+                          <Loader2 size={16} className="mr-2 animate-spin" />
+                          Deleting…
+                        </>
+                      ) : (
+                        "Delete this sender and start over"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
               {isStuckPending ? (
                 <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
                   <p className="text-xs leading-5 text-slate-700">
@@ -239,66 +408,68 @@ export function WhatsAppSetupForm({
             </div>
           ) : null}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-900">
-                WhatsApp business phone number
-              </label>
-              <Input
-                type="tel"
-                value={phoneNumber}
-                onChange={(event) => setPhoneNumber(event.target.value)}
-                placeholder="+201234567890"
-                disabled={submitting}
-                dir="ltr"
-              />
-              <p className="text-xs text-slate-500">
-                Use the international format with the country code. Example:
-                +201234567890
-              </p>
+          {error ? (
+            <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+              {error}
             </div>
+          ) : null}
 
-            <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-700">
-              <input
-                type="checkbox"
-                className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                checked={acknowledged}
-                onChange={(event) => setAcknowledged(event.target.checked)}
+          {successMessage ? (
+            <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+              {successMessage}
+            </div>
+          ) : null}
+
+          {!isPendingVerification && !isAlreadyActive ? (
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-900">
+                  WhatsApp business phone number
+                </label>
+                <Input
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(event) => setPhoneNumber(event.target.value)}
+                  placeholder="+201234567890"
+                  disabled={submitting}
+                  dir="ltr"
+                />
+                <p className="text-xs text-slate-500">
+                  Use the international format with the country code. Example:
+                  +201234567890
+                </p>
+              </div>
+
+              <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-700">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  checked={acknowledged}
+                  onChange={(event) => setAcknowledged(event.target.checked)}
+                  disabled={submitting}
+                />
+                <span>
+                  I confirm WhatsApp (and WhatsApp Business) has been deleted from
+                  this phone number and I&apos;m ready for Twilio to register it.
+                </span>
+              </label>
+
+              <Button
+                type="submit"
                 disabled={submitting}
-              />
-              <span>
-                I confirm WhatsApp (and WhatsApp Business) has been deleted from
-                this phone number and I&apos;m ready for Twilio to register it.
-              </span>
-            </label>
-
-            {error ? (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
-                {error}
-              </div>
-            ) : null}
-
-            {successMessage ? (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
-                {successMessage}
-              </div>
-            ) : null}
-
-            <Button
-              type="submit"
-              disabled={submitting}
-              className="w-full sm:w-auto"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 size={16} className="mr-2 animate-spin" />
-                  Registering with Twilio…
-                </>
-              ) : (
-                "Register WhatsApp sender"
-              )}
-            </Button>
-          </form>
+                className="w-full sm:w-auto"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 size={16} className="mr-2 animate-spin" />
+                    Registering with Twilio…
+                  </>
+                ) : (
+                  "Register WhatsApp sender"
+                )}
+              </Button>
+            </form>
+          ) : null}
         </CardContent>
       </Card>
     </div>

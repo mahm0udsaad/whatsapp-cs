@@ -267,7 +267,7 @@ export async function processPendingAIReplyJobs(limit = 10) {
       try {
         outboundMessageSid = await sendWhatsAppMessage(customerPhone, responseText, {
           fromPhoneNumber: senderPhoneNumber || undefined,
-          statusCallback: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/twilio/status`,
+          statusCallback: `${process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")}/api/webhooks/twilio/status`,
         });
       } catch (sendError) {
         await saveAgentMessage(

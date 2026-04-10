@@ -45,7 +45,8 @@ export async function POST(request: NextRequest) {
       user.id,
       restaurant.id,
       phoneNumber,
-      restaurant.name
+      restaurant.name,
+      restaurant.logo_url
     );
 
     const now = new Date().toISOString();

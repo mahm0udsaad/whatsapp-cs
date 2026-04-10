@@ -177,7 +177,8 @@ export async function provisionRestaurantForUser(
           userId,
           restaurantId,
           payload.botPhoneNumber,
-          payload.displayName || payload.restaurantName
+          payload.displayName || payload.restaurantName,
+          payload.logoUrl
         );
         assignedPhoneNumber = payload.botPhoneNumber;
         setupStatus = result.setupStatus;

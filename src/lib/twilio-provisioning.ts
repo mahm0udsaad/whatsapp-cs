@@ -22,6 +22,21 @@ import { getTwilioClient } from "@/lib/twilio";
  * NO twilio_subaccounts table
  */
 
+/**
+ * Returns the canonical public URL for this deployment.
+ * Priority: NEXT_PUBLIC_APP_URL → https://$VERCEL_URL → localhost fallback.
+ * VERCEL_URL is automatically set by Vercel to the deployment domain.
+ */
+function getAppUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return "http://localhost:3000";
+}
+
 async function createProvisioningRun(
   userId: string,
   restaurantId: string,
@@ -215,12 +230,16 @@ export async function deleteWhatsAppSender(sid: string): Promise<void> {
 async function registerWhatsAppSenderViaApi(
   phoneNumber: string,
   businessName: string,
-  webhookUrl: string
+  webhookUrl: string,
+  logoUrl?: string | null
 ): Promise<SenderApiResult> {
   const auth = getTwilioBasicAuth();
   const senderId = phoneNumber.startsWith("whatsapp:")
     ? phoneNumber
     : `whatsapp:${phoneNumber}`;
+
+  const profile: Record<string, string> = { name: businessName };
+  if (logoUrl) profile.logo = logoUrl;
 
   const response = await fetch("https://messaging.twilio.com/v2/Channels/Senders", {
     method: "POST",
@@ -230,7 +249,8 @@ async function registerWhatsAppSenderViaApi(
     },
     body: JSON.stringify({
       sender_id: senderId,
-      profile: { name: businessName },
+      profile,
+      configuration: { verificationMethod: "sms" },
       webhook: {
         callback_url: webhookUrl,
         callback_method: "POST",
@@ -250,6 +270,68 @@ async function registerWhatsAppSenderViaApi(
     throw new Error("Twilio Senders API returned no sid");
   }
   return { sid: json.sid, status: (json.status ?? "CREATING").toUpperCase() };
+}
+
+export async function verifyWhatsAppSender(
+  senderSid: string,
+  verificationCode: string
+): Promise<{ status: string }> {
+  const auth = getTwilioBasicAuth();
+
+  const response = await fetch(
+    `https://messaging.twilio.com/v2/Channels/Senders/${senderSid}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${auth}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        configuration: { verification_code: verificationCode },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(
+      `Twilio verify sender ${response.status}: ${errorBody.slice(0, 500)}`
+    );
+  }
+
+  const json = (await response.json()) as { status?: string };
+  return { status: (json.status ?? "PENDING_VERIFICATION").toUpperCase() };
+}
+
+export async function updateWhatsAppSenderWebhook(senderSid: string): Promise<void> {
+  const auth = getTwilioBasicAuth();
+  const webhookUrl = `${getAppUrl()}/api/webhooks/twilio`;
+
+  const response = await fetch(
+    `https://messaging.twilio.com/v2/Channels/Senders/${senderSid}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${auth}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        webhook: {
+          callback_url: webhookUrl,
+          callback_method: "POST",
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(
+      `Twilio update webhook ${response.status}: ${errorBody.slice(0, 500)}`
+    );
+  }
 }
 
 function mapSenderStatusToOnboarding(
@@ -283,9 +365,10 @@ export async function registerCustomerOwnedNumber(
   userId: string,
   restaurantId: string,
   phoneNumber: string,
-  businessName: string
+  businessName: string,
+  logoUrl?: string | null
 ) {
-  const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/twilio`;
+  const webhookUrl = `${getAppUrl()}/api/webhooks/twilio`;
   const now = new Date().toISOString();
   const normalizedNumber = phoneNumber.trim();
 
@@ -297,7 +380,8 @@ export async function registerCustomerOwnedNumber(
     const result = await registerWhatsAppSenderViaApi(
       normalizedNumber,
       businessName,
-      webhookUrl
+      webhookUrl,
+      logoUrl
     );
     senderSid = result.sid;
     senderStatus = result.status;
@@ -392,7 +476,7 @@ export async function provisionRestaurantTwilioResources(
     };
   }
 
-  const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/twilio`;
+  const webhookUrl = `${getAppUrl()}/api/webhooks/twilio`;
   const now = new Date().toISOString();
 
   // Configure webhook for the assigned number
