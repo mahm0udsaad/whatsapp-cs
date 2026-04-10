@@ -130,13 +130,19 @@ export async function queueAIReplyJob(input: QueueAIReplyJobInput) {
   }
 }
 
-export async function processPendingAIReplyJobs(limit = 10) {
-  const { data: jobs, error } = await adminSupabaseClient
+export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: string) {
+  let queryBuilder = adminSupabaseClient
     .from("ai_reply_jobs")
     .select("*")
     .in("status", ["pending", "retryable"])
     .order("created_at", { ascending: true })
     .limit(limit);
+
+  if (inboundMessageId) {
+    queryBuilder = queryBuilder.eq("inbound_message_id", inboundMessageId);
+  }
+
+  const { data: jobs, error } = await queryBuilder;
 
   if (error) {
     throw new Error(`Failed to load AI reply jobs: ${error.message}`);
