@@ -111,7 +111,12 @@ export async function generateGeminiResponse(
     const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
 
     // Convert conversation history to chat format
-    const chatHistory = context.conversationHistory.map((msg) => ({
+    // Gemini requires history to start with a 'user' message — drop leading agent messages
+    const trimmedHistory = [...context.conversationHistory];
+    while (trimmedHistory.length > 0 && trimmedHistory[0].role !== "user") {
+      trimmedHistory.shift();
+    }
+    const chatHistory = trimmedHistory.map((msg) => ({
       role: msg.role === "user" ? "user" : ("model" as const),
       parts: [{ text: msg.content }],
     }));
