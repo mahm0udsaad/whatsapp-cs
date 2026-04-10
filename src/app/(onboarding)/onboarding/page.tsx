@@ -13,8 +13,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, RefreshCw, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RestaurantWebsiteCrawlResponse } from "@/lib/types";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -29,6 +30,11 @@ interface OnboardingData {
   language: string;
   agentInstructions: string;
   menuUrl: string;
+  logoUrl: string;
+  telephone: string;
+  openingHours: string;
+  servesCuisine: string;
+  botPhoneNumber: string;
 }
 
 const STEPS = [
@@ -38,12 +44,18 @@ const STEPS = [
   { number: 4, title: "Menu Source" },
 ];
 
+const DEFAULT_AGENT_INSTRUCTIONS =
+  "You are the restaurant's WhatsApp assistant. Answer only restaurant-related questions, stay concise, and be friendly.";
+
 export default function OnboardingPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
+  const [websiteImporting, setWebsiteImporting] = useState(false);
   const [error, setError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
+  const [websiteImportMessage, setWebsiteImportMessage] = useState("");
+  const [websiteImportSummary, setWebsiteImportSummary] = useState<string[]>([]);
   const [data, setData] = useState<OnboardingData>({
     restaurantName: "",
     displayName: "",
@@ -53,9 +65,13 @@ export default function OnboardingPage() {
     agentName: "Restaurant Assistant",
     personality: "friendly",
     language: "auto",
-    agentInstructions:
-      "You are the restaurant's WhatsApp assistant. Answer only restaurant-related questions, stay concise, and be friendly.",
+    agentInstructions: DEFAULT_AGENT_INSTRUCTIONS,
     menuUrl: "",
+    logoUrl: "",
+    telephone: "",
+    openingHours: "",
+    servesCuisine: "",
+    botPhoneNumber: "",
   });
 
   const handlePrevious = () => {
@@ -73,6 +89,7 @@ export default function OnboardingPage() {
           data.agentName.trim() !== "" && data.agentInstructions.trim() !== ""
         );
       case 3:
+        // botPhoneNumber is optional — users can complete it later from the dashboard.
         return data.displayName.trim() !== "";
       case 4:
         return true;
@@ -131,6 +148,94 @@ export default function OnboardingPage() {
     }
 
     setCurrentStep((currentStep + 1) as Step);
+  };
+
+  const handleWebsiteImport = async () => {
+    if (!data.websiteUrl.trim()) {
+      setError("Add the restaurant website URL first.");
+      return;
+    }
+
+    setWebsiteImporting(true);
+    setError("");
+    setStatusMessage("");
+    setWebsiteImportMessage("");
+    setWebsiteImportSummary([]);
+
+    try {
+      const response = await fetch("/api/onboarding/crawl-website", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url: data.websiteUrl }),
+      });
+
+      const result = (await response.json()) as
+        | RestaurantWebsiteCrawlResponse
+        | { error?: string };
+
+      if (!response.ok) {
+        const crawlError =
+          "error" in result ? result.error : undefined;
+        setError(crawlError || "Failed to crawl website.");
+        return;
+      }
+
+      if (!("prefill" in result)) {
+        setError("Website crawl returned an invalid response.");
+        return;
+      }
+
+      const prefill = result.prefill;
+      setData((current) => {
+        const nextRestaurantName =
+          prefill.restaurantName || current.restaurantName;
+
+        return {
+          ...current,
+          restaurantName: nextRestaurantName,
+          displayName: prefill.displayName || nextRestaurantName || current.displayName,
+          country: prefill.country || current.country,
+          currency: prefill.currency || current.currency,
+          websiteUrl: prefill.websiteUrl || current.websiteUrl,
+          menuUrl: prefill.menuUrl || current.menuUrl,
+          logoUrl: prefill.logoUrl || current.logoUrl,
+          telephone: prefill.telephone || current.telephone,
+          openingHours: prefill.openingHours || current.openingHours,
+          servesCuisine: prefill.businessCategory || current.servesCuisine,
+          language:
+            prefill.language && current.language === "auto"
+              ? prefill.language
+              : current.language,
+          agentName:
+            current.agentName === "Restaurant Assistant" && nextRestaurantName
+              ? `${nextRestaurantName} Assistant`
+              : current.agentName,
+          agentInstructions:
+            current.agentInstructions === DEFAULT_AGENT_INSTRUCTIONS &&
+            prefill.agentInstructions
+              ? prefill.agentInstructions
+              : current.agentInstructions,
+        };
+      });
+
+      const importedCount = result.importedFields.length;
+      setWebsiteImportMessage(
+        importedCount > 0
+          ? `Imported ${importedCount} field${importedCount === 1 ? "" : "s"} from the website.`
+          : "We couldn't read much from this site — it may be JavaScript-rendered. Fields have been left for manual entry."
+      );
+      setWebsiteImportSummary(result.summary);
+    } catch (crawlError) {
+      setError(
+        crawlError instanceof Error
+          ? crawlError.message
+          : "Failed to crawl website."
+      );
+    } finally {
+      setWebsiteImporting(false);
+    }
   };
 
   return (
@@ -261,14 +366,79 @@ export default function OnboardingPage() {
                   <label className="text-sm font-medium text-gray-700">
                     Website URL
                   </label>
-                  <Input
-                    type="url"
-                    placeholder="https://restaurant.com"
-                    value={data.websiteUrl}
-                    onChange={(event) =>
-                      setData({ ...data, websiteUrl: event.target.value })
-                    }
-                  />
+                  <div className="flex flex-col gap-3 md:flex-row">
+                    <Input
+                      type="url"
+                      placeholder="https://restaurant.com"
+                      value={data.websiteUrl}
+                      onChange={(event) =>
+                        setData({ ...data, websiteUrl: event.target.value })
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleWebsiteImport}
+                      disabled={websiteImporting || !data.websiteUrl.trim()}
+                      className="gap-2 md:w-auto"
+                    >
+                      <RefreshCw
+                        size={16}
+                        className={websiteImporting ? "animate-spin" : ""}
+                      />
+                      {websiteImporting ? "Crawling..." : "Import Website Info"}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-600">
+                    Pulls name, logo, menu URL, country, currency, contact phone, and hours from the public website. Any detected phone is saved as the restaurant&apos;s contact number — the bot&apos;s WhatsApp number is assigned separately.
+                  </p>
+                </div>
+
+                {websiteImportMessage ? (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                    <div className="flex items-start gap-3">
+                      {data.logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={data.logoUrl}
+                          alt="Detected logo"
+                          className="h-10 w-10 shrink-0 rounded-md border border-emerald-200 bg-white object-contain p-0.5"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <Sparkles className="mt-0.5 shrink-0 text-emerald-700" size={18} />
+                      )}
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-emerald-900">
+                          {websiteImportMessage}
+                        </p>
+                        {websiteImportSummary.length ? (
+                          <div className="space-y-1">
+                            {websiteImportSummary.map((item) => (
+                              <p
+                                key={item}
+                                className="text-sm text-emerald-800"
+                              >
+                                {item}
+                              </p>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                  <h4 className="mb-2 text-sm font-semibold text-blue-900">
+                    Faster setup option
+                  </h4>
+                  <p className="text-sm text-blue-800">
+                    Manual entry still works. Website import just prefills the
+                    next steps so you can review and adjust before provisioning.
+                  </p>
                 </div>
               </div>
             ) : null}
@@ -392,16 +562,32 @@ export default function OnboardingPage() {
                   />
                 </div>
 
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-                  <h4 className="mb-2 text-sm font-semibold text-blue-900">
-                    What happens after this step
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Bot Phone Number
+                  </label>
+                  <Input
+                    type="tel"
+                    placeholder="+966XXXXXXXXX"
+                    value={data.botPhoneNumber}
+                    onChange={(event) =>
+                      setData({ ...data, botPhoneNumber: event.target.value })
+                    }
+                  />
+                  <p className="text-xs text-gray-600">
+                    Enter the phone number in international format (e.g. +966542228723). This number will be registered in Twilio and configured to route messages to the bot.
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-1">
+                  <h4 className="text-sm font-semibold text-amber-900">
+                    Important — before you continue
                   </h4>
-                  <p className="text-sm text-blue-800">
-                    The system creates your restaurant workspace now. If a ready
-                    WhatsApp sender is available in inventory, it will be
-                    assigned immediately. Otherwise your workspace is created in
-                    a pending WhatsApp state until sender registration is
-                    completed.
+                  <p className="text-sm text-amber-800">
+                    This phone number <span className="font-semibold">must not have an active WhatsApp account</span>. If there is a WhatsApp account associated with it, please remove it from that device before proceeding.
+                  </p>
+                  <p className="text-sm text-amber-700">
+                    To remove WhatsApp from a number: open WhatsApp → Settings → Account → Delete my account, or simply uninstall the app and request account deletion via the WhatsApp website.
                   </p>
                 </div>
               </div>

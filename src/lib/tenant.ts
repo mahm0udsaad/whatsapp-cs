@@ -14,9 +14,16 @@ function deriveSetupStatus(restaurant: Restaurant | null, sender: WhatsAppSender
     return "draft";
   }
 
+  // Prefer explicitly stored setup_status (present after migration)
   if (restaurant.setup_status) {
     return restaurant.setup_status;
   }
+
+  // Fall back to provisioning_status for records created before the migration
+  const provStatus = restaurant.provisioning_status;
+  if (provStatus === "active") return "active";
+  if (provStatus === "failed") return "failed";
+  if (provStatus && provStatus !== "draft") return "pending_whatsapp";
 
   if (sender?.status === "active") {
     return "active";
@@ -70,18 +77,26 @@ export async function getTenantContextForUser(userId: string): Promise<TenantCon
     aiAgent = data;
   }
 
+  // whatsapp_senders table does not exist in this schema;
+  // primary number lives in whatsapp_numbers with is_primary = true.
   let primarySender: WhatsAppSender | null = null;
   if (restaurant) {
     try {
       const { data } = await adminSupabaseClient
-        .from("whatsapp_senders")
+        .from("whatsapp_numbers")
         .select("*")
         .eq("restaurant_id", restaurant.id)
         .eq("is_primary", true)
         .limit(1)
         .maybeSingle();
 
-      primarySender = data;
+      // Map whatsapp_numbers row to the WhatsAppSender shape the rest of the app expects
+      if (data) {
+        primarySender = {
+          ...data,
+          status: data.onboarding_status ?? data.assignment_status ?? "active",
+        } as unknown as WhatsAppSender;
+      }
     } catch {
       primarySender = null;
     }

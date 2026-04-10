@@ -20,10 +20,11 @@ export async function POST() {
       return NextResponse.json({ error: "Restaurant not found" }, { status: 404 });
     }
 
-    const result = await provisionRestaurantTwilioResources({
-      restaurantId: restaurant.id,
-      restaurantName: restaurant.name,
-    });
+    const result = await provisionRestaurantTwilioResources(
+      user.id,
+      restaurant.id,
+      restaurant.name
+    );
 
     return NextResponse.json(result, { status: 200 });
   } catch (error) {

@@ -313,6 +313,28 @@ export interface MenuCrawlResponse {
   knowledge_base_entries: number;
 }
 
+export interface RestaurantWebsitePrefill {
+  restaurantName?: string;
+  displayName?: string;
+  websiteUrl: string;
+  menuUrl?: string;
+  country?: string;
+  currency?: string;
+  language?: "ar" | "en" | "auto";
+  agentInstructions?: string;
+  logoUrl?: string;
+  telephone?: string;
+  openingHours?: string;
+  businessCategory?: string;
+  address?: string;
+}
+
+export interface RestaurantWebsiteCrawlResponse {
+  prefill: RestaurantWebsitePrefill;
+  summary: string[];
+  importedFields: string[];
+}
+
 export interface OnboardingPayload {
   restaurantName: string;
   displayName: string;
@@ -324,6 +346,11 @@ export interface OnboardingPayload {
   personality: string;
   language: "ar" | "en" | "auto";
   agentInstructions: string;
+  logoUrl?: string;
+  telephone?: string;
+  openingHours?: string;
+  businessCategory?: string;
+  botPhoneNumber: string;
 }
 
 // --- Marketing Campaign Types ---

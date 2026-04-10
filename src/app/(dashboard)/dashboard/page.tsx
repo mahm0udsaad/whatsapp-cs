@@ -186,6 +186,8 @@ export default async function DashboardPage() {
       : 0;
 
   const setupStatus = restaurant.setup_status || "draft";
+  const needsWhatsAppSetup =
+    !restaurant.twilio_phone_number || setupStatus !== "active";
   const readinessItems = [
     {
       label: t("readiness.restaurantSetup"),
@@ -254,6 +256,36 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
+      {needsWhatsAppSetup ? (
+        <div className="flex flex-col gap-4 rounded-[28px] border border-amber-300/70 bg-amber-50/80 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-700">
+              <AlertCircle size={20} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-amber-900">
+                {restaurant.twilio_phone_number
+                  ? t("dashboard.whatsappPendingTitle", "Finish connecting your WhatsApp number")
+                  : t("dashboard.whatsappMissingTitle", "Connect your WhatsApp number")}
+              </p>
+              <p className="mt-1 text-sm leading-6 text-amber-900/85">
+                {t(
+                  "dashboard.whatsappAlertBody",
+                  "Your bot can't send or receive messages until a phone number is registered as a WhatsApp Business sender with Twilio. You'll need to delete WhatsApp from that number first."
+                )}
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/dashboard/whatsapp-setup"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-amber-900 px-5 py-3 text-sm font-semibold text-amber-50 transition-transform hover:-translate-y-0.5 sm:self-center"
+          >
+            {t("dashboard.whatsappAlertCta", "Set up WhatsApp")}
+            <ArrowRight size={16} className="rtl:rotate-180" />
+          </Link>
+        </div>
+      ) : null}
+
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_380px] xl:items-start">
         <Card className="relative h-fit overflow-hidden border-0 bg-[#10221a] text-white shadow-[0_40px_120px_-56px_rgba(5,10,8,0.85)]">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(66,196,140,0.28),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.12),transparent_34%)]" />

@@ -1,6 +1,10 @@
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 import { OnboardingPayload, SetupStatus } from "@/lib/types";
-import { provisionRestaurantTwilioResources } from "@/lib/twilio-provisioning";
+import {
+  provisionRestaurantTwilioResources,
+  registerCustomerOwnedNumber,
+} from "@/lib/twilio-provisioning";
+import { crawlWebsiteForKnowledgeBase } from "@/lib/website-kb-crawler";
 
 const COUNTRY_TIMEZONE: Record<string, string> = {
   EG: "Africa/Cairo",
@@ -23,19 +27,28 @@ function normalizeLanguage(language: string): "ar" | "en" | "auto" {
 
 function buildOffTopicResponse(language: "ar" | "en" | "auto") {
   if (language === "ar") {
-    return "عذراً، أنا متخصص فقط في الإجابة على أسئلة المطعم.";
+    return "عذراً، أنا متخصص فقط في الإجابة على أسئلة هذا العمل.";
   }
 
-  return "Sorry, I can only answer questions about the restaurant.";
+  return "Sorry, I can only answer questions about this business.";
 }
 
 function buildStarterKnowledgeBase(payload: OnboardingPayload, restaurantId: string) {
   const now = new Date().toISOString();
+
+  const profileParts = [
+    `${payload.restaurantName} is an active business using this WhatsApp assistant.`,
+    `WhatsApp display name: ${payload.displayName}.`,
+  ];
+  if (payload.businessCategory) profileParts.push(`Business type: ${payload.businessCategory}.`);
+  if (payload.telephone) profileParts.push(`Contact phone: ${payload.telephone}.`);
+  if (payload.openingHours) profileParts.push(`Hours: ${payload.openingHours}.`);
+
   const entries = [
     {
       restaurant_id: restaurantId,
-      title: "Restaurant profile",
-      content: `${payload.restaurantName} is an active restaurant customer using this WhatsApp assistant. Primary WhatsApp display name: ${payload.displayName}.`,
+      title: "Business profile",
+      content: profileParts.join(" "),
       source_type: "onboarding",
       metadata: { section: "profile" },
       created_at: now,
@@ -56,7 +69,7 @@ function buildStarterKnowledgeBase(payload: OnboardingPayload, restaurantId: str
     entries.push({
       restaurant_id: restaurantId,
       title: "Website",
-      content: `Official restaurant website: ${payload.websiteUrl}`,
+      content: `Official business website: ${payload.websiteUrl}`,
       source_type: "onboarding",
       metadata: { section: "website" },
       created_at: now,
@@ -67,8 +80,8 @@ function buildStarterKnowledgeBase(payload: OnboardingPayload, restaurantId: str
   if (payload.menuUrl) {
     entries.push({
       restaurant_id: restaurantId,
-      title: "Digital menu source",
-      content: `The restaurant menu can be imported from ${payload.menuUrl}.`,
+      title: "Catalog / menu source",
+      content: `Products or services catalog can be found at ${payload.menuUrl}.`,
       source_type: "onboarding",
       metadata: { section: "menu" },
       created_at: now,
@@ -77,25 +90,6 @@ function buildStarterKnowledgeBase(payload: OnboardingPayload, restaurantId: str
   }
 
   return entries;
-}
-
-async function createProvisioningRun(
-  restaurantId: string,
-  phase: string,
-  status: string,
-  metadata: Record<string, unknown>
-) {
-  try {
-    await adminSupabaseClient.from("provisioning_runs").insert({
-      restaurant_id: restaurantId,
-      provider: "twilio",
-      phase,
-      status,
-      metadata,
-    });
-  } catch {
-    // Migration may not be applied yet. Keep onboarding functional.
-  }
 }
 
 export async function provisionRestaurantForUser(
@@ -134,6 +128,10 @@ export async function provisionRestaurantForUser(
         currency: payload.currency,
         timezone: getTimezone(payload.country),
         digital_menu_url: payload.menuUrl || null,
+        logo_url: payload.logoUrl || null,
+        telephone: payload.telephone || null,
+        opening_hours: payload.openingHours || null,
+        cuisine: payload.businessCategory || null,
         twilio_phone_number: null,
         is_active: true,
       })
@@ -154,6 +152,10 @@ export async function provisionRestaurantForUser(
         currency: payload.currency,
         timezone: getTimezone(payload.country),
         digital_menu_url: payload.menuUrl || null,
+        logo_url: payload.logoUrl || null,
+        telephone: payload.telephone || null,
+        opening_hours: payload.openingHours || null,
+        cuisine: payload.businessCategory || null,
         updated_at: now,
       })
       .eq("id", restaurantId);
@@ -168,14 +170,26 @@ export async function provisionRestaurantForUser(
   }
 
   if (!assignedPhoneNumber) {
-    try {
-      const twilioProvisioning = await provisionRestaurantTwilioResources({
-        restaurantId,
-        restaurantName: payload.restaurantName,
-      });
-      assignedPhoneNumber = twilioProvisioning.assignedPhoneNumber;
-      setupStatus = twilioProvisioning.setupStatus;
-    } catch {
+    if (payload.botPhoneNumber) {
+      try {
+        // User supplied their own number — register it as a WhatsApp sender via Twilio
+        const result = await registerCustomerOwnedNumber(
+          userId,
+          restaurantId,
+          payload.botPhoneNumber,
+          payload.displayName || payload.restaurantName
+        );
+        assignedPhoneNumber = payload.botPhoneNumber;
+        setupStatus = result.setupStatus;
+      } catch {
+        // Registration failed (e.g. number still active on WhatsApp).
+        // Save the requested number so the dashboard alert can prompt a retry.
+        assignedPhoneNumber = payload.botPhoneNumber;
+        setupStatus = "pending_whatsapp";
+      }
+    } else {
+      // No bot number provided yet — user will complete it from the dashboard
+      // via /dashboard/whatsapp-setup. Leave the restaurant in pending_whatsapp.
       setupStatus = "pending_whatsapp";
     }
   } else {
@@ -234,18 +248,22 @@ export async function provisionRestaurantForUser(
     await adminSupabaseClient
       .from("knowledge_base")
       .insert(buildStarterKnowledgeBase(payload, restaurantId));
-  }
 
-  await createProvisioningRun(
-    restaurantId,
-    assignedPhoneNumber ? "number_assignment" : "awaiting_number_assignment",
-    assignedPhoneNumber ? "completed" : "pending",
-    {
-      assignedPhoneNumber,
-      language,
-      displayName: payload.displayName,
+    // Deep-crawl the website and add its content as additional KB entries.
+    // Runs fire-and-forget style inside the same request — failures are silent
+    // so they never block provisioning.
+    if (payload.websiteUrl) {
+      crawlWebsiteForKnowledgeBase(payload.websiteUrl, restaurantId)
+        .then(async (entries) => {
+          if (entries.length > 0) {
+            await adminSupabaseClient.from("knowledge_base").insert(entries);
+          }
+        })
+        .catch(() => {
+          // Non-fatal — website crawl enrichment is best-effort
+        });
     }
-  );
+  }
 
   return {
     restaurantId,

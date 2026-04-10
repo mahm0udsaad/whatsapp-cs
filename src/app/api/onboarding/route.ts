@@ -3,6 +3,8 @@ import { provisionRestaurantForUser } from "@/lib/onboarding";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { OnboardingPayload } from "@/lib/types";
 
+const E164_RE = /^\+[1-9]\d{6,14}$/;
+
 function validatePayload(payload: Partial<OnboardingPayload>) {
   if (!payload.restaurantName?.trim()) {
     return "Restaurant name is required.";
@@ -18,6 +20,14 @@ function validatePayload(payload: Partial<OnboardingPayload>) {
 
   if (!payload.agentInstructions?.trim()) {
     return "Agent instructions are required.";
+  }
+
+  if (!payload.botPhoneNumber?.trim()) {
+    return "Bot phone number is required.";
+  }
+
+  if (!E164_RE.test(payload.botPhoneNumber.trim())) {
+    return "Bot phone number must be in international format (e.g. +966542228723).";
   }
 
   return null;

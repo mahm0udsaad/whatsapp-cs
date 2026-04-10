@@ -118,7 +118,7 @@ export function Sidebar({
           "fixed inset-y-0 start-0 z-40 w-72 border-e border-white/10 bg-[#0e1713] text-white shadow-[0_24px_80px_-40px_rgba(0,0,0,0.65)] transition-transform duration-300 lg:translate-x-0",
           isOpen
             ? "translate-x-0"
-            : "ltr:-translate-x-full rtl:translate-x-full"
+            : "max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full"
         )}
       >
         <div className="flex h-full flex-col">
