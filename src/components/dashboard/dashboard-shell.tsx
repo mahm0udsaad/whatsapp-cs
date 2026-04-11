@@ -24,8 +24,12 @@ export function DashboardShell({
   const supabase = createClient();
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await Promise.allSettled([
+      supabase.auth.signOut(),
+      fetch("/api/auth/member-logout", { method: "POST" }),
+    ]);
     router.push("/login");
+    router.refresh();
   };
 
   return (

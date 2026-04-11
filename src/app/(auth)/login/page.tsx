@@ -12,7 +12,7 @@ import { MessageCircle } from "lucide-react";
 export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -23,17 +23,32 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) {
-        setError(signInError.message);
-      } else {
+      const trimmed = identifier.trim();
+      if (trimmed.includes("@")) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: trimmed,
+          password,
+        });
+        if (signInError) {
+          setError(signInError.message);
+          return;
+        }
         router.push("/dashboard");
+      } else {
+        const res = await fetch("/api/auth/member-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: trimmed, password }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(data.error || "Invalid username or password");
+          return;
+        }
+        router.push("/dashboard");
+        router.refresh();
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred");
     } finally {
       setLoading(false);
@@ -88,14 +103,15 @@ export default function LoginPage() {
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">
-              Email
+              Email or username
             </label>
             <Input
-              type="email"
-              placeholder="you@restaurant.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="text"
+              placeholder="you@restaurant.com or username"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               disabled={loading}
+              autoComplete="username"
               required
             />
           </div>

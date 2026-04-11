@@ -12,6 +12,7 @@ import {
   Menu,
   MessageSquare,
   Store,
+  Users,
   UtensilsCrossed,
   X,
 } from "lucide-react";
@@ -84,6 +85,12 @@ export function Sidebar({
       label: t("nav.marketing"),
       description: t("nav.marketing.desc"),
       icon: Megaphone,
+    },
+    {
+      href: "/dashboard/team",
+      label: t("nav.team"),
+      description: t("nav.team.desc"),
+      icon: Users,
     },
   ];
 

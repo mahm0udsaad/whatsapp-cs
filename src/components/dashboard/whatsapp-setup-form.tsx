@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,33 @@ export function WhatsAppSetupForm({
     !isAlreadyActive &&
     !isPendingVerification &&
     existingStatus !== null;
+
+  // Auto-sync once on mount if we have a sender SID but the DB still shows
+  // pending_test. Twilio may have flipped it to ONLINE since the last manual
+  // sync, and the alert on the dashboard shouldn't require a button click.
+  const autoSyncedRef = useRef(false);
+  useEffect(() => {
+    if (autoSyncedRef.current) return;
+    if (!existingSenderSid || isAlreadyActive) return;
+    if (existingStatus !== "pending_test") return;
+    autoSyncedRef.current = true;
+
+    (async () => {
+      try {
+        const response = await fetch(
+          "/api/dashboard/whatsapp/sync-sender-status",
+          { method: "POST" }
+        );
+        if (!response.ok) return;
+        const result = (await response.json()) as { onboardingStatus?: string };
+        if (result.onboardingStatus === "active") {
+          router.refresh();
+        }
+      } catch {
+        // Silent — the manual button is still available.
+      }
+    })();
+  }, [existingSenderSid, existingStatus, isAlreadyActive, router]);
 
   const handleDelete = async () => {
     if (

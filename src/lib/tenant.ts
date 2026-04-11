@@ -1,5 +1,7 @@
+import { cookies } from "next/headers";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { MEMBER_COOKIE, verifyMemberToken } from "@/lib/member-auth";
 import {
   AiAgent,
   Profile,
@@ -8,6 +10,12 @@ import {
   TenantContext,
   WhatsAppSender,
 } from "@/lib/types";
+
+export interface SessionContext {
+  ownerId: string;
+  memberId: string | null;
+  restaurantId: string | null;
+}
 
 function deriveSetupStatus(restaurant: Restaurant | null, sender: WhatsAppSender | null): SetupStatus {
   if (!restaurant) {
@@ -36,13 +44,52 @@ function deriveSetupStatus(restaurant: Restaurant | null, sender: WhatsAppSender
   return "draft";
 }
 
+export async function getCurrentSessionContext(): Promise<SessionContext | null> {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    return { ownerId: user.id, memberId: null, restaurantId: null };
+  }
+
+  const cookieStore = await cookies();
+  const memberSession = await verifyMemberToken(
+    cookieStore.get(MEMBER_COOKIE)?.value
+  );
+  if (!memberSession) return null;
+
+  // Confirm the member still exists; otherwise treat the cookie as invalid
+  // (handles deletion / password reset invalidating prior sessions).
+  const { data: member } = await adminSupabaseClient
+    .from("restaurant_members")
+    .select("id, restaurant_id")
+    .eq("id", memberSession.memberId)
+    .maybeSingle();
+
+  if (!member) return null;
+
+  return {
+    ownerId: memberSession.ownerId,
+    memberId: memberSession.memberId,
+    restaurantId: memberSession.restaurantId,
+  };
+}
+
 export async function getCurrentUser() {
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  return user;
+  if (user) return user;
+
+  const ctx = await getCurrentSessionContext();
+  if (!ctx) return null;
+
+  // Synthetic user object — downstream code only uses .id.
+  return { id: ctx.ownerId } as unknown as NonNullable<typeof user>;
 }
 
 export async function getTenantContextForUser(userId: string): Promise<TenantContext | null> {

@@ -1,8 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getMemberSessionFromRequest } from "@/lib/member-auth";
 
 const publicRoutes = ["/login", "/signup", "/auth/callback"];
-const publicPrefixes = ["/api/webhooks/", "/api/internal/"];
+const publicPrefixes = [
+  "/api/webhooks/",
+  "/api/internal/",
+  "/api/auth/member-login",
+  "/api/auth/member-logout",
+];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -36,9 +42,12 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const memberSession = user ? null : await getMemberSessionFromRequest(request);
+  const isAuthenticated = Boolean(user) || Boolean(memberSession);
+
   const { pathname } = request.nextUrl;
 
-  if (user && publicRoutes.includes(pathname)) {
+  if (isAuthenticated && publicRoutes.includes(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
@@ -46,7 +55,12 @@ export async function updateSession(request: NextRequest) {
 
   const isPublicPrefix = publicPrefixes.some((prefix) => pathname.startsWith(prefix));
 
-  if (!user && !publicRoutes.includes(pathname) && pathname !== "/" && !isPublicPrefix) {
+  if (
+    !isAuthenticated &&
+    !publicRoutes.includes(pathname) &&
+    pathname !== "/" &&
+    !isPublicPrefix
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
