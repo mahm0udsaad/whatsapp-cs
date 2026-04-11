@@ -30,6 +30,7 @@ export default async function DashboardLayout({
       restaurantLogo={tenant.restaurant.logo_url}
       userName={tenant.profile.full_name}
       userEmail={tenant.profile.email}
+      locale="ar"
     >
       {children}
     </DashboardShell>

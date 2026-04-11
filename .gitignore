@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# claude code worktrees (should never be tracked as gitlinks)
+.claude/worktrees/

@@ -1,8 +1,12 @@
 import { adminSupabaseClient } from "@/lib/supabase/admin";
+import { buildBusinessSupportContext } from "@/lib/customer-service";
 import { generateGeminiResponse } from "@/lib/gemini";
 import { sendWhatsAppMessage } from "@/lib/twilio";
 import { sendInteractiveMessage } from "@/lib/twilio-content";
 import { isSessionWindowOpen } from "@/lib/session-window";
+import { retrieveKnowledgeChunks } from "@/lib/rag";
+import { classifyIntent } from "@/lib/intent-classifier";
+import { createOrder } from "@/lib/order-manager";
 import type { InteractiveReply } from "@/lib/types";
 
 interface QueueAIReplyJobInput {
@@ -81,9 +85,9 @@ async function getConversationHistory(conversationId: string, limit = 12) {
   });
 }
 
-// Arabic/English stop-words that add no retrieval signal. Short pronouns and
-// common verbs ("yes", "tell me", "ايوا", "عرفني") were silently killing KB
-// matches on follow-up turns.
+// Arabic/English stop-words used by the keyword KB fallback. Short pronouns
+// and common verbs ("yes", "tell me", "ايوا", "عرفني") were silently killing
+// retrieval on follow-up turns when the embedding RAG isn't populated.
 const KB_STOPWORDS = new Set([
   // English
   "the", "and", "for", "you", "are", "can", "have", "has", "with", "what",
@@ -100,50 +104,31 @@ const KB_STOPWORDS = new Set([
 function tokenize(text: string): string[] {
   return text
     .toLowerCase()
-    // Keep letters (incl. Arabic) and digits, split on everything else
     .split(/[^\p{L}\p{N}]+/u)
     .filter((word) => word.length > 2 && !KB_STOPWORDS.has(word));
 }
 
-async function queryKnowledgeBase(
-  restaurantId: string,
-  query: string,
-  history: Array<{ role: "user" | "assistant"; content: string }>
-) {
-  // Pull the full KB for the tenant. Previously this capped at 8 rows BEFORE
-  // filtering, so any business with a rich KB (a spa with 10+ services, a
-  // restaurant with categories, etc.) would see most entries invisible to the
-  // agent. KB entries are short, so fetching ~200 is cheap.
+/**
+ * Legacy keyword fallback over the `knowledge_base` table that the website
+ * crawler populates during onboarding. Used when the new vector RAG returns
+ * nothing (e.g. tenant has not run the chunk ingestion yet, or the
+ * embedding similarity threshold filtered everything out).
+ */
+async function fallbackKeywordKB(restaurantId: string, expandedQuery: string) {
   const { data } = await adminSupabaseClient
     .from("knowledge_base")
     .select("title, content")
     .eq("restaurant_id", restaurantId)
     .limit(200);
 
-  if (!data?.length) {
-    return "";
-  }
-
-  // Expand the retrieval query with the last couple of USER turns. Short
-  // follow-ups like "yes, show me the types" carry no topical keywords on
-  // their own — the topic lives in the previous user message.
-  const recentUserTurns = history
-    .filter((msg) => msg.role === "user")
-    .slice(-3)
-    .map((msg) => msg.content)
-    .join(" ");
-  const expandedQuery = `${query} ${recentUserTurns}`;
-  const queryTokens = new Set(tokenize(expandedQuery));
+  if (!data?.length) return "";
 
   const renderEntry = (entry: { title: string | null; content: string }) => {
     const title = entry.title?.trim();
     return title ? `${title}: ${entry.content}` : entry.content;
   };
 
-  // If we have topical tokens, score entries by overlap against title+content
-  // and keep the best. Fall back to the whole KB (capped) when we have no
-  // signal at all — better to give the model everything than nothing, since
-  // the strict "answer from knowledge" prompt depends on KB being present.
+  const queryTokens = new Set(tokenize(expandedQuery));
   if (queryTokens.size === 0) {
     return data.slice(0, 20).map(renderEntry).join("\n\n");
   }
@@ -162,13 +147,39 @@ async function queryKnowledgeBase(
     .slice(0, 12)
     .map((row) => renderEntry(row.entry));
 
-  // Even when scoring produces nothing (pure stop-words, or a greeting), we
-  // still pass a slice of the KB so the agent has grounding to list from.
   if (scored.length === 0) {
     return data.slice(0, 12).map(renderEntry).join("\n\n");
   }
-
   return scored.join("\n\n");
+}
+
+async function queryKnowledgeBase(
+  restaurantId: string,
+  query: string,
+  history: Array<{ role: "user" | "assistant"; content: string }>
+) {
+  // Expand the retrieval query with the last couple of USER turns. Short
+  // follow-ups like "ايوا عرفني الانواع" carry no topical signal on their
+  // own — the topic lives in the previous user turn — and that's true for
+  // both embedding similarity and keyword matching.
+  const recentUserTurns = history
+    .filter((msg) => msg.role === "user")
+    .slice(-3)
+    .map((msg) => msg.content)
+    .join(" ");
+  const expandedQuery = `${query} ${recentUserTurns}`.trim();
+
+  // Primary path: semantic RAG over the `knowledge_chunks` table populated
+  // by `scripts/ingest-knowledge-base.ts`.
+  const ragResult = await retrieveKnowledgeChunks(restaurantId, expandedQuery, 5);
+  if (ragResult.trim().length > 0) {
+    return ragResult;
+  }
+
+  // Fallback: legacy keyword search over the older `knowledge_base` table
+  // (populated by the website crawler during onboarding). Ensures the agent
+  // still has grounding for tenants that haven't run chunk ingestion.
+  return fallbackKeywordKB(restaurantId, expandedQuery);
 }
 
 async function getMenuContext(restaurantId: string) {
@@ -197,6 +208,16 @@ async function getMenuContext(restaurantId: string) {
       return parts.join(" | ");
     })
     .join("\n");
+}
+
+async function getConversationContext(conversationId: string) {
+  const { data } = await adminSupabaseClient
+    .from("conversations")
+    .select("customer_name, last_inbound_at, bot_paused")
+    .eq("id", conversationId)
+    .maybeSingle();
+
+  return data;
 }
 
 export async function queueAIReplyJob(input: QueueAIReplyJobInput) {
@@ -274,6 +295,25 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
         throw new Error("Missing inbound message, restaurant, or ai agent");
       }
 
+      const conversation = await getConversationContext(job.conversation_id);
+
+      // Bot pause: owner has stopped the AI for this conversation via the mobile app.
+      // Skip generating/sending a reply but mark the job completed so it isn't retried.
+      if (conversation?.bot_paused) {
+        console.warn(
+          `[ai-reply] Bot paused for conversation ${job.conversation_id}. Skipping.`
+        );
+        await adminSupabaseClient
+          .from("ai_reply_jobs")
+          .update({
+            status: "completed",
+            processed_at: new Date().toISOString(),
+            last_error: "bot_paused",
+          })
+          .eq("id", job.id);
+        continue;
+      }
+
       const history = await getConversationHistory(job.conversation_id, 12);
       const ragContext = await queryKnowledgeBase(
         job.restaurant_id,
@@ -281,9 +321,7 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
         history
       );
       const menuContext = await getMenuContext(job.restaurant_id);
-      const fullContext = [ragContext, menuContext]
-        .filter((value) => value.trim())
-        .join("\n\n");
+      const businessContext = buildBusinessSupportContext(restaurant);
 
       const userLanguage = detectLanguage(inboundMessage.content);
       let responseText: string;
@@ -293,9 +331,14 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
         const result = await generateGeminiResponse({
           systemPrompt:
             aiAgent.system_instructions ||
-            `You are a restaurant assistant for ${restaurant.name}.`,
+            `You are the customer service agent for ${restaurant.name}.`,
+          businessName: restaurant.name,
+          agentName: aiAgent.name,
+          customerName: conversation?.customer_name || null,
           personality: aiAgent.personality || "friendly",
-          ragContext: fullContext,
+          businessContext,
+          ragContext,
+          menuContext,
           conversationHistory: history.slice(0, -1),
           userMessage: inboundMessage.content,
           languagePreference:
@@ -303,12 +346,31 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
           offTopicResponse:
             aiAgent.off_topic_response ||
             (userLanguage === "ar"
-              ? "عذراً، أنا متخصص فقط في الإجابة على أسئلة المطعم."
-              : "Sorry, I can only answer questions about the restaurant."),
+              ? "عذراً، أستطيع المساعدة فقط في الأسئلة المتعلقة بهذا النشاط."
+              : "Sorry, I can only help with questions about this business."),
         });
 
         responseText = result.content;
         reply = result.reply;
+
+        // Fire-and-forget: classify intent and create order/escalation if needed.
+        // Uses the plain-text preview (responseText) so the classifier sees the
+        // same content for both text and interactive replies. Escalation
+        // detection still works because the prompt now allows the model to use
+        // "I'll check with our team" only when it genuinely has no answer.
+        classifyIntent(inboundMessage.content, responseText, history)
+          .then(async ({ intent, details }) => {
+            if (intent === "none" || !details.trim()) return;
+            await createOrder({
+              restaurantId: job.restaurant_id,
+              conversationId: job.conversation_id,
+              customerPhone: (job.payload as { customerPhone?: string })?.customerPhone || "",
+              customerName: conversation?.customer_name ?? null,
+              type: intent,
+              details,
+            });
+          })
+          .catch(() => {/* non-fatal */});
       } catch {
         responseText =
           userLanguage === "ar"
@@ -324,12 +386,6 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
         (job.payload as { customerPhone?: string | null })?.customerPhone || "";
 
       // Check 24-hour session window before sending
-      const { data: conversation } = await adminSupabaseClient
-        .from("conversations")
-        .select("last_inbound_at")
-        .eq("id", job.conversation_id)
-        .single();
-
       if (!isSessionWindowOpen(conversation?.last_inbound_at)) {
         console.warn(`[ai-reply] 24-hour window expired for conversation ${job.conversation_id}. Skipping.`);
         await adminSupabaseClient

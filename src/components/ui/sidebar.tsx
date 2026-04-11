@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Bot,
   BookOpen,
+  ClipboardList,
   LayoutDashboard,
   LogOut,
   Megaphone,
@@ -20,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "./button";
 import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 import { LanguageSwitcher } from "./language-switcher";
-import { getClientLocale, createTranslator } from "@/lib/i18n";
+import { Locale, getClientLocale, createTranslator } from "@/lib/i18n";
 
 interface SidebarProps {
   restaurantName?: string;
@@ -28,6 +29,8 @@ interface SidebarProps {
   userEmail?: string;
   userName?: string;
   onLogout?: () => void;
+  locale?: Locale;
+  showLanguageSwitcher?: boolean;
 }
 
 export function Sidebar({
@@ -36,10 +39,12 @@ export function Sidebar({
   userEmail,
   userName,
   onLogout,
+  locale: forcedLocale,
+  showLanguageSwitcher = true,
 }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
-  const locale = getClientLocale();
+  const locale = forcedLocale ?? getClientLocale();
   const t = createTranslator(locale);
 
   const navItems = [
@@ -73,6 +78,12 @@ export function Sidebar({
       label: t("nav.menu"),
       description: t("nav.menu.desc"),
       icon: UtensilsCrossed,
+    },
+    {
+      href: "/dashboard/orders",
+      label: "الطلبات والتصعيدات",
+      description: "الحجوزات والحالات التي تحتاج متابعة",
+      icon: ClipboardList,
     },
     {
       href: "/dashboard/conversations",
@@ -224,7 +235,7 @@ export function Sidebar({
               </div>
 
               <div className="mt-4 space-y-2">
-                <LanguageSwitcher />
+                {showLanguageSwitcher ? <LanguageSwitcher /> : null}
                 <Button
                   variant="ghost"
                   size="sm"

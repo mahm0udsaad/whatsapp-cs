@@ -27,12 +27,11 @@ export default async function WhatsAppSetupPage() {
     <div className="flex-1 p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-2xl space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">
-            Connect your WhatsApp number
+          <h1 className="text-3xl font-bold text-slate-950">
+            ربط رقم واتساب
           </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Register the phone number that will receive and reply to your
-            customers&apos; WhatsApp messages.
+          <p className="mt-2 text-slate-600">
+            سجّل الرقم الذي سيستقبل رسائل عملائك على واتساب ويرد عليها.
           </p>
         </div>
 

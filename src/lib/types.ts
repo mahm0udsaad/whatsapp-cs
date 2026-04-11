@@ -37,6 +37,10 @@ export interface Restaurant {
   twilio_auth_token: string | null;
   digital_menu_url: string | null;
   website_url?: string | null;
+  telephone?: string | null;
+  opening_hours?: string | null;
+  cuisine?: string | null;
+  address?: string | null;
   primary_whatsapp_number_id?: string | null;
   provisioning_status?: ProvisioningStatus;
   is_active: boolean;
@@ -62,6 +66,22 @@ export interface AiAgent {
   max_context_messages?: number;
   temperature?: number;
   is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Order {
+  id: string;
+  restaurant_id: string;
+  conversation_id: string;
+  customer_phone: string;
+  customer_name: string | null;
+  type: "reservation" | "escalation";
+  details: string;
+  status: "pending" | "confirmed" | "rejected" | "replied";
+  admin_note: string | null;
+  admin_reply: string | null;
+  replied_at: string | null;
   created_at: string;
   updated_at: string;
 }

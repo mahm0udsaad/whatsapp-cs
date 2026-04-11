@@ -38,13 +38,13 @@ function formatDate(value: string | null) {
 }
 
 const statusBadge: Record<string, { className: string; label: string }> = {
-  draft: { className: "bg-slate-200/70 text-slate-700", label: "Draft" },
-  scheduled: { className: "bg-sky-500/12 text-sky-700", label: "Scheduled" },
-  processing: { className: "bg-amber-500/12 text-amber-700", label: "Processing" },
-  sending: { className: "bg-amber-500/12 text-amber-700", label: "Sending" },
-  completed: { className: "bg-emerald-500/12 text-emerald-700", label: "Completed" },
-  failed: { className: "bg-red-500/12 text-red-700", label: "Failed" },
-  cancelled: { className: "bg-slate-200/70 text-slate-600", label: "Cancelled" },
+  draft: { className: "bg-slate-200/70 text-slate-700", label: "مسودة" },
+  scheduled: { className: "bg-sky-500/12 text-sky-700", label: "مجدولة" },
+  processing: { className: "bg-amber-500/12 text-amber-700", label: "قيد المعالجة" },
+  sending: { className: "bg-amber-500/12 text-amber-700", label: "جارٍ الإرسال" },
+  completed: { className: "bg-emerald-500/12 text-emerald-700", label: "مكتملة" },
+  failed: { className: "bg-red-500/12 text-red-700", label: "فشلت" },
+  cancelled: { className: "bg-slate-200/70 text-slate-600", label: "ملغاة" },
 };
 
 export default async function MarketingHubPage() {
@@ -125,26 +125,26 @@ export default async function MarketingHubPage() {
 
   const quickActions = [
     {
-      label: "Create Template with AI",
-      description: "Let AI build a WhatsApp-approved template for you.",
+      label: "إنشاء قالب بالذكاء الاصطناعي",
+      description: "أنشئ قالب واتساب بمساعدة الذكاء الاصطناعي.",
       href: "/dashboard/marketing/templates/new",
       icon: Sparkles,
     },
     {
-      label: "Launch New Campaign",
-      description: "Send templates to your audience list.",
+      label: "إطلاق حملة جديدة",
+      description: "أرسل القوالب إلى قائمة جمهورك.",
       href: "/dashboard/marketing/campaigns/new",
       icon: Send,
     },
     {
-      label: "Manage Templates",
-      description: "View, edit, and submit templates for approval.",
+      label: "إدارة القوالب",
+      description: "راجع القوالب وعدّلها وأرسلها للاعتماد.",
       href: "/dashboard/marketing/templates",
       icon: FileText,
     },
     {
-      label: "Campaign Calendar",
-      description: "See scheduled and past campaigns on a calendar.",
+      label: "تقويم الحملات",
+      description: "راجع الحملات المجدولة والسابقة في التقويم.",
       href: "/dashboard/marketing/calendar",
       icon: CalendarDays,
     },
@@ -158,22 +158,21 @@ export default async function MarketingHubPage() {
         <CardContent className="relative p-7 sm:p-8 lg:p-10">
           <div className="flex flex-wrap items-center gap-3">
             <Badge className="rounded-full border border-white/10 bg-white/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-50">
-              Marketing hub
+              مركز التسويق
             </Badge>
           </div>
 
           <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_280px] lg:items-end">
             <div>
               <p className="text-sm uppercase tracking-[0.32em] text-white/48">
-                WhatsApp Campaigns
+                حملات واتساب
               </p>
               <h1 className="mt-4 max-w-2xl text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
-                Reach your customers with targeted campaigns.
+                تواصل مع عملائك عبر حملات موجهة.
               </h1>
               <p className="mt-4 max-w-xl text-base leading-7 text-white/68">
-                Create AI-powered templates, manage campaigns, and track delivery
-                performance across your audience. Everything in one place for{" "}
-                {restaurant.name}.
+                أنشئ قوالب ذكية، وأدر الحملات، وتابع أداء الإرسال من مكان واحد
+                لعلامتك التجارية {restaurant.name}.
               </p>
 
               <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -182,53 +181,53 @@ export default async function MarketingHubPage() {
                   className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition-transform hover:-translate-y-0.5"
                 >
                   <Sparkles size={16} />
-                  Build Template with AI
+                  إنشاء قالب بالذكاء الاصطناعي
                 </Link>
                 <Link
                   href="/dashboard/marketing/campaigns/new"
                   className="rounded-full border border-white/10 bg-white/8 px-5 py-3 text-sm font-medium text-white/90 transition-colors hover:bg-white/14"
                 >
-                  New Campaign
+                  حملة جديدة
                 </Link>
               </div>
             </div>
 
             <div className="rounded-[28px] border border-white/10 bg-black/16 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/45">
-                Quick stats
+                ملخص سريع
               </p>
               <div className="mt-5 space-y-4">
                 <div className="flex items-end justify-between border-b border-white/10 pb-4">
                   <div>
-                    <p className="text-sm text-white/62">Templates</p>
+                    <p className="text-sm text-white/62">القوالب</p>
                     <p className="mt-2 text-3xl font-semibold tracking-[-0.05em]">
                       {totalTemplates}
                     </p>
                   </div>
                   <span className="text-xs text-white/45">
-                    {approvedTemplates} approved
+                    {approvedTemplates} معتمدة
                   </span>
                 </div>
                 <div className="flex items-end justify-between border-b border-white/10 pb-4">
                   <div>
-                    <p className="text-sm text-white/62">Campaigns</p>
+                    <p className="text-sm text-white/62">الحملات</p>
                     <p className="mt-2 text-3xl font-semibold tracking-[-0.05em]">
                       {totalCampaigns}
                     </p>
                   </div>
                   <span className="text-xs text-white/45">
-                    {activeCampaigns} active
+                    {activeCampaigns} نشطة
                   </span>
                 </div>
                 <div className="flex items-end justify-between">
                   <div>
-                    <p className="text-sm text-white/62">Recipients</p>
+                    <p className="text-sm text-white/62">المستلمون</p>
                     <p className="mt-2 text-3xl font-semibold tracking-[-0.05em]">
                       {totalRecipients.toLocaleString()}
                     </p>
                   </div>
                   <span className="text-xs text-white/45">
-                    total contacts
+                    إجمالي جهات الاتصال
                   </span>
                 </div>
               </div>
@@ -240,35 +239,35 @@ export default async function MarketingHubPage() {
       {/* Stats cards */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatsCard
-          title="Total Templates"
+          title="إجمالي القوالب"
           value={totalTemplates}
           icon={<FileText size={22} />}
-          description="WhatsApp message templates created."
-          footnote={`${approvedTemplates} approved and ready`}
+          description="عدد قوالب واتساب التي تم إنشاؤها."
+          footnote={`${approvedTemplates} معتمدة وجاهزة`}
           tone="emerald"
         />
         <StatsCard
-          title="Approved Templates"
+          title="القوالب المعتمدة"
           value={approvedTemplates}
           icon={<Sparkles size={22} />}
-          description="Templates approved for sending."
-          footnote="Available for campaigns"
+          description="قوالب معتمدة وجاهزة للإرسال."
+          footnote="متاحة للحملات"
           tone="sky"
         />
         <StatsCard
-          title="Active Campaigns"
+          title="الحملات النشطة"
           value={activeCampaigns}
           icon={<Megaphone size={22} />}
-          description="Campaigns currently scheduled or sending."
-          footnote={`${totalCampaigns} total campaigns`}
+          description="حملات مجدولة أو جارٍ إرسالها الآن."
+          footnote={`${totalCampaigns} إجمالي الحملات`}
           tone="amber"
         />
         <StatsCard
-          title="Total Recipients"
+          title="إجمالي المستلمين"
           value={totalRecipients.toLocaleString()}
           icon={<Users size={22} />}
-          description="Contact records across all campaigns."
-          footnote="Unique phone numbers"
+          description="عدد السجلات عبر جميع الحملات."
+          footnote="أرقام هاتف فريدة"
           tone="rose"
         />
       </div>
@@ -278,14 +277,14 @@ export default async function MarketingHubPage() {
         <Card>
           <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <CardDescription>Campaign activity</CardDescription>
-              <CardTitle>Recent campaigns</CardTitle>
+              <CardDescription>نشاط الحملات</CardDescription>
+              <CardTitle>أحدث الحملات</CardTitle>
             </div>
             <Link
               href="/dashboard/marketing/campaigns"
               className="inline-flex items-center gap-2 text-sm font-medium text-emerald-700 transition-colors hover:text-emerald-800"
             >
-              View all
+              عرض الكل
               <ArrowRight size={16} />
             </Link>
           </CardHeader>
@@ -297,25 +296,25 @@ export default async function MarketingHubPage() {
                   className="mx-auto mb-3 text-slate-400"
                 />
                 <p className="text-sm font-medium text-slate-700">
-                  No campaigns yet
+                  لا توجد حملات بعد
                 </p>
                 <p className="mt-1 text-sm text-slate-500">
-                  Create your first campaign to start reaching customers.
+                  ابدأ بأول حملة للوصول إلى عملائك.
                 </p>
                 <Link
                   href="/dashboard/marketing/campaigns/new"
                   className="mt-4 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
                 >
                   <Plus size={14} />
-                  New Campaign
+                  حملة جديدة
                 </Link>
               </div>
             ) : (
               recentCampaigns.map((campaign) => {
                 const badge = statusBadge[campaign.status] || statusBadge.draft;
                 const templateName = campaign.template_id
-                  ? templateNames[campaign.template_id] || "Unknown template"
-                  : "No template";
+                  ? templateNames[campaign.template_id] || "قالب غير معروف"
+                  : "بدون قالب";
                 const progress =
                   campaign.total_recipients > 0
                     ? Math.round(
@@ -344,7 +343,7 @@ export default async function MarketingHubPage() {
                           </Badge>
                         </div>
                         <p className="mt-1 text-xs text-slate-500">
-                          Template: {templateName}
+                          القالب: {templateName}
                         </p>
 
                         {/* Progress bar */}
@@ -354,7 +353,7 @@ export default async function MarketingHubPage() {
                               <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
                                 <span>
                                   {campaign.sent_count}/{campaign.total_recipients}{" "}
-                                  sent
+                                  تم الإرسال
                                 </span>
                                 <span>{progress}%</span>
                               </div>
@@ -370,20 +369,20 @@ export default async function MarketingHubPage() {
                         {/* Delivery stats */}
                         <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
                           {campaign.delivered_count > 0 && (
-                            <span>Delivered: {campaign.delivered_count}</span>
+                            <span>تم التسليم: {campaign.delivered_count}</span>
                           )}
                           {campaign.read_count > 0 && (
-                            <span>Read: {campaign.read_count}</span>
+                            <span>تمت القراءة: {campaign.read_count}</span>
                           )}
                           {campaign.failed_count > 0 && (
                             <span className="text-red-600">
-                              Failed: {campaign.failed_count}
+                              فشل: {campaign.failed_count}
                             </span>
                           )}
                           <span>
                             {campaign.scheduled_at
-                              ? `Scheduled: ${formatDate(campaign.scheduled_at)}`
-                              : `Created: ${formatDate(campaign.created_at)}`}
+                              ? `مجدولة: ${formatDate(campaign.scheduled_at)}`
+                              : `تم الإنشاء: ${formatDate(campaign.created_at)}`}
                           </span>
                         </div>
                       </div>
@@ -397,8 +396,8 @@ export default async function MarketingHubPage() {
 
         <Card>
           <CardHeader>
-            <CardDescription>Quick actions</CardDescription>
-            <CardTitle>Get started</CardTitle>
+            <CardDescription>إجراءات سريعة</CardDescription>
+            <CardTitle>ابدأ الآن</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3">
             {quickActions.map((action) => {

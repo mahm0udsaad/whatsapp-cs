@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI, SchemaType, type Schema } from "@google/generative-ai";
+import { buildCustomerServiceSystemPrompt } from "./customer-service";
 import type { GeminiResponse, InteractiveReply } from "./types";
 
 const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
@@ -16,8 +17,13 @@ interface ConversationMessage {
 
 interface GeminiContext {
   systemPrompt: string;
+  businessName: string;
+  agentName?: string | null;
+  customerName?: string | null;
   personality: string;
+  businessContext?: string;
   ragContext: string;
+  menuContext?: string;
   conversationHistory: ConversationMessage[];
   userMessage: string;
   languagePreference: "ar" | "en" | "auto";
@@ -55,7 +61,7 @@ async function isOffTopic(
     return false;
   }
 
-  // Clearly off-topic keywords (things that have nothing to do with a restaurant)
+  // Clearly off-topic keywords (things that have nothing to do with the business)
   const offTopicKeywords = [
     "bitcoin", "crypto", "stock market", "programming", "code",
     "politics", "election", "war", "hack", "password",
@@ -130,7 +136,7 @@ const REPLY_SCHEMA: Schema = {
 
 const INTERACTIVE_RULES = `
 You can answer in three formats. Pick the one that best fits the customer's request:
-- "list": when the customer is asking what's available (services, categories, menu sections, locations, dates, times) AND there are 2-10 distinct options. Use this whenever the customer is browsing or has not made a specific choice yet. If the knowledge base contains the options (service names, product names, categories), you MUST list them as a list picker — never dump them as prose and never defer.
+- "list": when the customer is asking what's available (services, categories, menu sections, locations, dates, times) AND there are 2-10 distinct options. Use this whenever the customer is browsing or has not made a specific choice yet. If the knowledge base contains the options (service names, product names, categories), you MUST list them as a list picker — never dump them as prose.
 - "quick_reply": when you need the customer to choose between 2-3 options (yes/no, two dates, "today/tomorrow/pick a date").
 - "text": only for free-form prose answers (greetings, explanations, confirmations, addresses, prices for ONE specific item).
 
@@ -142,9 +148,7 @@ Whenever the customer's previous message starts with [user_action:<id>], that is
 
 Prefer interactive replies over text whenever you are asking the customer to make a choice. Do not list options inside text — use list/quick_reply instead.
 
-CRITICAL — answer from the knowledge you already have. The "Relevant Information" section above is YOUR knowledge base: services, products, categories, prices, hours. When the customer asks about something that is covered there, you answer directly from it. Under no circumstances do you stall, promise to "check with the team", say "I'll get back to you", say "someone will contact you shortly", say "سأتحقق / سأتواصل معك / سنرد عليك قريباً / فريقنا سيتواصل", or otherwise defer to a human — you ARE the agent, and deferring when the answer is in the knowledge base is a failure. Only say you don't know when the knowledge base genuinely has nothing on the topic, and even then say "I don't have this information" rather than promising a follow-up.
-
-When the customer asks "what types / what's available / what do you have / عندك ايه / ايه الانواع / عرفني الانواع" and the knowledge base contains the relevant services, products, or categories, you MUST reply with type="list" enumerating them. Do not reply with text asking them to wait.
+CRITICAL — answer from the knowledge you already have. The "Knowledge Base Context" / "Menu Context" / "Business Profile" sections in the system prompt are YOUR information: services, products, categories, prices, hours. When the customer asks about something covered there, answer directly. Do NOT say "I'll check with the team", "someone will get back to you", "سأتحقق", "سأتواصل معك", "سيتواصل معك فريقنا" — those phrases are reserved for cases where the knowledge truly does not contain the answer. When the customer asks "what types / what's available / what do you have / عندك ايه / ايه الانواع / عرفني الانواع" and the knowledge contains the relevant services, products, or categories, you MUST reply with type="list" enumerating them.
 `.trim();
 
 /** Defensive parser — Gemini occasionally drifts from the schema. Falls back to text. */
@@ -229,6 +233,36 @@ function previewOf(reply: InteractiveReply): string {
 }
 
 /**
+ * Build the full system prompt for a turn: the customer-service base built
+ * from structured tenant context, plus the interactive-reply rules and the
+ * anti-deferral / list-picker directives. Kept as one place so the chat path
+ * and the retry path stay in sync.
+ */
+function buildSystemPrompt(
+  context: GeminiContext,
+  responseLanguage: "ar" | "en"
+): string {
+  const base = buildCustomerServiceSystemPrompt({
+    businessName: context.businessName,
+    agentName: context.agentName ?? null,
+    customerName: context.customerName ?? null,
+    personality: context.personality,
+    language: responseLanguage,
+    baseInstructions: context.systemPrompt,
+    businessContext: context.businessContext,
+    ragContext: context.ragContext,
+    menuContext: context.menuContext,
+  });
+
+  const rules = INTERACTIVE_RULES.replace(
+    "{RESPONSE_LANGUAGE}",
+    responseLanguage === "ar" ? "Arabic" : "English"
+  );
+
+  return `${base}\n\nReply Format Rules:\n${rules}`;
+}
+
+/**
  * Generate a response using Google Gemini
  */
 export async function generateGeminiResponse(
@@ -254,18 +288,7 @@ export async function generateGeminiResponse(
     };
   }
 
-  // Build the prompt
-  let systemPrompt = context.systemPrompt;
-  systemPrompt += `\n\nPersonality: ${context.personality}`;
-
-  if (context.ragContext.trim()) {
-    systemPrompt += `\n\nRelevant Information:\n${context.ragContext}`;
-  }
-
-  systemPrompt += `\n\nRespond in ${responseLanguage === "ar" ? "Arabic" : "English"} language.`;
-  systemPrompt += "\nBe concise, helpful, and maintain a professional yet friendly tone.";
-  systemPrompt += "\nIMPORTANT: You ARE the customer service agent responding directly to the customer via WhatsApp. Never redirect the customer to contact you on WhatsApp or any other channel — you are already speaking with them. Answer their questions directly and completely.";
-  systemPrompt += `\n\n${INTERACTIVE_RULES.replace("{RESPONSE_LANGUAGE}", responseLanguage === "ar" ? "Arabic" : "English")}`;
+  const systemPrompt = buildSystemPrompt(context, responseLanguage);
 
   const generationConfig = {
     responseMimeType: "application/json",

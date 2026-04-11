@@ -1,14 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f5efe6;
-  --foreground: #142018;
-  --surface: rgba(255, 255, 255, 0.76);
+  --background: #eef2ff;
+  --foreground: #172554;
+  --surface: rgba(255, 255, 255, 0.82);
   --surface-strong: #ffffff;
-  --line: rgba(20, 32, 24, 0.08);
-  --muted: #5a665f;
-  --accent: #0f8a5f;
-  --accent-strong: #0b6a49;
+  --line: rgba(23, 37, 84, 0.12);
+  --muted: #475569;
+  --accent: #1e3a8a;
+  --accent-strong: #172554;
+  --accent-soft: #facc15;
 }
 
 @theme inline {
@@ -27,8 +28,9 @@ body {
   background: var(--background);
   color: var(--foreground);
   background-image:
-    radial-gradient(circle at top left, rgba(15, 138, 95, 0.14), transparent 34%),
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.72), transparent 42%);
+    radial-gradient(circle at top left, rgba(30, 58, 138, 0.18), transparent 34%),
+    radial-gradient(circle at top right, rgba(250, 204, 21, 0.18), transparent 32%),
+    linear-gradient(180deg, #eef2ff 0%, #dbeafe 100%);
   background-attachment: fixed;
   font-family: var(--font-inter), var(--font-noto-sans-arabic), Arial, Helvetica, sans-serif;
 }
@@ -39,7 +41,7 @@ html[dir="rtl"] body {
 }
 
 body::selection {
-  background: color-mix(in srgb, var(--accent) 24%, white);
+  background: color-mix(in srgb, var(--accent) 22%, white);
 }
 
 * {
