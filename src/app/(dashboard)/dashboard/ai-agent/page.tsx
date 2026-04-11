@@ -39,7 +39,7 @@ export default async function AIAgentPage() {
         </p>
       </div>
 
-      <AIAgentSettingsForm aiAgent={aiAgent} />
+      <AIAgentSettingsForm aiAgent={aiAgent} businessName={restaurant.name} />
     </div>
   );
 }

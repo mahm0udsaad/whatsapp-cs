@@ -1,7 +1,11 @@
 import { adminSupabaseClient } from "@/lib/supabase/admin";
+import { buildBusinessSupportContext } from "@/lib/customer-service";
 import { generateGeminiResponse } from "@/lib/gemini";
 import { sendWhatsAppMessage } from "@/lib/twilio";
 import { isSessionWindowOpen } from "@/lib/session-window";
+import { retrieveKnowledgeChunks } from "@/lib/rag";
+import { classifyIntent } from "@/lib/intent-classifier";
+import { createOrder } from "@/lib/order-manager";
 
 interface QueueAIReplyJobInput {
   restaurantId: string;
@@ -58,27 +62,7 @@ async function getConversationHistory(conversationId: string, limit = 12) {
 }
 
 async function queryKnowledgeBase(restaurantId: string, query: string) {
-  const { data } = await adminSupabaseClient
-    .from("knowledge_base")
-    .select("content")
-    .eq("restaurant_id", restaurantId)
-    .limit(8);
-
-  if (!data?.length) {
-    return "";
-  }
-
-  const queryWords = query
-    .toLowerCase()
-    .split(/\s+/)
-    .filter((word) => word.length > 2);
-
-  const relevant = data.filter((entry) => {
-    const lower = entry.content.toLowerCase();
-    return queryWords.some((word) => lower.includes(word));
-  });
-
-  return relevant.map((entry) => entry.content).join("\n\n");
+  return retrieveKnowledgeChunks(restaurantId, query, 5);
 }
 
 async function getMenuContext(restaurantId: string) {
@@ -107,6 +91,16 @@ async function getMenuContext(restaurantId: string) {
       return parts.join(" | ");
     })
     .join("\n");
+}
+
+async function getConversationContext(conversationId: string) {
+  const { data } = await adminSupabaseClient
+    .from("conversations")
+    .select("customer_name, last_inbound_at")
+    .eq("id", conversationId)
+    .maybeSingle();
+
+  return data;
 }
 
 export async function queueAIReplyJob(input: QueueAIReplyJobInput) {
@@ -185,14 +179,13 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
       }
 
       const history = await getConversationHistory(job.conversation_id, 12);
+      const conversation = await getConversationContext(job.conversation_id);
       const ragContext = await queryKnowledgeBase(
         job.restaurant_id,
         inboundMessage.content
       );
       const menuContext = await getMenuContext(job.restaurant_id);
-      const fullContext = [ragContext, menuContext]
-        .filter((value) => value.trim())
-        .join("\n\n");
+      const businessContext = buildBusinessSupportContext(restaurant);
 
       const userLanguage = detectLanguage(inboundMessage.content);
       let responseText: string;
@@ -201,9 +194,14 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
         const result = await generateGeminiResponse({
           systemPrompt:
             aiAgent.system_instructions ||
-            `You are a restaurant assistant for ${restaurant.name}.`,
+            `You are the customer service agent for ${restaurant.name}.`,
+          businessName: restaurant.name,
+          agentName: aiAgent.name,
+          customerName: conversation?.customer_name || null,
           personality: aiAgent.personality || "friendly",
-          ragContext: fullContext,
+          businessContext,
+          ragContext,
+          menuContext,
           conversationHistory: history.slice(0, -1),
           userMessage: inboundMessage.content,
           languagePreference:
@@ -211,11 +209,26 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
           offTopicResponse:
             aiAgent.off_topic_response ||
             (userLanguage === "ar"
-              ? "عذراً، أنا متخصص فقط في الإجابة على أسئلة المطعم."
-              : "Sorry, I can only answer questions about the restaurant."),
+              ? "عذراً، أستطيع المساعدة فقط في الأسئلة المتعلقة بهذا النشاط."
+              : "Sorry, I can only help with questions about this business."),
         });
 
         responseText = result.content;
+
+        // Fire-and-forget: classify intent and create order/escalation if needed
+        classifyIntent(inboundMessage.content, responseText, history)
+          .then(async ({ intent, details }) => {
+            if (intent === "none" || !details.trim()) return;
+            await createOrder({
+              restaurantId: job.restaurant_id,
+              conversationId: job.conversation_id,
+              customerPhone: (job.payload as { customerPhone?: string })?.customerPhone || "",
+              customerName: conversation?.customer_name ?? null,
+              type: intent,
+              details,
+            });
+          })
+          .catch(() => {/* non-fatal */});
       } catch {
         responseText =
           userLanguage === "ar"
@@ -230,12 +243,6 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
         (job.payload as { customerPhone?: string | null })?.customerPhone || "";
 
       // Check 24-hour session window before sending
-      const { data: conversation } = await adminSupabaseClient
-        .from("conversations")
-        .select("last_inbound_at")
-        .eq("id", job.conversation_id)
-        .single();
-
       if (!isSessionWindowOpen(conversation?.last_inbound_at)) {
         console.warn(`[ai-reply] 24-hour window expired for conversation ${job.conversation_id}. Skipping.`);
         await adminSupabaseClient

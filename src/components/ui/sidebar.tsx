@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Bot,
   BookOpen,
+  ClipboardList,
   LayoutDashboard,
   LogOut,
   Megaphone,
@@ -72,6 +73,12 @@ export function Sidebar({
       label: t("nav.menu"),
       description: t("nav.menu.desc"),
       icon: UtensilsCrossed,
+    },
+    {
+      href: "/dashboard/orders",
+      label: "Orders",
+      description: "Reservations & escalations",
+      icon: ClipboardList,
     },
     {
       href: "/dashboard/conversations",

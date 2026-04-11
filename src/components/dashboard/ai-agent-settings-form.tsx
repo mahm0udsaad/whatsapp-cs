@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { buildCustomerServiceTemplate } from "@/lib/customer-service";
 import { AiAgent } from "@/lib/types";
 
 interface AIAgentSettingsFormProps {
   aiAgent: AiAgent;
+  businessName: string;
 }
 
 const personalities = [
@@ -42,6 +44,7 @@ const personalities = [
 
 export function AIAgentSettingsForm({
   aiAgent,
+  businessName,
 }: AIAgentSettingsFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -156,10 +159,32 @@ export function AIAgentSettingsForm({
           <CardHeader>
             <CardTitle>System Instructions</CardTitle>
             <CardDescription>
-              These instructions directly shape how the assistant replies.
+              These instructions directly shape how the assistant replies to customers.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+              <div className="text-sm text-emerald-900">
+                Load a neutral customer-service template that fits any business type.
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setFormData({
+                    ...formData,
+                    systemInstructions: buildCustomerServiceTemplate(
+                      businessName,
+                      formData.languagePreference === "ar" ? "ar" : "en"
+                    ),
+                  })
+                }
+              >
+                Use Customer Service Template
+              </Button>
+            </div>
+
             <Textarea
               rows={8}
               value={formData.systemInstructions}
@@ -248,12 +273,12 @@ export function AIAgentSettingsForm({
                 <div className="ml-6 rounded border-l-2 border-emerald-600 bg-emerald-100 p-2 text-xs">
                   <p className="text-emerald-900">
                     {formData.personality === "friendly"
-                      ? "We’re happy to help with our hours and menu questions."
+                      ? "We’re happy to help with products, services, hours, and support questions."
                       : formData.personality === "professional"
-                      ? "I can assist with hours, reservations, and menu information."
+                      ? "I can assist with availability, bookings, and business information."
                       : formData.personality === "creative"
-                      ? "Let’s get you the details you need."
-                      : "I can answer restaurant questions."}
+                      ? "Let’s get you the right answer quickly."
+                      : "I can answer business-related questions directly."}
                   </p>
                 </div>
               </div>

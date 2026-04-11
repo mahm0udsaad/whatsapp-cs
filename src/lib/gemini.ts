@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { buildCustomerServiceSystemPrompt } from "./customer-service";
 import { GeminiResponse } from "./types";
 
 const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
@@ -16,8 +17,13 @@ interface ConversationMessage {
 
 interface GeminiContext {
   systemPrompt: string;
+  businessName: string;
+  agentName?: string;
+  customerName?: string | null;
   personality: string;
+  businessContext?: string;
   ragContext: string;
+  menuContext?: string;
   conversationHistory: ConversationMessage[];
   userMessage: string;
   languagePreference: "ar" | "en" | "auto";
@@ -55,7 +61,7 @@ async function isOffTopic(
     return false;
   }
 
-  // Clearly off-topic keywords (things that have nothing to do with a restaurant)
+  // Clearly off-topic keywords (things that have nothing to do with the business)
   const offTopicKeywords = [
     "bitcoin", "crypto", "stock market", "programming", "code",
     "politics", "election", "war", "hack", "password",
@@ -73,16 +79,13 @@ async function isOffTopic(
 export async function generateGeminiResponse(
   context: GeminiContext
 ): Promise<GeminiResponse> {
+  const detectedLanguage = detectLanguage(context.userMessage);
+  const responseLanguage: "ar" | "en" =
+    context.languagePreference !== "auto"
+      ? context.languagePreference
+      : detectedLanguage;
+
   try {
-    // Detect user message language
-    const userLanguage = detectLanguage(context.userMessage);
-
-    // Determine response language based on preference and user input
-    let responseLanguage: "ar" | "en" = userLanguage;
-    if (context.languagePreference !== "auto") {
-      responseLanguage = context.languagePreference;
-    }
-
     // Only block clearly off-topic messages
     const offTopic = await isOffTopic(
       context.userMessage,
@@ -96,17 +99,17 @@ export async function generateGeminiResponse(
       };
     }
 
-    // Build the prompt
-    let systemPrompt = context.systemPrompt;
-    systemPrompt += `\n\nPersonality: ${context.personality}`;
-
-    if (context.ragContext.trim()) {
-      systemPrompt += `\n\nRelevant Information:\n${context.ragContext}`;
-    }
-
-    systemPrompt += `\n\nRespond in ${responseLanguage === "ar" ? "Arabic" : "English"} language.`;
-    systemPrompt += "\nBe concise, helpful, and maintain a professional yet friendly tone.";
-    systemPrompt += "\nIMPORTANT: You ARE the customer service agent responding directly to the customer via WhatsApp. Never redirect the customer to contact you on WhatsApp or any other channel — you are already speaking with them. Answer their questions directly and completely.";
+    const systemPrompt = buildCustomerServiceSystemPrompt({
+      businessName: context.businessName,
+      agentName: context.agentName,
+      customerName: context.customerName,
+      personality: context.personality,
+      language: responseLanguage,
+      baseInstructions: context.systemPrompt,
+      businessContext: context.businessContext,
+      ragContext: context.ragContext,
+      menuContext: context.menuContext,
+    });
 
     // Get the model
     const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
@@ -161,12 +164,22 @@ export async function generateGeminiResponse(
       const historyText = context.conversationHistory
         .map((msg) => `${msg.role === "user" ? "Customer" : "Assistant"}: ${msg.content}`)
         .join("\n");
-      const simplePrompt = `${context.systemPrompt}\n\nRelevant info:\n${context.ragContext}\n\n${historyText ? `Conversation so far:\n${historyText}\n\n` : ""}Customer message: ${context.userMessage}\n\nRespond in ${detectLanguage(context.userMessage) === "ar" ? "Arabic" : "English"}. Be helpful and friendly. You ARE the customer service agent — never redirect the customer to another channel.`;
+      const simplePrompt = `${buildCustomerServiceSystemPrompt({
+        businessName: context.businessName,
+        agentName: context.agentName,
+        customerName: context.customerName,
+        personality: context.personality,
+        language: responseLanguage,
+        baseInstructions: context.systemPrompt,
+        businessContext: context.businessContext,
+        ragContext: context.ragContext,
+        menuContext: context.menuContext,
+      })}\n\n${historyText ? `Conversation so far:\n${historyText}\n\n` : ""}Customer message: ${context.userMessage}`;
       const result = await model.generateContent(simplePrompt);
       const responseText = result.response.text();
       return {
         content: responseText,
-        language: detectLanguage(context.userMessage),
+        language: responseLanguage,
       };
     } catch (retryError: unknown) {
       const retryMsg = retryError instanceof Error ? retryError.message : String(retryError);

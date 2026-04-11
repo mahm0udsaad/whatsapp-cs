@@ -218,7 +218,7 @@ export async function provisionRestaurantForUser(
 
   const agentPayload = {
     restaurant_id: restaurantId,
-    name: payload.agentName,
+    name: payload.agentName || "أمينة",
     personality: payload.personality,
     system_instructions: payload.agentInstructions,
     language_preference: language,
