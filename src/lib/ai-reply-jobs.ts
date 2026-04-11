@@ -81,28 +81,94 @@ async function getConversationHistory(conversationId: string, limit = 12) {
   });
 }
 
-async function queryKnowledgeBase(restaurantId: string, query: string) {
+// Arabic/English stop-words that add no retrieval signal. Short pronouns and
+// common verbs ("yes", "tell me", "ايوا", "عرفني") were silently killing KB
+// matches on follow-up turns.
+const KB_STOPWORDS = new Set([
+  // English
+  "the", "and", "for", "you", "are", "can", "have", "has", "with", "what",
+  "how", "who", "when", "where", "yes", "no", "ok", "please", "tell", "me",
+  "show", "give", "want", "need", "know", "about", "any", "all",
+  // Arabic
+  "ما", "هل", "في", "من", "إلى", "الى", "على", "عن", "هو", "هي", "انا",
+  "أنا", "انت", "أنت", "نعم", "ايوا", "أيوا", "لا", "لو", "ممكن", "عايز",
+  "عاوز", "اعرف", "أعرف", "عرفني", "قولي", "ابغى", "أبغى", "الانواع",
+  "الأنواع", "انواع", "أنواع", "ايه", "إيه", "ايش", "شو", "وش", "كيف",
+  "متى", "اين", "أين", "وين",
+]);
+
+function tokenize(text: string): string[] {
+  return text
+    .toLowerCase()
+    // Keep letters (incl. Arabic) and digits, split on everything else
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((word) => word.length > 2 && !KB_STOPWORDS.has(word));
+}
+
+async function queryKnowledgeBase(
+  restaurantId: string,
+  query: string,
+  history: Array<{ role: "user" | "assistant"; content: string }>
+) {
+  // Pull the full KB for the tenant. Previously this capped at 8 rows BEFORE
+  // filtering, so any business with a rich KB (a spa with 10+ services, a
+  // restaurant with categories, etc.) would see most entries invisible to the
+  // agent. KB entries are short, so fetching ~200 is cheap.
   const { data } = await adminSupabaseClient
     .from("knowledge_base")
-    .select("content")
+    .select("title, content")
     .eq("restaurant_id", restaurantId)
-    .limit(8);
+    .limit(200);
 
   if (!data?.length) {
     return "";
   }
 
-  const queryWords = query
-    .toLowerCase()
-    .split(/\s+/)
-    .filter((word) => word.length > 2);
+  // Expand the retrieval query with the last couple of USER turns. Short
+  // follow-ups like "yes, show me the types" carry no topical keywords on
+  // their own — the topic lives in the previous user message.
+  const recentUserTurns = history
+    .filter((msg) => msg.role === "user")
+    .slice(-3)
+    .map((msg) => msg.content)
+    .join(" ");
+  const expandedQuery = `${query} ${recentUserTurns}`;
+  const queryTokens = new Set(tokenize(expandedQuery));
 
-  const relevant = data.filter((entry) => {
-    const lower = entry.content.toLowerCase();
-    return queryWords.some((word) => lower.includes(word));
-  });
+  const renderEntry = (entry: { title: string | null; content: string }) => {
+    const title = entry.title?.trim();
+    return title ? `${title}: ${entry.content}` : entry.content;
+  };
 
-  return relevant.map((entry) => entry.content).join("\n\n");
+  // If we have topical tokens, score entries by overlap against title+content
+  // and keep the best. Fall back to the whole KB (capped) when we have no
+  // signal at all — better to give the model everything than nothing, since
+  // the strict "answer from knowledge" prompt depends on KB being present.
+  if (queryTokens.size === 0) {
+    return data.slice(0, 20).map(renderEntry).join("\n\n");
+  }
+
+  const scored = data
+    .map((entry) => {
+      const haystack = `${entry.title || ""} ${entry.content}`.toLowerCase();
+      let score = 0;
+      for (const token of queryTokens) {
+        if (haystack.includes(token)) score += 1;
+      }
+      return { entry, score };
+    })
+    .filter((row) => row.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 12)
+    .map((row) => renderEntry(row.entry));
+
+  // Even when scoring produces nothing (pure stop-words, or a greeting), we
+  // still pass a slice of the KB so the agent has grounding to list from.
+  if (scored.length === 0) {
+    return data.slice(0, 12).map(renderEntry).join("\n\n");
+  }
+
+  return scored.join("\n\n");
 }
 
 async function getMenuContext(restaurantId: string) {
@@ -211,7 +277,8 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
       const history = await getConversationHistory(job.conversation_id, 12);
       const ragContext = await queryKnowledgeBase(
         job.restaurant_id,
-        inboundMessage.content
+        inboundMessage.content,
+        history
       );
       const menuContext = await getMenuContext(job.restaurant_id);
       const fullContext = [ragContext, menuContext]

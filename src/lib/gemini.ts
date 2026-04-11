@@ -130,7 +130,7 @@ const REPLY_SCHEMA: Schema = {
 
 const INTERACTIVE_RULES = `
 You can answer in three formats. Pick the one that best fits the customer's request:
-- "list": when the customer is asking what's available (services, categories, menu sections, locations, dates, times) AND there are 4-10 distinct options. Use this whenever the customer is browsing or has not made a specific choice yet.
+- "list": when the customer is asking what's available (services, categories, menu sections, locations, dates, times) AND there are 2-10 distinct options. Use this whenever the customer is browsing or has not made a specific choice yet. If the knowledge base contains the options (service names, product names, categories), you MUST list them as a list picker — never dump them as prose and never defer.
 - "quick_reply": when you need the customer to choose between 2-3 options (yes/no, two dates, "today/tomorrow/pick a date").
 - "text": only for free-form prose answers (greetings, explanations, confirmations, addresses, prices for ONE specific item).
 
@@ -141,6 +141,10 @@ Rules for titles/body: write them in {RESPONSE_LANGUAGE}. Body max 1024 chars. Q
 Whenever the customer's previous message starts with [user_action:<id>], that is a button/list tap — treat the id as the customer's choice and continue the flow without asking them to retype it.
 
 Prefer interactive replies over text whenever you are asking the customer to make a choice. Do not list options inside text — use list/quick_reply instead.
+
+CRITICAL — answer from the knowledge you already have. The "Relevant Information" section above is YOUR knowledge base: services, products, categories, prices, hours. When the customer asks about something that is covered there, you answer directly from it. Under no circumstances do you stall, promise to "check with the team", say "I'll get back to you", say "someone will contact you shortly", say "سأتحقق / سأتواصل معك / سنرد عليك قريباً / فريقنا سيتواصل", or otherwise defer to a human — you ARE the agent, and deferring when the answer is in the knowledge base is a failure. Only say you don't know when the knowledge base genuinely has nothing on the topic, and even then say "I don't have this information" rather than promising a follow-up.
+
+When the customer asks "what types / what's available / what do you have / عندك ايه / ايه الانواع / عرفني الانواع" and the knowledge base contains the relevant services, products, or categories, you MUST reply with type="list" enumerating them. Do not reply with text asking them to wait.
 `.trim();
 
 /** Defensive parser — Gemini occasionally drifts from the schema. Falls back to text. */
