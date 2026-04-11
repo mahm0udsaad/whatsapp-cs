@@ -4,10 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { BrandLockup } from "@/components/brand/brand-lockup";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageCircle } from "lucide-react";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -55,7 +55,7 @@ export default function SignupPage() {
       } else {
         router.push("/onboarding");
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred");
     } finally {
       setLoading(false);
@@ -77,7 +77,7 @@ export default function SignupPage() {
       if (signInError) {
         setError(signInError.message);
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred");
     } finally {
       setLoading(false);
@@ -85,17 +85,16 @@ export default function SignupPage() {
   };
 
   return (
-    <Card className="border-0 shadow-lg">
-      <CardHeader className="space-y-3 text-center">
-        <div className="flex justify-center">
-          <div className="p-3 rounded-lg bg-emerald-100">
-            <MessageCircle size={32} className="text-emerald-600" />
-          </div>
-        </div>
+    <Card className="border border-white/40 bg-white/88 shadow-[0_28px_80px_-40px_rgba(23,37,84,0.45)] backdrop-blur">
+      <CardHeader className="space-y-5 text-center">
+        <BrandLockup
+          imageClassName="w-28"
+          subtitle="Start with the same identity your customers will recognize."
+        />
         <div>
-          <CardTitle className="text-2xl">Get Started</CardTitle>
+          <CardTitle className="text-2xl text-[#172554]">Get Started</CardTitle>
           <CardDescription className="mt-1">
-            Create your restaurant's AI dashboard account
+            Create your restaurant&apos;s AI dashboard account
           </CardDescription>
         </div>
       </CardHeader>
@@ -109,7 +108,7 @@ export default function SignupPage() {
           )}
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-slate-700">
               Email
             </label>
             <Input
@@ -124,7 +123,7 @@ export default function SignupPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-slate-700">
               Password
             </label>
             <Input
@@ -136,13 +135,13 @@ export default function SignupPage() {
               disabled={loading}
               required
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-slate-500">
               At least 6 characters
             </p>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-slate-700">
               Confirm Password
             </label>
             <Input
@@ -168,10 +167,10 @@ export default function SignupPage() {
 
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-200" />
+            <div className="w-full border-t border-slate-200" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="bg-white px-2 text-gray-600">
+            <span className="bg-white px-2 text-slate-500">
               Or sign up with
             </span>
           </div>
@@ -198,11 +197,11 @@ export default function SignupPage() {
           Google
         </Button>
 
-        <p className="mt-6 text-center text-sm text-gray-600">
+        <p className="mt-6 text-center text-sm text-slate-600">
           Already have an account?{" "}
           <Link
             href="/login"
-            className="font-medium text-emerald-600 hover:text-emerald-700"
+            className="font-medium text-[#1e3a8a] hover:text-[#172554]"
           >
             Sign in
           </Link>

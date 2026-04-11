@@ -24,16 +24,16 @@ export default async function OrdersPage() {
     <div className="flex-1 space-y-8 p-4 sm:p-6 lg:p-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">
-            Orders & Escalations
+          <h1 className="text-3xl font-bold text-slate-950">
+            الطلبات والتصعيدات
           </h1>
-          <p className="mt-1 text-gray-600 dark:text-gray-400">
-            Reservation requests and customer questions that need your attention.
+          <p className="mt-1 text-slate-600">
+            طلبات الحجز ورسائل العملاء التي تحتاج متابعة من فريقك.
           </p>
         </div>
         {pendingCount > 0 && (
           <div className="flex h-9 items-center justify-center rounded-full bg-amber-500 px-4 text-sm font-semibold text-white">
-            {pendingCount} pending
+            {pendingCount} بانتظار المتابعة
           </div>
         )}
       </div>

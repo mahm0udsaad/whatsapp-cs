@@ -96,7 +96,7 @@ async function getMenuContext(restaurantId: string) {
 async function getConversationContext(conversationId: string) {
   const { data } = await adminSupabaseClient
     .from("conversations")
-    .select("customer_name, last_inbound_at")
+    .select("customer_name, last_inbound_at, bot_paused")
     .eq("id", conversationId)
     .maybeSingle();
 
@@ -178,8 +178,26 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
         throw new Error("Missing inbound message, restaurant, or ai agent");
       }
 
-      const history = await getConversationHistory(job.conversation_id, 12);
       const conversation = await getConversationContext(job.conversation_id);
+
+      // Bot pause: owner has stopped the AI for this conversation via the mobile app.
+      // Skip generating/sending a reply but mark the job completed so it isn't retried.
+      if (conversation?.bot_paused) {
+        console.warn(
+          `[ai-reply] Bot paused for conversation ${job.conversation_id}. Skipping.`
+        );
+        await adminSupabaseClient
+          .from("ai_reply_jobs")
+          .update({
+            status: "completed",
+            processed_at: new Date().toISOString(),
+            last_error: "bot_paused",
+          })
+          .eq("id", job.id);
+        continue;
+      }
+
+      const history = await getConversationHistory(job.conversation_id, 12);
       const ragContext = await queryKnowledgeBase(
         job.restaurant_id,
         inboundMessage.content

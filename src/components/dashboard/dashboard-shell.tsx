@@ -11,6 +11,7 @@ interface DashboardShellProps {
   restaurantLogo?: string | null;
   userName?: string | null;
   userEmail?: string | null;
+  locale?: "ar" | "en";
 }
 
 export function DashboardShell({
@@ -19,6 +20,7 @@ export function DashboardShell({
   restaurantLogo,
   userName,
   userEmail,
+  locale = "ar",
 }: DashboardShellProps) {
   const router = useRouter();
   const supabase = createClient();
@@ -29,13 +31,15 @@ export function DashboardShell({
   };
 
   return (
-    <div className="min-h-screen bg-transparent">
+    <div className="min-h-screen bg-transparent" dir="rtl" lang={locale}>
       <Sidebar
         restaurantName={restaurantName}
         restaurantLogo={restaurantLogo ?? undefined}
         userName={userName ?? undefined}
         userEmail={userEmail ?? undefined}
         onLogout={handleLogout}
+        locale={locale}
+        showLanguageSwitcher={false}
       />
 
       <main className="relative flex-1 overflow-x-hidden lg:ms-72">

@@ -10,6 +10,24 @@ export interface CreateOrderInput {
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<string | null> {
+  // Prevent duplicates: if a pending order of the same type already exists
+  // for this conversation, just update the details instead of inserting a new row.
+  const { data: existing } = await adminSupabaseClient
+    .from("orders")
+    .select("id")
+    .eq("conversation_id", input.conversationId)
+    .eq("type", input.type)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  if (existing) {
+    await adminSupabaseClient
+      .from("orders")
+      .update({ details: input.details, updated_at: new Date().toISOString() })
+      .eq("id", existing.id);
+    return existing.id;
+  }
+
   const { data, error } = await adminSupabaseClient
     .from("orders")
     .insert({

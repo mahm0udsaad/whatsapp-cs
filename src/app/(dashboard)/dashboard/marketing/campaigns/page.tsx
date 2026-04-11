@@ -43,13 +43,13 @@ const statusBadge: Record<
   string,
   { className: string; label: string; icon: typeof CheckCircle2 }
 > = {
-  draft: { className: "bg-slate-200/70 text-slate-700", label: "Draft", icon: Clock },
-  scheduled: { className: "bg-sky-500/12 text-sky-700", label: "Scheduled", icon: Clock },
-  processing: { className: "bg-amber-500/12 text-amber-700", label: "Processing", icon: Loader2 },
-  sending: { className: "bg-amber-500/12 text-amber-700", label: "Sending", icon: Send },
-  completed: { className: "bg-emerald-500/12 text-emerald-700", label: "Completed", icon: CheckCircle2 },
-  failed: { className: "bg-red-500/12 text-red-700", label: "Failed", icon: XCircle },
-  cancelled: { className: "bg-slate-200/70 text-slate-600", label: "Cancelled", icon: XCircle },
+  draft: { className: "bg-slate-200/70 text-slate-700", label: "مسودة", icon: Clock },
+  scheduled: { className: "bg-sky-500/12 text-sky-700", label: "مجدولة", icon: Clock },
+  processing: { className: "bg-amber-500/12 text-amber-700", label: "قيد المعالجة", icon: Loader2 },
+  sending: { className: "bg-amber-500/12 text-amber-700", label: "جارٍ الإرسال", icon: Send },
+  completed: { className: "bg-emerald-500/12 text-emerald-700", label: "مكتملة", icon: CheckCircle2 },
+  failed: { className: "bg-red-500/12 text-red-700", label: "فشلت", icon: XCircle },
+  cancelled: { className: "bg-slate-200/70 text-slate-600", label: "ملغاة", icon: XCircle },
 };
 
 export default async function CampaignsPage() {
@@ -95,23 +95,23 @@ export default async function CampaignsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-semibold tracking-[-0.04em] text-slate-950">
-            Campaign Manager
+            إدارة الحملات
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Create, schedule, and track WhatsApp marketing campaigns.
+            أنشئ حملات واتساب التسويقية وجدولها وتابع نتائجها.
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Link href="/dashboard/marketing/calendar">
             <Button variant="outline" className="gap-2 rounded-full">
               <Clock size={16} />
-              Calendar
+              التقويم
             </Button>
           </Link>
           <Link href="/dashboard/marketing/campaigns/new">
             <Button className="gap-2 rounded-full">
               <Plus size={16} />
-              New Campaign
+              حملة جديدة
             </Button>
           </Link>
         </div>
@@ -120,10 +120,10 @@ export default async function CampaignsPage() {
       {/* Status counts */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: "Draft", count: draftCount, color: "text-slate-600" },
-          { label: "Scheduled", count: scheduledCount, color: "text-sky-600" },
-          { label: "Sending", count: sendingCount, color: "text-amber-600" },
-          { label: "Completed", count: completedCount, color: "text-emerald-600" },
+          { label: "مسودة", count: draftCount, color: "text-slate-600" },
+          { label: "مجدولة", count: scheduledCount, color: "text-sky-600" },
+          { label: "جارٍ الإرسال", count: sendingCount, color: "text-amber-600" },
+          { label: "مكتملة", count: completedCount, color: "text-emerald-600" },
         ].map((stat) => (
           <div
             key={stat.label}
@@ -143,16 +143,15 @@ export default async function CampaignsPage() {
           <CardContent className="flex flex-col items-center justify-center py-16">
             <Megaphone size={40} className="mb-4 text-slate-300" />
             <h3 className="text-lg font-semibold text-slate-900">
-              No campaigns yet
+              لا توجد حملات بعد
             </h3>
             <p className="mt-2 max-w-sm text-center text-sm text-slate-500">
-              Create your first campaign to start reaching your customers with
-              targeted WhatsApp messages.
+              ابدأ بأول حملة للوصول إلى عملائك برسائل واتساب موجهة.
             </p>
             <Link href="/dashboard/marketing/campaigns/new" className="mt-6">
               <Button className="gap-2 rounded-full">
                 <Plus size={16} />
-                Create Campaign
+                إنشاء حملة
               </Button>
             </Link>
           </CardContent>
@@ -163,8 +162,8 @@ export default async function CampaignsPage() {
             const badge = statusBadge[campaign.status] || statusBadge.draft;
             const BadgeIcon = badge.icon;
             const templateName = campaign.template_id
-              ? templateNames[campaign.template_id] || "Unknown template"
-              : "No template";
+              ? templateNames[campaign.template_id] || "قالب غير معروف"
+              : "بدون قالب";
             const progress =
               campaign.total_recipients > 0
                 ? Math.round(
@@ -194,7 +193,7 @@ export default async function CampaignsPage() {
                       </div>
 
                       <p className="mt-1 text-sm text-slate-500">
-                        Template: {templateName}
+                        القالب: {templateName}
                       </p>
 
                       {/* Schedule info */}
@@ -202,14 +201,14 @@ export default async function CampaignsPage() {
                         {campaign.scheduled_at && (
                           <span className="inline-flex items-center gap-1.5">
                             <Clock size={12} />
-                            Scheduled: {formatDate(campaign.scheduled_at)}
+                            مجدولة: {formatDate(campaign.scheduled_at)}
                           </span>
                         )}
                         <span>
-                          Created: {formatDate(campaign.created_at)}
+                          تم الإنشاء: {formatDate(campaign.created_at)}
                         </span>
                         <span>
-                          {campaign.total_recipients.toLocaleString()} recipients
+                          {campaign.total_recipients.toLocaleString()} مستلماً
                         </span>
                       </div>
 
@@ -220,7 +219,7 @@ export default async function CampaignsPage() {
                             <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5">
                               <span>
                                 {campaign.sent_count.toLocaleString()}/
-                                {campaign.total_recipients.toLocaleString()} sent
+                                {campaign.total_recipients.toLocaleString()} تم الإرسال
                               </span>
                               <span>{progress}%</span>
                             </div>

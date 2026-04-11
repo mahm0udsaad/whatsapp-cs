@@ -29,13 +29,13 @@ const statusConfig: Record<
   string,
   { className: string; label: string; icon: typeof CheckCircle2 }
 > = {
-  draft: { className: "bg-slate-200/70 text-slate-700", label: "Draft", icon: FileText },
-  submitted: { className: "bg-amber-500/12 text-amber-700", label: "Submitted", icon: Clock },
-  pending: { className: "bg-amber-500/12 text-amber-700", label: "Pending", icon: Clock },
-  approved: { className: "bg-emerald-500/12 text-emerald-700", label: "Approved", icon: CheckCircle2 },
-  rejected: { className: "bg-red-500/12 text-red-700", label: "Rejected", icon: XCircle },
-  paused: { className: "bg-orange-500/12 text-orange-700", label: "Paused", icon: AlertCircle },
-  disabled: { className: "bg-slate-200/70 text-slate-600", label: "Disabled", icon: XCircle },
+  draft: { className: "bg-slate-200/70 text-slate-700", label: "مسودة", icon: FileText },
+  submitted: { className: "bg-amber-500/12 text-amber-700", label: "مرسلة", icon: Clock },
+  pending: { className: "bg-amber-500/12 text-amber-700", label: "قيد المراجعة", icon: Clock },
+  approved: { className: "bg-emerald-500/12 text-emerald-700", label: "معتمدة", icon: CheckCircle2 },
+  rejected: { className: "bg-red-500/12 text-red-700", label: "مرفوضة", icon: XCircle },
+  paused: { className: "bg-orange-500/12 text-orange-700", label: "متوقفة", icon: AlertCircle },
+  disabled: { className: "bg-slate-200/70 text-slate-600", label: "معطلة", icon: XCircle },
 };
 
 const categoryColors: Record<string, string> = {
@@ -72,17 +72,17 @@ export default async function TemplatesPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-semibold tracking-[-0.04em] text-slate-950">
-            Message Templates
+            قوالب الرسائل
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Create, manage, and submit WhatsApp templates for approval.
+            أنشئ قوالب واتساب وأدرها وأرسلها للاعتماد.
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Link href="/dashboard/marketing/templates/new">
             <Button className="gap-2 rounded-full">
               <Sparkles size={16} />
-              Create with AI
+              إنشاء بالذكاء الاصطناعي
             </Button>
           </Link>
         </div>
@@ -91,10 +91,10 @@ export default async function TemplatesPage() {
       {/* Status counts */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: "Draft", count: draftCount, color: "text-slate-600" },
-          { label: "Pending", count: pendingCount, color: "text-amber-600" },
-          { label: "Approved", count: approvedCount, color: "text-emerald-600" },
-          { label: "Rejected", count: rejectedCount, color: "text-red-600" },
+          { label: "مسودة", count: draftCount, color: "text-slate-600" },
+          { label: "قيد المراجعة", count: pendingCount, color: "text-amber-600" },
+          { label: "معتمدة", count: approvedCount, color: "text-emerald-600" },
+          { label: "مرفوضة", count: rejectedCount, color: "text-red-600" },
         ].map((stat) => (
           <div
             key={stat.label}
@@ -114,16 +114,15 @@ export default async function TemplatesPage() {
           <CardContent className="flex flex-col items-center justify-center py-16">
             <FileText size={40} className="mb-4 text-slate-300" />
             <h3 className="text-lg font-semibold text-slate-900">
-              No templates yet
+              لا توجد قوالب بعد
             </h3>
             <p className="mt-2 max-w-sm text-center text-sm text-slate-500">
-              Create your first WhatsApp template using our AI builder or start
-              from scratch.
+              ابدأ بأول قالب واتساب عبر المساعد الذكي أو أنشئه يدوياً.
             </p>
             <Link href="/dashboard/marketing/templates/new" className="mt-6">
               <Button className="gap-2 rounded-full">
                 <Sparkles size={16} />
-                Create with AI
+                إنشاء بالذكاء الاصطناعي
               </Button>
             </Link>
           </CardContent>
@@ -183,7 +182,7 @@ export default async function TemplatesPage() {
                     template.rejection_reason && (
                       <div className="rounded-xl bg-red-50 border border-red-200 p-3 mb-4">
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-red-500 mb-1">
-                          Rejection reason
+                          سبب الرفض
                         </p>
                         <p className="text-xs text-red-700">
                           {template.rejection_reason}
@@ -206,7 +205,7 @@ export default async function TemplatesPage() {
                             className="gap-1.5 rounded-full text-xs"
                           >
                             <Send size={12} />
-                            Submit
+                            إرسال للاعتماد
                           </Button>
                         </form>
                         <Link
@@ -218,7 +217,7 @@ export default async function TemplatesPage() {
                             className="gap-1.5 rounded-full text-xs"
                           >
                             <Edit size={12} />
-                            Edit
+                            تعديل
                           </Button>
                         </Link>
                       </>
@@ -234,7 +233,7 @@ export default async function TemplatesPage() {
                         className="gap-1.5 rounded-full text-xs"
                       >
                         <Eye size={12} />
-                        View
+                        عرض
                       </Button>
                     )}
 
@@ -248,7 +247,7 @@ export default async function TemplatesPage() {
                           className="gap-1.5 rounded-full text-xs"
                         >
                           <Megaphone size={12} />
-                          Use in Campaign
+                          استخدام في حملة
                         </Button>
                       </Link>
                     )}

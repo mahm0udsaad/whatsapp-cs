@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { BrandLockup } from "@/components/brand/brand-lockup";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -239,16 +240,24 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-blue-50 p-4">
+    <div className="min-h-screen bg-transparent p-4">
       <div className="mx-auto max-w-3xl">
-        <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold text-gray-900">
-            Launch Your WhatsApp Assistant
-          </h1>
-          <p className="text-gray-600">
-            This setup creates your restaurant workspace, AI agent, and the
-            records needed to provision a WhatsApp sender.
-          </p>
+        <div className="mb-8 space-y-6">
+          <BrandLockup
+            className="items-start text-left"
+            imageClassName="w-32 self-start"
+            titleClassName="text-3xl"
+            subtitle="Carry the same visual identity from onboarding into the live assistant."
+          />
+          <div>
+            <h1 className="mb-2 text-3xl font-bold text-[#172554]">
+              Launch Your WhatsApp Assistant
+            </h1>
+            <p className="text-slate-600">
+              This setup creates your restaurant workspace, AI agent, and the
+              records needed to provision a WhatsApp sender.
+            </p>
+          </div>
         </div>
 
         <div className="mb-8 flex items-center justify-between">
@@ -259,8 +268,8 @@ export default function OnboardingPage() {
                   className={cn(
                     "flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold transition-all",
                     currentStep >= step.number
-                      ? "bg-emerald-600 text-white"
-                      : "bg-gray-200 text-gray-600"
+                      ? "bg-[#1e3a8a] text-white"
+                      : "bg-slate-200 text-slate-600"
                   )}
                 >
                   {currentStep > step.number ? <Check size={24} /> : step.number}
@@ -274,8 +283,8 @@ export default function OnboardingPage() {
                   className={cn(
                     "mx-2 h-1 w-8",
                     currentStep > step.number
-                      ? "bg-emerald-600"
-                      : "bg-gray-200"
+                      ? "bg-[#facc15]"
+                      : "bg-slate-200"
                   )}
                 />
               )}
@@ -283,9 +292,9 @@ export default function OnboardingPage() {
           ))}
         </div>
 
-        <Card className="border-0 shadow-lg">
+        <Card className="border border-white/40 bg-white/88 shadow-[0_28px_80px_-40px_rgba(23,37,84,0.45)] backdrop-blur">
           <CardHeader>
-            <CardTitle>{STEPS[currentStep - 1].title}</CardTitle>
+            <CardTitle className="text-[#172554]">{STEPS[currentStep - 1].title}</CardTitle>
           </CardHeader>
 
           <CardContent className="space-y-6">
@@ -296,7 +305,7 @@ export default function OnboardingPage() {
             ) : null}
 
             {statusMessage ? (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+              <div className="rounded-lg border border-[#bfdbfe] bg-[#eff6ff] p-3 text-sm text-[#1e3a8a]">
                 {statusMessage}
               </div>
             ) : null}
@@ -304,7 +313,7 @@ export default function OnboardingPage() {
             {currentStep === 1 ? (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="text-sm font-medium text-slate-700">
                     Restaurant Name
                   </label>
                   <Input
@@ -318,7 +327,7 @@ export default function OnboardingPage() {
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
+                    <label className="text-sm font-medium text-slate-700">
                       Country
                     </label>
                     <Select
@@ -340,7 +349,7 @@ export default function OnboardingPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
+                    <label className="text-sm font-medium text-slate-700">
                       Currency
                     </label>
                     <Select
@@ -363,7 +372,7 @@ export default function OnboardingPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="text-sm font-medium text-slate-700">
                     Website URL
                   </label>
                   <div className="flex flex-col gap-3 md:flex-row">
@@ -389,29 +398,29 @@ export default function OnboardingPage() {
                       {websiteImporting ? "Crawling..." : "Import Website Info"}
                     </Button>
                   </div>
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs text-slate-600">
                     Pulls name, logo, menu URL, country, currency, contact phone, and hours from the public website. Any detected phone is saved as the restaurant&apos;s contact number — the bot&apos;s WhatsApp number is assigned separately.
                   </p>
                 </div>
 
                 {websiteImportMessage ? (
-                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                  <div className="rounded-lg border border-[#bfdbfe] bg-[#eff6ff] p-4">
                     <div className="flex items-start gap-3">
                       {data.logoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={data.logoUrl}
                           alt="Detected logo"
-                          className="h-10 w-10 shrink-0 rounded-md border border-emerald-200 bg-white object-contain p-0.5"
+                          className="h-10 w-10 shrink-0 rounded-md border border-[#bfdbfe] bg-white object-contain p-0.5"
                           onError={(e) => {
                             (e.currentTarget as HTMLImageElement).style.display = "none";
                           }}
                         />
                       ) : (
-                        <Sparkles className="mt-0.5 shrink-0 text-emerald-700" size={18} />
+                        <Sparkles className="mt-0.5 shrink-0 text-[#1e3a8a]" size={18} />
                       )}
                       <div className="space-y-2">
-                        <p className="text-sm font-semibold text-emerald-900">
+                        <p className="text-sm font-semibold text-[#172554]">
                           {websiteImportMessage}
                         </p>
                         {websiteImportSummary.length ? (
@@ -419,7 +428,7 @@ export default function OnboardingPage() {
                             {websiteImportSummary.map((item) => (
                               <p
                                 key={item}
-                                className="text-sm text-emerald-800"
+                                className="text-sm text-[#1e3a8a]"
                               >
                                 {item}
                               </p>
@@ -431,11 +440,11 @@ export default function OnboardingPage() {
                   </div>
                 ) : null}
 
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-                  <h4 className="mb-2 text-sm font-semibold text-blue-900">
+                <div className="rounded-lg border border-[#fcd34d] bg-[#fef9c3] p-4">
+                  <h4 className="mb-2 text-sm font-semibold text-[#713f12]">
                     Faster setup option
                   </h4>
-                  <p className="text-sm text-blue-800">
+                  <p className="text-sm text-[#854d0e]">
                     Manual entry still works. Website import just prefills the
                     next steps so you can review and adjust before provisioning.
                   </p>
@@ -446,7 +455,7 @@ export default function OnboardingPage() {
             {currentStep === 2 ? (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="text-sm font-medium text-slate-700">
                     AI Agent Name
                   </label>
                   <Input
@@ -459,7 +468,7 @@ export default function OnboardingPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="text-sm font-medium text-slate-700">
                     Personality Style
                   </label>
                   <div className="grid grid-cols-2 gap-3">
@@ -494,12 +503,12 @@ export default function OnboardingPage() {
                         className={cn(
                           "rounded-lg border-2 p-3 text-left transition-all",
                           data.personality === option.value
-                            ? "border-emerald-500 bg-emerald-50"
-                            : "border-gray-200 hover:border-gray-300"
+                            ? "border-[#2563eb] bg-[#eff6ff]"
+                            : "border-slate-200 hover:border-slate-300"
                         )}
                       >
                         <div className="text-sm font-medium">{option.label}</div>
-                        <div className="text-xs text-gray-600">
+                        <div className="text-xs text-slate-600">
                           {option.desc}
                         </div>
                       </button>
@@ -508,7 +517,7 @@ export default function OnboardingPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="text-sm font-medium text-slate-700">
                     Preferred Language
                   </label>
                   <Select
@@ -529,7 +538,7 @@ export default function OnboardingPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="text-sm font-medium text-slate-700">
                     Agent Instructions
                   </label>
                   <Textarea
@@ -550,7 +559,7 @@ export default function OnboardingPage() {
             {currentStep === 3 ? (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="text-sm font-medium text-slate-700">
                     WhatsApp Display Name
                   </label>
                   <Input
@@ -563,7 +572,7 @@ export default function OnboardingPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="text-sm font-medium text-slate-700">
                     Bot Phone Number
                   </label>
                   <Input
@@ -574,7 +583,7 @@ export default function OnboardingPage() {
                       setData({ ...data, botPhoneNumber: event.target.value })
                     }
                   />
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs text-slate-600">
                     Enter the phone number in international format (e.g. +966542228723). This number will be registered in Twilio and configured to route messages to the bot.
                   </p>
                 </div>
@@ -596,7 +605,7 @@ export default function OnboardingPage() {
             {currentStep === 4 ? (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="text-sm font-medium text-slate-700">
                     Digital Menu URL
                   </label>
                   <Input
@@ -607,16 +616,16 @@ export default function OnboardingPage() {
                       setData({ ...data, menuUrl: event.target.value })
                     }
                   />
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs text-slate-600">
                     Optional. This is stored now and can be crawled later.
                   </p>
                 </div>
 
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-                  <h4 className="mb-2 text-sm font-semibold text-emerald-900">
+                <div className="rounded-lg border border-[#bfdbfe] bg-[#eff6ff] p-4">
+                  <h4 className="mb-2 text-sm font-semibold text-[#172554]">
                     Ready to provision
                   </h4>
-                  <p className="text-sm text-emerald-800">
+                  <p className="text-sm text-[#1e3a8a]">
                     Finishing this step creates your tenant records, starter
                     knowledge base, and active AI agent configuration.
                   </p>
@@ -624,7 +633,7 @@ export default function OnboardingPage() {
               </div>
             ) : null}
 
-            <div className="flex items-center justify-between border-t border-gray-200 pt-6">
+            <div className="flex items-center justify-between border-t border-slate-200 pt-6">
               <Button
                 variant="outline"
                 onClick={handlePrevious}
@@ -634,7 +643,7 @@ export default function OnboardingPage() {
                 Previous
               </Button>
 
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-slate-600">
                 Step {currentStep} of {STEPS.length}
               </div>
 
