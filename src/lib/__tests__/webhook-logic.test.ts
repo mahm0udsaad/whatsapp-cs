@@ -13,7 +13,10 @@ const { mockValidateRequest, mockMessagesCreate } = vi.hoisted(() => {
 });
 
 vi.mock("twilio", () => {
-  const fn = vi.fn(() => ({ messages: { create: mockMessagesCreate } }));
+  const fn = vi.fn(() => ({ messages: { create: mockMessagesCreate } })) as unknown as {
+    (...args: unknown[]): { messages: { create: typeof mockMessagesCreate } };
+    validateRequest: typeof mockValidateRequest;
+  };
   fn.validateRequest = mockValidateRequest;
   return { default: fn };
 });

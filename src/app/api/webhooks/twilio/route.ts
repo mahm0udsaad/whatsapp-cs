@@ -20,6 +20,16 @@ interface TwilioPayload {
   To: string;
   Body: string;
   ProfileName: string;
+  /** Title of a tapped quick-reply button (set by Twilio for button taps). */
+  ButtonText: string;
+  /** Stable id of a tapped quick-reply button (the value we set on send). */
+  ButtonPayload: string;
+  /** Stable id of a tapped list-picker item. */
+  ListId: string;
+  /** Visible title of a tapped list-picker item. */
+  ListTitle: string;
+  /** Twilio MessageSid of the original interactive message that was tapped. */
+  OriginalRepliedMessageSid: string;
 }
 
 function parseTwilioBody(bodyText: string): TwilioPayload {
@@ -30,6 +40,11 @@ function parseTwilioBody(bodyText: string): TwilioPayload {
     To: params.get("To") || "",
     Body: params.get("Body") || "",
     ProfileName: params.get("ProfileName") || "",
+    ButtonText: params.get("ButtonText") || "",
+    ButtonPayload: params.get("ButtonPayload") || "",
+    ListId: params.get("ListId") || "",
+    ListTitle: params.get("ListTitle") || "",
+    OriginalRepliedMessageSid: params.get("OriginalRepliedMessageSid") || "",
   };
 }
 
@@ -82,6 +97,8 @@ async function saveMessage(
     externalMessageSid?: string;
     deliveryStatus?: string;
     errorMessage?: string;
+    messageType?: string;
+    metadata?: Record<string, unknown> | null;
   } = {}
 ) {
   const { data, error } = await adminSupabaseClient
@@ -90,7 +107,8 @@ async function saveMessage(
       conversation_id: conversationId,
       role,
       content,
-      message_type: "text",
+      message_type: options.messageType || "text",
+      metadata: options.metadata ?? null,
       external_message_sid: options.externalMessageSid,
       delivery_status: options.deliveryStatus,
       error_message: options.errorMessage,
@@ -215,7 +233,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const bodyText = await request.text();
     const params = Object.fromEntries(new URLSearchParams(bodyText).entries());
-    const { MessageSid, From, To, Body, ProfileName } = parseTwilioBody(bodyText);
+    const {
+      MessageSid,
+      From,
+      To,
+      Body,
+      ProfileName,
+      ButtonText,
+      ButtonPayload,
+      ListId,
+      ListTitle,
+      OriginalRepliedMessageSid,
+    } = parseTwilioBody(bodyText);
     messageSid = MessageSid;
     const twilioSignature = request.headers.get("x-twilio-signature") || "";
 
@@ -225,13 +254,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "Invalid Twilio signature" }, { status: 403 });
     }
 
-    if (!From || !To || !Body || !MessageSid) {
+    // Detect interactive taps. When the customer taps a list item or quick-reply
+    // button, Twilio sends ListId / ButtonPayload alongside (or sometimes
+    // instead of) Body. Treat the slug as the canonical input for the AI so it's
+    // language-independent and unambiguous.
+    const tappedId = ListId || ButtonPayload || "";
+    const tappedTitle = ListTitle || ButtonText || "";
+
+    if (!From || !To || !MessageSid || (!Body && !tappedId)) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     // Strip whatsapp: prefix
     const customerPhone = From.replace("whatsapp:", "");
     const businessPhone = To.replace("whatsapp:", "");
+
+    // Synthesize a stable, language-independent message body for the AI when
+    // this is a tap. The system prompt teaches Gemini to read [user_action:<id>]
+    // tokens as the customer's choice.
+    const effectiveBody = tappedId ? `[user_action:${tappedId}]` : Body;
 
     // Rate limit by customer phone number
     const rateLimitResult = checkRateLimit(`webhook:${customerPhone}`, RATE_LIMITS.webhook);
@@ -251,7 +292,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    console.log(`[webhook] From: ${customerPhone} | To: ${businessPhone} | Body: ${Body.substring(0, 60)}`);
+    console.log(
+      `[webhook] From: ${customerPhone} | To: ${businessPhone} | ${tappedId ? `Tap: ${tappedId}` : `Body: ${Body.substring(0, 60)}`}`
+    );
 
     // Resolve restaurant
     const { restaurant, senderPhoneNumber } = await resolveRestaurantByIncomingNumber(businessPhone);
@@ -313,10 +356,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Find or create conversation (now tracks last_inbound_at)
     const conversation = await findOrCreateConversation(restaurant.id, customerPhone);
 
-    // Save incoming message
-    const inboundMessage = await saveMessage(conversation.id, "customer", Body, {
+    // Save incoming message. For interactive taps we store the encoded
+    // [user_action:<id>] token in `content` (so the AI sees it consistently)
+    // and the original tap details in `metadata` for the dashboard renderer.
+    const inboundMessage = await saveMessage(conversation.id, "customer", effectiveBody, {
       externalMessageSid: MessageSid,
       deliveryStatus: "received",
+      messageType: tappedId ? "interactive_reply" : "text",
+      metadata: tappedId
+        ? {
+            tap: {
+              id: tappedId,
+              title: tappedTitle || null,
+              replied_to: OriginalRepliedMessageSid || null,
+              raw_body: Body || null,
+            },
+          }
+        : null,
     });
 
     if (ProfileName && !conversation.customer_name) {

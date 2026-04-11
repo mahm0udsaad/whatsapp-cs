@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Conversation, Message } from "@/lib/types";
+import { Conversation, Message, InteractiveReply } from "@/lib/types";
 
 interface ConversationsInboxProps {
   restaurantId: string;
@@ -215,28 +215,111 @@ export function ConversationsInbox({
               No messages in this conversation.
             </p>
           ) : null}
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${
-                message.role === "customer" ? "justify-start" : "justify-end"
-              }`}
-            >
+          {messages.map((message) => {
+            const isCustomer = message.role === "customer";
+            const bubbleColor = isCustomer
+              ? "bg-gray-100 text-gray-900"
+              : "bg-emerald-600 text-white";
+            const chipBase = isCustomer
+              ? "bg-white border border-gray-300 text-gray-700"
+              : "bg-emerald-700 border border-emerald-500 text-emerald-50";
+
+            // Outbound interactive (list / quick-reply we sent)
+            if (message.message_type === "interactive" && message.metadata) {
+              const meta = message.metadata as { interactive?: InteractiveReply };
+              const interactive = meta.interactive;
+              if (interactive && interactive.type !== "text") {
+                const isList = interactive.type === "list";
+                const entries = isList
+                  ? interactive.items.map((i) => ({
+                      id: i.id,
+                      title: i.title,
+                      description: i.description,
+                    }))
+                  : interactive.options.map((o) => ({
+                      id: o.id,
+                      title: o.title,
+                      description: undefined as string | undefined,
+                    }));
+                return (
+                  <div key={message.id} className="flex justify-end">
+                    <div
+                      className={`max-w-[70%] rounded-lg px-4 py-2 text-sm ${bubbleColor}`}
+                      dir={/[\u0600-\u06FF]/.test(interactive.body) ? "rtl" : "ltr"}
+                    >
+                      <p className="mb-1 text-[10px] uppercase tracking-wide opacity-70">
+                        {isList ? `List · ${interactive.button}` : "Buttons"}
+                      </p>
+                      <p className="whitespace-pre-wrap">{interactive.body}</p>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {entries.map((e) => (
+                          <span
+                            key={e.id}
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${chipBase}`}
+                            title={e.id}
+                          >
+                            <span>{e.title}</span>
+                            <span className="opacity-60">· {e.id}</span>
+                          </span>
+                        ))}
+                      </div>
+                      <p className="mt-1 text-xs opacity-70">
+                        {new Date(message.created_at).toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+            }
+
+            // Inbound interactive reply (customer tapped a button / list item)
+            if (message.message_type === "interactive_reply" && message.metadata) {
+              const meta = message.metadata as {
+                tap?: { id: string; title: string | null };
+              };
+              const tap = meta.tap;
+              if (tap) {
+                return (
+                  <div key={message.id} className="flex justify-start">
+                    <div
+                      className={`max-w-[70%] rounded-lg px-4 py-2 text-sm ${bubbleColor}`}
+                      dir={
+                        tap.title && /[\u0600-\u06FF]/.test(tap.title) ? "rtl" : "ltr"
+                      }
+                    >
+                      <p className="italic">
+                        → Tapped: <span className="not-italic font-medium">{tap.title || tap.id}</span>
+                      </p>
+                      <span className="mt-1 inline-block rounded bg-white/60 px-1.5 py-0.5 text-[10px] font-mono text-gray-700">
+                        {tap.id}
+                      </span>
+                      <p className="mt-1 text-xs opacity-70">
+                        {new Date(message.created_at).toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+            }
+
+            // Plain text (default)
+            return (
               <div
-                className={`max-w-[70%] rounded-lg px-4 py-2 text-sm ${
-                  message.role === "customer"
-                    ? "bg-gray-100 text-gray-900"
-                    : "bg-emerald-600 text-white"
-                }`}
-                dir={/[\u0600-\u06FF]/.test(message.content) ? "rtl" : "ltr"}
+                key={message.id}
+                className={`flex ${isCustomer ? "justify-start" : "justify-end"}`}
               >
-                <p>{message.content}</p>
-                <p className="mt-1 text-xs opacity-70">
-                  {new Date(message.created_at).toLocaleTimeString()}
-                </p>
+                <div
+                  className={`max-w-[70%] rounded-lg px-4 py-2 text-sm ${bubbleColor}`}
+                  dir={/[\u0600-\u06FF]/.test(message.content) ? "rtl" : "ltr"}
+                >
+                  <p className="whitespace-pre-wrap">{message.content}</p>
+                  <p className="mt-1 text-xs opacity-70">
+                    {new Date(message.created_at).toLocaleTimeString()}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
     </div>

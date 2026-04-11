@@ -298,7 +298,10 @@ export interface TwilioStatusCallback {
 }
 
 export interface GeminiResponse {
+  /** Plain-text fallback / preview of the reply (always populated). */
   content: string;
+  /** Structured reply that drives interactive vs plain text send. */
+  reply: InteractiveReply;
   language: "ar" | "en";
 }
 
@@ -373,6 +376,15 @@ export interface TwilioContentTypes {
     body: string;
     actions: Array<{ title: string; id: string }>;
   };
+  "twilio/list-picker"?: {
+    body: string;
+    button: string;
+    items: Array<{
+      item: string;
+      description?: string;
+      id: string;
+    }>;
+  };
   "whatsapp/card"?: {
     body: string;
     header_text?: string | null;
@@ -388,6 +400,27 @@ export interface TwilioContentTypes {
     }>;
   };
 }
+
+/**
+ * Discriminated union returned by the AI for customer-service replies.
+ * Drives whether ai-reply-jobs sends a plain text or a Twilio Content API
+ * interactive message (quick-reply / list-picker). All variants are sent as
+ * session messages — they only work inside the 24h customer-service window
+ * and do not require Meta template approval.
+ */
+export type InteractiveReply =
+  | { type: "text"; content: string }
+  | {
+      type: "quick_reply";
+      body: string;
+      options: Array<{ id: string; title: string }>;
+    }
+  | {
+      type: "list";
+      body: string;
+      button: string;
+      items: Array<{ id: string; title: string; description?: string }>;
+    };
 
 export interface AITemplateBuilderMessage {
   role: "user" | "assistant";

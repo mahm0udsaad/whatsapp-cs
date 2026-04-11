@@ -1,7 +1,9 @@
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 import { generateGeminiResponse } from "@/lib/gemini";
 import { sendWhatsAppMessage } from "@/lib/twilio";
+import { sendInteractiveMessage } from "@/lib/twilio-content";
 import { isSessionWindowOpen } from "@/lib/session-window";
+import type { InteractiveReply } from "@/lib/types";
 
 interface QueueAIReplyJobInput {
   restaurantId: string;
@@ -19,18 +21,23 @@ function detectLanguage(text: string): "ar" | "en" {
 async function saveAgentMessage(
   conversationId: string,
   content: string,
-  externalMessageSid?: string,
-  deliveryStatus?: string,
-  errorMessage?: string
+  options: {
+    externalMessageSid?: string;
+    deliveryStatus?: string;
+    errorMessage?: string;
+    messageType?: string;
+    metadata?: Record<string, unknown> | null;
+  } = {}
 ) {
   const { error } = await adminSupabaseClient.from("messages").insert({
     conversation_id: conversationId,
     role: "agent",
     content,
-    message_type: "text",
-    external_message_sid: externalMessageSid,
-    delivery_status: deliveryStatus,
-    error_message: errorMessage,
+    message_type: options.messageType || "text",
+    metadata: options.metadata ?? null,
+    external_message_sid: options.externalMessageSid,
+    delivery_status: options.deliveryStatus,
+    error_message: options.errorMessage,
     created_at: new Date().toISOString(),
   });
 
@@ -42,19 +49,36 @@ async function saveAgentMessage(
 async function getConversationHistory(conversationId: string, limit = 12) {
   const { data } = await adminSupabaseClient
     .from("messages")
-    .select("role, content")
+    .select("role, content, message_type, metadata")
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  return (data || [])
-    .reverse()
-    .map((message) => ({
+  return (data || []).reverse().map((message) => {
+    let content = message.content as string;
+
+    // Enrich agent interactive replies so Gemini sees the option titles it
+    // previously offered. The webhook already encodes inbound taps as
+    // "[user_action:<id>]" inside `content`, so the model has both sides.
+    if (message.role === "agent" && message.message_type === "interactive") {
+      const meta = message.metadata as { interactive?: InteractiveReply } | null;
+      const interactive = meta?.interactive;
+      if (interactive && interactive.type === "quick_reply") {
+        const opts = interactive.options.map((o) => `${o.title} (${o.id})`).join(" | ");
+        content = `${interactive.body}\n[quick_reply_options: ${opts}]`;
+      } else if (interactive && interactive.type === "list") {
+        const items = interactive.items.map((i) => `${i.title} (${i.id})`).join(" | ");
+        content = `${interactive.body}\n[list_items: ${items}]`;
+      }
+    }
+
+    return {
       role: (message.role === "customer" ? "user" : "assistant") as
         | "user"
         | "assistant",
-      content: message.content,
-    }));
+      content,
+    };
+  });
 }
 
 async function queryKnowledgeBase(restaurantId: string, query: string) {
@@ -196,6 +220,7 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
 
       const userLanguage = detectLanguage(inboundMessage.content);
       let responseText: string;
+      let reply: InteractiveReply;
 
       try {
         const result = await generateGeminiResponse({
@@ -216,11 +241,13 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
         });
 
         responseText = result.content;
+        reply = result.reply;
       } catch {
         responseText =
           userLanguage === "ar"
             ? "عذراً، حدث خطأ. يرجى المحاولة لاحقاً."
             : "Sorry, an error occurred. Please try again later.";
+        reply = { type: "text", content: responseText };
       }
 
       const senderPhoneNumber =
@@ -271,29 +298,56 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
         continue;
       }
 
+      const statusCallback = `${(process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")).replace(/\/$/, "")}/api/webhooks/twilio/status`;
+
       let outboundMessageSid: string | undefined;
+      let outboundMessageType: string = "text";
+      let outboundMetadata: Record<string, unknown> | null = null;
+
       try {
-        outboundMessageSid = await sendWhatsAppMessage(customerPhone, responseText, {
-          fromPhoneNumber: senderPhoneNumber || undefined,
-          statusCallback: `${(process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")).replace(/\/$/, "")}/api/webhooks/twilio/status`,
-        });
+        if (reply.type === "text") {
+          outboundMessageSid = await sendWhatsAppMessage(customerPhone, reply.content, {
+            fromPhoneNumber: senderPhoneNumber || undefined,
+            statusCallback,
+          });
+        } else {
+          if (!senderPhoneNumber) {
+            throw new Error("Cannot send interactive message: no sender phone number configured");
+          }
+          const sent = await sendInteractiveMessage({
+            reply,
+            from: senderPhoneNumber,
+            to: customerPhone,
+            statusCallback,
+            language: reply.type === "list" || reply.type === "quick_reply" ? userLanguage : undefined,
+          });
+          outboundMessageSid = sent.messageSid;
+          outboundMessageType = "interactive";
+          outboundMetadata = {
+            interactive: reply,
+            content_sid: sent.contentSid,
+            cached: sent.cached,
+          };
+          console.log(
+            `[ai-reply] interactive ${reply.type} sent (cached=${sent.cached}, sid=${sent.contentSid})`
+          );
+        }
       } catch (sendError) {
-        await saveAgentMessage(
-          job.conversation_id,
-          responseText,
-          undefined,
-          "failed",
-          sendError instanceof Error ? sendError.message : "Twilio send failed"
-        );
+        await saveAgentMessage(job.conversation_id, responseText, {
+          deliveryStatus: "failed",
+          errorMessage: sendError instanceof Error ? sendError.message : "Twilio send failed",
+          messageType: outboundMessageType,
+          metadata: outboundMetadata,
+        });
         throw sendError;
       }
 
-      await saveAgentMessage(
-        job.conversation_id,
-        responseText,
-        outboundMessageSid,
-        outboundMessageSid ? "queued" : "failed"
-      );
+      await saveAgentMessage(job.conversation_id, responseText, {
+        externalMessageSid: outboundMessageSid,
+        deliveryStatus: outboundMessageSid ? "queued" : "failed",
+        messageType: outboundMessageType,
+        metadata: outboundMetadata,
+      });
 
       await adminSupabaseClient
         .from("conversations")
