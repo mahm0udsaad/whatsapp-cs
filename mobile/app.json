@@ -8,7 +8,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "bundleIdentifier": "com.whatsappcs.agentconsole",
+      "bundleIdentifier": "com.nehgz.nehgzbot",
       "supportsTablet": false,
       "infoPlist": {
         "UIBackgroundModes": [
