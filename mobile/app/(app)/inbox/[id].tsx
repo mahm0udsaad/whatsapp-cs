@@ -34,7 +34,11 @@ import { supabase } from "../../../lib/supabase";
 import { useSessionStore } from "../../../lib/session-store";
 import { isManager } from "../../../lib/roles";
 import { qk } from "../../../lib/query-keys";
-import { SkeletonBlock } from "../../../components/manager-ui";
+import {
+  SkeletonBlock,
+  managerColors,
+  premiumShadow,
+} from "../../../components/manager-ui";
 
 type Msg = {
   id: string;
@@ -361,27 +365,27 @@ export default function ConversationDetail() {
   const expired = windowState.expired;
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F8F7]" edges={["top", "bottom"]}>
-      <View className="border-b border-gray-200 bg-white px-4 pb-3 pt-2">
+    <SafeAreaView className="flex-1 bg-[#F4F3EF]" edges={["top", "bottom"]}>
+      <View className="border-b border-stone-200 bg-[#FFFDF8] px-4 pb-3 pt-2">
         <View className="flex-row-reverse items-center gap-3">
           <Pressable
             onPress={() => router.back()}
             hitSlop={8}
-            className="h-10 w-10 items-center justify-center rounded-lg bg-gray-100"
+            className="h-10 w-10 items-center justify-center rounded-lg bg-stone-100"
           >
-            <Ionicons name="arrow-forward" size={20} color="#111827" />
+            <Ionicons name="arrow-forward" size={20} color={managerColors.ink} />
           </Pressable>
           <View className="h-11 w-11 items-center justify-center rounded-lg bg-emerald-50">
-            <Ionicons name="person" size={20} color="#047857" />
+            <Ionicons name="person" size={20} color={managerColors.brand} />
           </View>
           <View className="flex-1">
             <Text
-              className="text-right text-base font-bold text-gray-950"
+              className="text-right text-base font-bold text-[#151515]"
               numberOfLines={1}
             >
               {conv.customer_name || conv.customer_phone}
             </Text>
-            <Text className="mt-0.5 text-right text-xs text-gray-500" selectable>
+            <Text className="mt-0.5 text-right text-xs text-stone-500" selectable>
               {conv.customer_phone}
             </Text>
           </View>
@@ -389,9 +393,9 @@ export default function ConversationDetail() {
             <Pressable
               onPress={() => setReassignOpen(true)}
               hitSlop={8}
-              className="h-10 w-10 items-center justify-center rounded-lg bg-gray-100"
+              className="h-10 w-10 items-center justify-center rounded-lg bg-stone-100"
             >
-              <Ionicons name="ellipsis-horizontal" size={22} color="#374151" />
+              <Ionicons name="ellipsis-horizontal" size={22} color={managerColors.muted} />
             </Pressable>
           ) : null}
         </View>
@@ -418,12 +422,12 @@ export default function ConversationDetail() {
               size={18}
               color={
                 windowState.tone === "danger"
-                  ? "#B91C1C"
+                  ? managerColors.danger
                   : windowState.tone === "warning"
-                  ? "#B45309"
+                  ? managerColors.warning
                   : windowState.tone === "success"
-                  ? "#047857"
-                  : "#4B5563"
+                  ? managerColors.brand
+                  : managerColors.muted
               }
             />
             <View className="flex-1">
@@ -435,8 +439,8 @@ export default function ConversationDetail() {
                       : windowState.tone === "warning"
                       ? "text-amber-800"
                       : windowState.tone === "success"
-                      ? "text-emerald-800"
-                      : "text-gray-700"
+                      ? "text-emerald-900"
+                      : "text-stone-700"
                   }`}
                 >
                   {windowState.title}
@@ -447,13 +451,13 @@ export default function ConversationDetail() {
                       ? "bg-red-100 text-red-800"
                       : conv.handler_mode === "bot"
                       ? "bg-indigo-100 text-indigo-800"
-                      : "bg-emerald-100 text-emerald-800"
+                      : "bg-emerald-100 text-emerald-900"
                   }`}
                 >
                   {getOwnerLabel(conv)}
                 </Text>
               </View>
-              <Text className="mt-1 text-right text-xs leading-5 text-gray-600">
+              <Text className="mt-1 text-right text-xs leading-5 text-stone-600">
                 {windowState.description}
               </Text>
             </View>
@@ -527,9 +531,9 @@ export default function ConversationDetail() {
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            className="rounded-t-lg bg-white p-4 pb-8"
+            className="rounded-t-lg bg-[#FFFDF8] p-4 pb-8"
           >
-            <Text className="text-right text-lg font-bold text-gray-950">
+            <Text className="text-right text-lg font-bold text-[#151515]">
               إدارة المحادثة
             </Text>
             <View className="mt-4">
@@ -631,8 +635,8 @@ export default function ConversationDetail() {
 
 function ChatSkeleton() {
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F8F7]" edges={["top", "bottom"]}>
-      <View className="border-b border-gray-200 bg-white px-4 pb-3 pt-2">
+    <SafeAreaView className="flex-1 bg-[#F4F3EF]" edges={["top", "bottom"]}>
+      <View className="border-b border-stone-200 bg-[#FFFDF8] px-4 pb-3 pt-2">
         <View className="flex-row-reverse items-center gap-3">
           <SkeletonBlock className="h-10 w-10 rounded-lg" />
           <SkeletonBlock className="h-11 w-11 rounded-lg" />
@@ -642,7 +646,7 @@ function ChatSkeleton() {
           </View>
           <SkeletonBlock className="h-10 w-10 rounded-lg" />
         </View>
-        <View className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
+        <View className="mt-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-3">
           <View className="flex-row-reverse items-start gap-2">
             <SkeletonBlock className="h-4 w-4 rounded-lg" />
             <View className="flex-1 items-end gap-2">
@@ -658,17 +662,17 @@ function ChatSkeleton() {
 
       <View className="flex-1 px-4 py-4">
         <View className="mb-5 items-center">
-          <SkeletonBlock className="h-6 w-28 rounded-lg bg-white" />
+          <SkeletonBlock className="h-6 w-28 rounded-lg bg-[#FFFDF8]" />
         </View>
 
         <View className="mb-4 items-start">
           <SkeletonBlock className="mb-1 h-3 w-12 rounded-lg" />
-          <SkeletonBlock className="h-14 w-36 rounded-lg bg-white" />
+          <SkeletonBlock className="h-14 w-36 rounded-lg bg-[#FFFDF8]" />
         </View>
 
         <View className="mb-4 items-start">
           <SkeletonBlock className="mb-1 h-3 w-12 rounded-lg" />
-          <SkeletonBlock className="h-12 w-56 rounded-lg bg-white" />
+          <SkeletonBlock className="h-12 w-56 rounded-lg bg-[#FFFDF8]" />
         </View>
 
         <View className="mb-4 items-end">
@@ -682,7 +686,7 @@ function ChatSkeleton() {
         </View>
       </View>
 
-      <View className="border-t border-gray-200 bg-white px-3 pb-4 pt-3">
+      <View className="border-t border-stone-200 bg-[#FFFDF8] px-3 pb-4 pt-3">
         <View className="flex-row-reverse items-end gap-2">
           <SkeletonBlock className="h-11 w-11 rounded-lg" />
           <SkeletonBlock className="h-11 w-11 rounded-lg" />
@@ -697,7 +701,7 @@ function ChatSkeleton() {
 function DateSeparator({ date }: { date: string }) {
   return (
     <View className="my-3 items-center">
-      <Text className="rounded-lg bg-white px-3 py-1 text-xs font-medium text-gray-500">
+      <Text className="rounded-lg bg-[#FFFDF8] px-3 py-1 text-xs font-medium text-stone-500">
         {format(new Date(date), "EEEE d MMMM", { locale: ar })}
       </Text>
     </View>
@@ -711,7 +715,7 @@ function MessageBubble({ message }: { message: Msg }) {
     return (
       <View className="my-2 items-center">
         <View className="max-w-[90%] flex-row-reverse items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-          <Ionicons name="alert-circle-outline" size={16} color="#B45309" />
+          <Ionicons name="alert-circle-outline" size={16} color={managerColors.warning} />
           <Text className="flex-1 text-center text-xs leading-5 text-amber-800" selectable>
             {message.content}
           </Text>
@@ -724,7 +728,7 @@ function MessageBubble({ message }: { message: Msg }) {
     <View className={`my-1.5 flex ${isCustomer ? "items-start" : "items-end"}`}>
       <Text
         className={`mb-1 text-[11px] font-semibold ${
-          isCustomer ? "text-gray-500" : "text-emerald-700"
+          isCustomer ? "text-stone-500" : "text-[#128C5B]"
         }`}
       >
         {isCustomer ? "العميل" : "الفريق"}
@@ -732,13 +736,14 @@ function MessageBubble({ message }: { message: Msg }) {
       <View
         className={`max-w-[84%] rounded-lg border px-3 py-2 ${
           isCustomer
-            ? "border-gray-200 bg-white"
-            : "border-emerald-700 bg-emerald-600"
+            ? "border-stone-200 bg-[#FFFDF8]"
+            : "border-[#128C5B] bg-[#128C5B]"
         }`}
+        style={!isCustomer ? premiumShadow : undefined}
       >
         <Text
           className={`text-right text-sm leading-5 ${
-            isCustomer ? "text-gray-950" : "text-white"
+            isCustomer ? "text-[#151515]" : "text-white"
           }`}
           selectable
         >
@@ -746,7 +751,7 @@ function MessageBubble({ message }: { message: Msg }) {
         </Text>
         <Text
           className={`mt-1 text-left text-[11px] ${
-            isCustomer ? "text-gray-400" : "text-emerald-50"
+            isCustomer ? "text-stone-400" : "text-emerald-50"
           }`}
         >
           {format(new Date(message.created_at), "HH:mm")}

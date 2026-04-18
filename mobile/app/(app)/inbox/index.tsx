@@ -26,7 +26,11 @@ import {
   type TeamMemberRosterRow,
 } from "../../../lib/api";
 import { qk } from "../../../lib/query-keys";
-import { ListSkeleton } from "../../../components/manager-ui";
+import {
+  ListSkeleton,
+  managerColors,
+  premiumShadow,
+} from "../../../components/manager-ui";
 
 type Filter = "all" | "unassigned" | "mine" | "bot" | "expired";
 
@@ -244,6 +248,10 @@ export default function InboxScreen() {
     [allItems]
   );
 
+  const attentionCount = stats.unassigned + stats.expired;
+  const leadFilter: Filter =
+    stats.unassigned > 0 ? "unassigned" : stats.expired > 0 ? "expired" : "mine";
+
   const items = useMemo(() => {
     if (filter === "unassigned") {
       return allItems.filter((item) => item.handler_mode === "unassigned");
@@ -258,28 +266,51 @@ export default function InboxScreen() {
 
   const header = useMemo(
     () => (
-      <View className="border-b border-gray-200 bg-white">
+      <View className="border-b border-stone-200 bg-[#FFFDF8]">
         <View className="px-4 pb-3 pt-3">
-          <Text className="text-right text-2xl font-bold text-gray-950">
-            المحادثات
-          </Text>
-          <Text className="mt-1 text-right text-sm text-gray-500">
-            ابدئي بغير المستلمة والمنتهية ثم راجعي باقي المحادثات
-          </Text>
+          <View
+            className={`overflow-hidden rounded-lg p-4 ${
+              attentionCount > 0 ? "bg-[#2A1713]" : "bg-[#123D2E]"
+            }`}
+            style={premiumShadow}
+          >
+            <View className="flex-row-reverse items-start justify-between gap-4">
+              <View className="flex-1">
+                <Text className="text-right text-xs font-semibold text-white/70">
+                  مركز المحادثات
+                </Text>
+                <Text className="mt-2 text-right text-3xl font-bold text-white">
+                  {attentionCount}
+                </Text>
+                <Text className="mt-1 text-right text-sm leading-6 text-white/80">
+                  {attentionCount > 0
+                    ? "محادثات تحتاج تدخل قبل باقي القائمة."
+                    : "لا توجد محادثات عاجلة الآن."}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setFilter(leadFilter)}
+                className="items-center rounded-lg bg-white px-4 py-3"
+              >
+                <Text className="text-xs font-semibold text-stone-500">
+                  ابدأي من
+                </Text>
+                <Text className="mt-1 text-sm font-bold text-[#151515]">
+                  {leadFilter === "unassigned"
+                    ? "غير مستلمة"
+                    : leadFilter === "expired"
+                    ? "منتهية"
+                    : "محادثاتي"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
         </View>
-        <View className="flex-row-reverse gap-2 px-3 pb-3">
-          <MetricCard
-            label="للاستلام"
-            value={stats.unassigned}
-            tone="urgent"
-          />
+        <View className="flex-row-reverse gap-2 px-4 pb-3">
+          <MetricCard label="غير مستلمة" value={stats.unassigned} tone="urgent" />
           <MetricCard label="محادثاتي" value={stats.mine} tone="success" />
           <MetricCard label="البوت" value={stats.bot} tone="bot" />
-          <MetricCard
-            label="منتهية"
-            value={stats.expired}
-            tone="warning"
-          />
+          <MetricCard label="منتهية" value={stats.expired} tone="warning" />
         </View>
         <ScrollView
           horizontal
@@ -326,7 +357,7 @@ export default function InboxScreen() {
         </ScrollView>
       </View>
     ),
-    [filter, stats]
+    [attentionCount, filter, leadFilter, stats]
   );
 
   const openConversation = useCallback((id: string) => {
@@ -334,7 +365,7 @@ export default function InboxScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F8F7]" edges={["top", "bottom"]}>
+    <SafeAreaView className="flex-1 bg-[#F4F3EF]" edges={["top", "bottom"]}>
       {header}
       {query.isLoading ? (
         <ListSkeleton count={6} />
@@ -368,28 +399,42 @@ export default function InboxScreen() {
               onPress={() => openConversation(item.id)}
               onLongPress={manager ? () => setReassignTarget(item) : undefined}
               delayLongPress={400}
-              className={`mx-3 my-2 rounded-lg border bg-white p-4 ${
+              className={`relative mx-3 my-1.5 overflow-hidden rounded-lg border bg-[#FFFDF8] p-4 ${
                 item.is_expired
-                  ? "border-amber-300"
+                  ? "border-amber-200"
                   : item.handler_mode === "unassigned"
-                  ? "border-red-300"
-                  : "border-gray-200"
+                  ? "border-red-200"
+                  : "border-stone-200"
               }`}
+              style={item.handler_mode === "unassigned" || item.is_expired ? premiumShadow : undefined}
             >
+              <View
+                className={`absolute bottom-0 right-0 top-0 w-1.5 ${
+                  item.handler_mode === "unassigned"
+                    ? "bg-red-500"
+                    : item.is_expired
+                    ? "bg-amber-500"
+                    : item.handler_mode === "bot"
+                    ? "bg-indigo-500"
+                    : item.is_mine
+                    ? "bg-emerald-600"
+                    : "bg-stone-200"
+                }`}
+              />
               <View className="mb-2 flex-row-reverse items-start justify-between gap-3">
                 <View className="flex-1">
                   <Text
-                    className="text-right text-base font-bold text-gray-950"
+                    className="text-right text-base font-bold text-[#151515]"
                     numberOfLines={1}
                   >
                     {item.customer_name || item.customer_phone}
                   </Text>
-                  <Text className="mt-1 text-right text-xs text-gray-500">
+                  <Text className="mt-1 text-right text-xs text-stone-500">
                     {item.customer_phone}
                   </Text>
                 </View>
                 <View className="items-start gap-2">
-                  <Text className="text-xs text-gray-500" numberOfLines={1}>
+                  <Text className="text-xs text-stone-500" numberOfLines={1}>
                     {formatDistanceToNow(new Date(item.last_message_at), {
                       addSuffix: true,
                       locale: ar,
@@ -402,10 +447,10 @@ export default function InboxScreen() {
                         setReassignTarget(item);
                       }}
                       hitSlop={8}
-                      className="flex-row-reverse items-center gap-1 rounded-lg bg-gray-100 px-2.5 py-1"
+                      className="flex-row-reverse items-center gap-1 rounded-lg bg-stone-100 px-2.5 py-1"
                     >
-                      <Ionicons name="swap-horizontal" size={14} color="#374151" />
-                      <Text className="text-xs font-semibold text-gray-700">
+                      <Ionicons name="swap-horizontal" size={14} color={managerColors.muted} />
+                      <Text className="text-xs font-semibold text-stone-700">
                         نقل
                       </Text>
                     </Pressable>
@@ -415,7 +460,7 @@ export default function InboxScreen() {
               {!!item.preview && (
                 <Text
                   numberOfLines={2}
-                  className="text-right text-sm leading-5 text-gray-700"
+                  className="text-right text-sm leading-5 text-stone-700"
                 >
                   {item.preview}
                 </Text>
@@ -429,8 +474,8 @@ export default function InboxScreen() {
                   <Text
                     className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
                       item.is_expired
-                        ? "bg-amber-50 text-amber-800"
-                        : "bg-emerald-50 text-emerald-800"
+                        ? "bg-amber-50 text-amber-900"
+                        : "bg-emerald-50 text-emerald-900"
                     }`}
                   >
                     {getWindowLabel(item.last_inbound_at)}
@@ -455,12 +500,12 @@ export default function InboxScreen() {
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            className="rounded-t-lg bg-white p-4 pb-8"
+            className="rounded-t-lg bg-[#FFFDF8] p-4 pb-8"
           >
-            <Text className="text-right text-lg font-bold text-gray-950">
+            <Text className="text-right text-lg font-bold text-[#151515]">
               نقل المحادثة
             </Text>
-            <Text className="mt-1 text-right text-xs text-gray-500">
+            <Text className="mt-1 text-right text-xs text-stone-500">
               {reassignTarget?.customer_name ?? reassignTarget?.customer_phone}
             </Text>
 
@@ -584,12 +629,12 @@ function MetricCard({
       ? "text-indigo-800"
       : "text-amber-800";
   return (
-    <View className={`flex-1 rounded-lg border p-3 ${toneClass}`}>
-      <Text className={`text-right text-xl font-bold ${textClass}`}>
+    <View className={`flex-1 rounded-lg border px-3 py-2.5 ${toneClass}`}>
+      <Text className={`text-right text-lg font-bold ${textClass}`}>
         {value}
       </Text>
       <Text
-        className="mt-1 text-right text-[11px] font-medium text-gray-600"
+        className="mt-0.5 text-right text-[11px] font-medium text-stone-600"
         numberOfLines={1}
         adjustsFontSizeToFit
       >
@@ -614,10 +659,10 @@ function ModeBadge({
       : "bg-indigo-50";
   const fg =
     mode === "unassigned"
-      ? "text-red-700"
+      ? "text-red-800"
       : mode === "human"
-      ? "text-emerald-800"
-      : "text-indigo-800";
+      ? "text-emerald-900"
+      : "text-indigo-900";
   const trimmed = assigneeName?.trim();
   const label =
     mode === "unassigned"

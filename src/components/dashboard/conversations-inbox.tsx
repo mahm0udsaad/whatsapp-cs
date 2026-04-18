@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useRealtimeAuth } from "@/lib/supabase/use-realtime-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ export function ConversationsInbox({
   initialConversations,
 }: ConversationsInboxProps) {
   const supabase = useMemo(() => createClient(), []);
+  const { ready: realtimeReady } = useRealtimeAuth(supabase);
   const [conversations, setConversations] =
     useState<Conversation[]>(initialConversations);
   const [selectedId, setSelectedId] = useState<string | null>(
@@ -62,6 +64,12 @@ export function ConversationsInbox({
 
     loadConversations();
 
+    if (!realtimeReady) {
+      return () => {
+        isMounted = false;
+      };
+    }
+
     // Real-time: listen for new/updated conversations
     const convChannel = supabase
       .channel(`conversations:${restaurantId}`)
@@ -78,13 +86,15 @@ export function ConversationsInbox({
           loadConversations();
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn("[conversations] channel error", status, err);
+      });
 
     return () => {
       isMounted = false;
       supabase.removeChannel(convChannel);
     };
-  }, [restaurantId, supabase]);
+  }, [restaurantId, supabase, realtimeReady]);
 
   // Auto-select first conversation once loaded.
   useEffect(() => {
@@ -116,6 +126,12 @@ export function ConversationsInbox({
 
     loadMessages();
 
+    if (!realtimeReady) {
+      return () => {
+        isMounted = false;
+      };
+    }
+
     const channel = supabase
       .channel(`messages:${selectedId}`)
       .on(
@@ -130,13 +146,15 @@ export function ConversationsInbox({
           setMessages((prev) => [...prev, payload.new as Message]);
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn("[messages] channel error", status, err);
+      });
 
     return () => {
       isMounted = false;
       supabase.removeChannel(channel);
     };
-  }, [selectedId, supabase]);
+  }, [selectedId, supabase, realtimeReady]);
 
   const selectedConversation = conversations.find((item) => item.id === selectedId);
 

@@ -20,6 +20,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useRealtimeAuth } from "@/lib/supabase/use-realtime-auth";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -79,6 +80,7 @@ export function ConversationsInboxShell({
   currentMemberId: string | null;
 }) {
   const supabase = useMemo(() => createClient(), []);
+  const { ready: realtimeReady } = useRealtimeAuth(supabase);
   const [filter, setFilter] = useState<Filter>("open");
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
@@ -128,6 +130,7 @@ export function ConversationsInboxShell({
 
   // Realtime — reload list on any conversation change in this tenant.
   useEffect(() => {
+    if (!realtimeReady) return;
     const ch = supabase
       .channel(`inbox-conversations:${restaurantId}`)
       .on(
@@ -142,11 +145,13 @@ export function ConversationsInboxShell({
           void loadRef.current();
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn("[inbox-conversations] channel error", status, err);
+      });
     return () => {
       void supabase.removeChannel(ch);
     };
-  }, [supabase, restaurantId]);
+  }, [supabase, restaurantId, realtimeReady]);
 
   // Load messages when a conversation is selected; subscribe to new ones.
   useEffect(() => {
@@ -165,6 +170,12 @@ export function ConversationsInboxShell({
       if (!cancelled) setMessages((data as MessageRow[]) ?? []);
     })();
 
+    if (!realtimeReady) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const ch = supabase
       .channel(`inbox-msgs:${selectedId}`)
       .on(
@@ -179,12 +190,14 @@ export function ConversationsInboxShell({
           setMessages((prev) => [...prev, payload.new as MessageRow]);
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn("[inbox-msgs] channel error", status, err);
+      });
     return () => {
       cancelled = true;
       void supabase.removeChannel(ch);
     };
-  }, [supabase, selectedId]);
+  }, [supabase, selectedId, realtimeReady]);
 
   const onClaim = useCallback(
     async (mode: "human" | "bot") => {

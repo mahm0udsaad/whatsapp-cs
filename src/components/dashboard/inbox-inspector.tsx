@@ -29,6 +29,7 @@ import {
   X,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useRealtimeAuth } from "@/lib/supabase/use-realtime-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -111,6 +112,9 @@ export function InboxInspector({
   const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  const supabase = useMemo(() => createClient(), []);
+  const { ready: realtimeReady } = useRealtimeAuth(supabase);
+
   // Local object URL for image previews — revoke on unmount / swap.
   useEffect(() => {
     if (!pendingFile || !pendingFile.type.startsWith("image/")) {
@@ -124,7 +128,7 @@ export function InboxInspector({
 
   // Realtime: messages in this conversation.
   useEffect(() => {
-    const supabase = createClient();
+    if (!realtimeReady) return;
     const channel = supabase
       .channel(`inspector-messages:${order.conversation_id}`)
       .on(
@@ -143,12 +147,16 @@ export function InboxInspector({
           });
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) {
+          console.warn("[inspector-messages] channel error", status, err);
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [order.conversation_id]);
+  }, [supabase, order.conversation_id, realtimeReady]);
 
   // Auto-scroll thread on new messages.
   useEffect(() => {

@@ -4,31 +4,49 @@ import { Pressable, Text, View } from "react-native";
 
 type Tone = "neutral" | "success" | "warning" | "danger" | "info";
 
+export const managerColors = {
+  bg: "#F4F3EF",
+  surface: "#FFFDF8",
+  surfaceMuted: "#F8F7F2",
+  ink: "#151515",
+  muted: "#6B6A63",
+  border: "#E5E1D8",
+  brand: "#128C5B",
+  brandDark: "#0B3D2E",
+  bot: "#34308A",
+  danger: "#B42318",
+  warning: "#A15C07",
+};
+
+export const premiumShadow = {
+  boxShadow: "0 10px 24px rgba(21, 21, 21, 0.07)",
+} as const;
+
 const toneClasses: Record<Tone, { card: string; text: string; icon: string }> = {
   neutral: {
-    card: "border-gray-200 bg-white",
-    text: "text-gray-950",
-    icon: "#374151",
+    card: "border-stone-200 bg-[#FFFDF8]",
+    text: "text-[#151515]",
+    icon: managerColors.muted,
   },
   success: {
-    card: "border-emerald-200 bg-emerald-50",
-    text: "text-emerald-900",
-    icon: "#047857",
+    card: "border-emerald-100 bg-emerald-50",
+    text: "text-emerald-950",
+    icon: managerColors.brand,
   },
   warning: {
     card: "border-amber-200 bg-amber-50",
     text: "text-amber-900",
-    icon: "#B45309",
+    icon: managerColors.warning,
   },
   danger: {
     card: "border-red-200 bg-red-50",
     text: "text-red-900",
-    icon: "#B91C1C",
+    icon: managerColors.danger,
   },
   info: {
-    card: "border-indigo-200 bg-indigo-50",
-    text: "text-indigo-900",
-    icon: "#3730A3",
+    card: "border-indigo-100 bg-indigo-50",
+    text: "text-indigo-950",
+    icon: managerColors.bot,
   },
 };
 
@@ -40,7 +58,10 @@ export function ManagerCard({
   className?: string;
 }) {
   return (
-    <View className={`rounded-lg border border-gray-200 bg-white p-4 ${className}`}>
+    <View
+      className={`rounded-lg border border-stone-200 bg-[#FFFDF8] p-4 ${className}`}
+      style={premiumShadow}
+    >
       {children}
     </View>
   );
@@ -68,7 +89,7 @@ export function ManagerMetric({
         {value}
       </Text>
       <Text
-        className="mt-1 text-right text-xs font-medium text-gray-600"
+        className="mt-1 text-right text-xs font-medium text-stone-600"
         numberOfLines={1}
         adjustsFontSizeToFit
       >
@@ -98,15 +119,16 @@ export function PriorityAction({
     <Pressable
       onPress={onPress}
       className={`flex-row-reverse items-center gap-3 rounded-lg border p-3 ${classes.card}`}
+      style={tone === "danger" ? premiumShadow : undefined}
     >
-      <View className="h-10 w-10 items-center justify-center rounded-lg bg-white">
+      <View className="h-10 w-10 items-center justify-center rounded-lg bg-white/80">
         <Ionicons name={icon} size={21} color={classes.icon} />
       </View>
       <View className="flex-1">
         <Text className={`text-right text-sm font-bold ${classes.text}`}>
           {title}
         </Text>
-        <Text className="mt-0.5 text-right text-xs leading-5 text-gray-600">
+        <Text className="mt-0.5 text-right text-xs leading-5 text-stone-600">
           {description}
         </Text>
       </View>
@@ -141,10 +163,10 @@ export function SectionHeader({
 }) {
   return (
     <View className="flex-row-reverse items-center justify-between">
-      <Text className="text-right text-base font-bold text-gray-950">{title}</Text>
+      <Text className="text-right text-base font-bold text-[#151515]">{title}</Text>
       {actionLabel && onActionPress ? (
         <Pressable onPress={onActionPress} hitSlop={8}>
-          <Text className="text-sm font-semibold text-emerald-700">
+          <Text className="text-sm font-semibold text-[#128C5B]">
             {actionLabel}
           </Text>
         </Pressable>
@@ -154,7 +176,7 @@ export function SectionHeader({
 }
 
 export function SkeletonBlock({ className = "" }: { className?: string }) {
-  return <View className={`bg-gray-200/80 ${className}`} />;
+  return <View className={`bg-stone-200/80 ${className}`} />;
 }
 
 export function CardSkeleton({
@@ -165,7 +187,7 @@ export function CardSkeleton({
   className?: string;
 }) {
   return (
-    <View className={`rounded-lg border border-gray-200 bg-white p-4 ${className}`}>
+    <View className={`rounded-lg border border-stone-200 bg-[#FFFDF8] p-4 ${className}`}>
       <View className="items-end gap-2">
         <SkeletonBlock className="h-4 w-32 rounded-lg" />
         {Array.from({ length: rows }).map((_, index) => (
@@ -191,7 +213,7 @@ export function ListSkeleton({
       {Array.from({ length: count }).map((_, index) => (
         <View
           key={index}
-          className="mb-2 flex-row-reverse items-center gap-3 rounded-lg border border-gray-200 bg-white p-4"
+          className="mb-2 flex-row-reverse items-center gap-3 rounded-lg border border-stone-200 bg-[#FFFDF8] p-4"
         >
           {showAvatar ? <SkeletonBlock className="h-11 w-11 rounded-full" /> : null}
           <View className="flex-1 items-end gap-2">

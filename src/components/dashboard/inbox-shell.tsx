@@ -13,7 +13,7 @@
  *   - On INSERT/UPDATE/DELETE, re-reconciles all three lists from local state.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -30,6 +30,7 @@ import {
   User,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useRealtimeAuth } from "@/lib/supabase/use-realtime-auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -136,9 +137,12 @@ export function InboxShell({
   const [sortKey, setSortKey] = useState<keyof OrderRow>("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
+  const supabase = useMemo(() => createClient(), []);
+  const { ready: realtimeReady } = useRealtimeAuth(supabase);
+
   // Realtime: orders for this tenant → reconcile all three lists.
   useEffect(() => {
-    const supabase = createClient();
+    if (!realtimeReady) return;
 
     async function refetch() {
       const now = new Date();
@@ -194,12 +198,14 @@ export function InboxShell({
           refetch();
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn("[inbox-orders] channel error", status, err);
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [restaurantId, currentMemberId]);
+  }, [supabase, restaurantId, currentMemberId, realtimeReady]);
 
   const showToast = useCallback((text: string, variant: "info" | "warn" = "info") => {
     setToast({ text, variant });

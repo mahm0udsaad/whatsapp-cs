@@ -2,6 +2,7 @@ import { Redirect, Tabs, useSegments } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSessionStore } from "../../lib/session-store";
 import { isManager } from "../../lib/roles";
+import { managerColors } from "../../components/manager-ui";
 
 export default function AppLayout() {
   // Guard: if the active member was cleared (e.g. by sign-out), bounce to
@@ -19,19 +20,19 @@ export default function AppLayout() {
     <Tabs
       screenOptions={{
         headerShown: true,
-        tabBarActiveTintColor: "#25D366",
-        tabBarInactiveTintColor: "#6B7280",
-        headerTintColor: "#111827",
+        tabBarActiveTintColor: managerColors.brand,
+        tabBarInactiveTintColor: managerColors.muted,
+        headerTintColor: managerColors.ink,
         headerTitleStyle: {
           fontWeight: "700",
         },
         headerStyle: {
-          backgroundColor: "#FFFFFF",
+          backgroundColor: managerColors.surface,
         },
         tabBarStyle: {
           display: isConversationDetail ? "none" : "flex",
-          backgroundColor: "#FFFFFF",
-          borderTopColor: "#D1D5DB",
+          backgroundColor: managerColors.surface,
+          borderTopColor: managerColors.border,
           height: 68,
           paddingBottom: 10,
           paddingTop: 6,

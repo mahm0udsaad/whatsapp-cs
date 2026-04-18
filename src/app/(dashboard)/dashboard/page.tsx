@@ -15,6 +15,9 @@ import {
   Workflow,
 } from "lucide-react";
 import { StatsCard } from "@/components/ui/stats-card";
+import { HomeRealtimeRefresh } from "@/components/dashboard/home-realtime-refresh";
+
+export const dynamic = "force-dynamic";
 import {
   Card,
   CardContent,
@@ -256,6 +259,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
+      <HomeRealtimeRefresh restaurantId={restaurant.id} />
       {needsWhatsAppSetup ? (
         <div className="flex flex-col gap-4 rounded-[28px] border border-amber-300/70 bg-amber-50/80 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
