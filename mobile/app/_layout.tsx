@@ -40,6 +40,8 @@ export default function RootLayout() {
       };
       if (data?.type === "new_conversation" && data.conversationId) {
         router.push(`/inbox/${data.conversationId}`);
+      } else if (data?.type === "assigned_message" && data.conversationId) {
+        router.push(`/inbox/${data.conversationId}`);
       } else if (data?.type === "sla_breach") {
         if (data.conversationId) {
           router.push(`/inbox/${data.conversationId}`);

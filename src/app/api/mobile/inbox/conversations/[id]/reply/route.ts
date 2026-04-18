@@ -16,10 +16,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
-import { sendWhatsAppMessage } from "@/lib/twilio";
+import { sendWhatsAppMessage, sendWhatsAppMedia } from "@/lib/twilio";
+import {
+  createMediaSignedUrl,
+  messageTypeFromContentType,
+  parseMediaStoragePath,
+} from "@/lib/storage-media";
+
+interface AttachmentInput {
+  storagePath: string;
+  contentType: string;
+  sizeBytes?: number;
+  originalFilename?: string;
+}
 
 interface ReplyBody {
   text?: string;
+  attachment?: AttachmentInput;
 }
 
 export async function POST(
@@ -42,14 +55,29 @@ export async function POST(
 
     const body = (await request.json().catch(() => ({}))) as ReplyBody;
     const text = (body.text || "").trim();
-    if (!text) {
-      return NextResponse.json({ error: "text required" }, { status: 400 });
+    const attachment = body.attachment;
+    if (!text && !attachment) {
+      return NextResponse.json(
+        { error: "text or attachment required" },
+        { status: 400 }
+      );
     }
     if (text.length > 4096) {
       return NextResponse.json(
         { error: "Message too long (max 4096 chars)" },
         { status: 400 }
       );
+    }
+    if (attachment) {
+      if (!attachment.storagePath || !attachment.contentType) {
+        return NextResponse.json(
+          {
+            error:
+              "attachment.storagePath and attachment.contentType are required",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     const { data: conv } = await adminSupabaseClient
@@ -117,27 +145,79 @@ export async function POST(
       senderPhone = (restaurant?.twilio_phone_number as string | undefined) || undefined;
     }
 
+    // Tenant-scope the attachment and resolve a signed URL for Twilio.
+    let attachmentSignedUrl: string | null = null;
+    if (attachment) {
+      const { restaurantId: attachmentRestaurantId } = parseMediaStoragePath(
+        attachment.storagePath
+      );
+      if (attachmentRestaurantId !== conv.restaurant_id) {
+        return NextResponse.json(
+          {
+            error:
+              "Attachment does not belong to this conversation's restaurant",
+          },
+          { status: 403 }
+        );
+      }
+      try {
+        attachmentSignedUrl = await createMediaSignedUrl(
+          attachment.storagePath,
+          3600
+        );
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : "signed url generation failed";
+        return NextResponse.json({ error: msg }, { status: 500 });
+      }
+    }
+
     let sid: string | undefined;
     try {
-      sid = await sendWhatsAppMessage(conv.customer_phone, text, {
-        fromPhoneNumber: senderPhone,
-      });
+      if (attachment && attachmentSignedUrl) {
+        sid = await sendWhatsAppMedia(conv.customer_phone, {
+          fromPhoneNumber: senderPhone,
+          mediaUrl: attachmentSignedUrl,
+          caption: text || undefined,
+        });
+      } else {
+        sid = await sendWhatsAppMessage(conv.customer_phone, text, {
+          fromPhoneNumber: senderPhone,
+        });
+      }
     } catch (err) {
       const m = err instanceof Error ? err.message : "send failed";
       return NextResponse.json({ error: m }, { status: 502 });
     }
 
     const nowIso = new Date().toISOString();
+    const outboundMessageType = attachment
+      ? messageTypeFromContentType(attachment.contentType)
+      : "text";
+    const outboundMetadata: Record<string, unknown> = {
+      sent_by_team_member_id: member.id,
+    };
+    if (attachment) {
+      outboundMetadata.media = [
+        {
+          storage_path: attachment.storagePath,
+          content_type: attachment.contentType,
+          size_bytes: attachment.sizeBytes ?? null,
+          original_filename: attachment.originalFilename ?? null,
+          caption: text || null,
+        },
+      ];
+    }
     const { data: inserted } = await adminSupabaseClient
       .from("messages")
       .insert({
         conversation_id: conv.id,
         role: "agent",
         content: text,
-        message_type: "text",
+        message_type: outboundMessageType,
         external_message_sid: sid,
         delivery_status: sid ? "queued" : "failed",
-        metadata: { sent_by_team_member_id: member.id },
+        metadata: outboundMetadata,
         created_at: nowIso,
       })
       .select("*")

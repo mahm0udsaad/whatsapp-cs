@@ -6,7 +6,7 @@ type Tone = "neutral" | "success" | "warning" | "danger" | "info";
 
 const toneClasses: Record<Tone, { card: string; text: string; icon: string }> = {
   neutral: {
-    card: "border-gray-100 bg-white",
+    card: "border-gray-200 bg-white",
     text: "text-gray-950",
     icon: "#374151",
   },
@@ -40,7 +40,7 @@ export function ManagerCard({
   className?: string;
 }) {
   return (
-    <View className={`rounded-2xl border border-gray-100 bg-white p-4 ${className}`}>
+    <View className={`rounded-lg border border-gray-200 bg-white p-4 ${className}`}>
       {children}
     </View>
   );
@@ -60,7 +60,7 @@ export function ManagerMetric({
   const classes = toneClasses[tone];
   return (
     <View
-      className={`flex-1 rounded-xl border ${classes.card} ${
+      className={`flex-1 rounded-lg border ${classes.card} ${
         compact ? "p-3" : "p-4"
       }`}
     >
@@ -97,9 +97,9 @@ export function PriorityAction({
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-row-reverse items-center gap-3 rounded-xl border p-3 ${classes.card}`}
+      className={`flex-row-reverse items-center gap-3 rounded-lg border p-3 ${classes.card}`}
     >
-      <View className="h-10 w-10 items-center justify-center rounded-full bg-white">
+      <View className="h-10 w-10 items-center justify-center rounded-lg bg-white">
         <Ionicons name={icon} size={21} color={classes.icon} />
       </View>
       <View className="flex-1">
@@ -124,8 +124,109 @@ export function StatusPill({
 }) {
   const classes = toneClasses[tone];
   return (
-    <View className={`rounded-full border px-2.5 py-1 ${classes.card}`}>
+    <View className={`rounded-lg border px-2.5 py-1 ${classes.card}`}>
       <Text className={`text-xs font-semibold ${classes.text}`}>{label}</Text>
+    </View>
+  );
+}
+
+export function SectionHeader({
+  title,
+  actionLabel,
+  onActionPress,
+}: {
+  title: string;
+  actionLabel?: string;
+  onActionPress?: () => void;
+}) {
+  return (
+    <View className="flex-row-reverse items-center justify-between">
+      <Text className="text-right text-base font-bold text-gray-950">{title}</Text>
+      {actionLabel && onActionPress ? (
+        <Pressable onPress={onActionPress} hitSlop={8}>
+          <Text className="text-sm font-semibold text-emerald-700">
+            {actionLabel}
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+export function SkeletonBlock({ className = "" }: { className?: string }) {
+  return <View className={`bg-gray-200/80 ${className}`} />;
+}
+
+export function CardSkeleton({
+  rows = 2,
+  className = "",
+}: {
+  rows?: number;
+  className?: string;
+}) {
+  return (
+    <View className={`rounded-lg border border-gray-200 bg-white p-4 ${className}`}>
+      <View className="items-end gap-2">
+        <SkeletonBlock className="h-4 w-32 rounded-lg" />
+        {Array.from({ length: rows }).map((_, index) => (
+          <SkeletonBlock
+            key={index}
+            className={`h-3 rounded-lg ${index % 2 === 0 ? "w-52" : "w-40"}`}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+export function ListSkeleton({
+  count = 5,
+  showAvatar = false,
+}: {
+  count?: number;
+  showAvatar?: boolean;
+}) {
+  return (
+    <View className="px-4 py-4">
+      {Array.from({ length: count }).map((_, index) => (
+        <View
+          key={index}
+          className="mb-2 flex-row-reverse items-center gap-3 rounded-lg border border-gray-200 bg-white p-4"
+        >
+          {showAvatar ? <SkeletonBlock className="h-11 w-11 rounded-full" /> : null}
+          <View className="flex-1 items-end gap-2">
+            <SkeletonBlock className="h-4 w-36 rounded-lg" />
+            <SkeletonBlock className="h-3 w-52 rounded-lg" />
+            {index % 2 === 0 ? (
+              <SkeletonBlock className="h-3 w-28 rounded-lg" />
+            ) : null}
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+export function DashboardSkeleton() {
+  return (
+    <View className="gap-3 p-4">
+      <View className="rounded-lg bg-gray-950 p-5">
+        <View className="flex-row-reverse items-start justify-between gap-4">
+          <View className="flex-1 items-end gap-3">
+            <SkeletonBlock className="h-3 w-24 rounded-lg bg-gray-700" />
+            <SkeletonBlock className="h-6 w-44 rounded-lg bg-gray-700" />
+            <SkeletonBlock className="h-4 w-56 rounded-lg bg-gray-700" />
+          </View>
+          <SkeletonBlock className="h-20 w-20 rounded-lg bg-gray-700" />
+        </View>
+        <View className="mt-5 flex-row-reverse gap-2">
+          <SkeletonBlock className="h-11 flex-1 rounded-lg bg-gray-700" />
+          <SkeletonBlock className="h-11 flex-1 rounded-lg bg-gray-700" />
+        </View>
+      </View>
+      <CardSkeleton rows={3} />
+      <CardSkeleton rows={4} />
+      <CardSkeleton rows={2} />
     </View>
   );
 }

@@ -194,11 +194,79 @@ export async function claimConversation(
   });
 }
 
-export async function replyToConversation(conversationId: string, text: string) {
+export interface ReplyAttachment {
+  storagePath: string;
+  contentType: string;
+  sizeBytes?: number;
+  originalFilename?: string;
+}
+
+export async function replyToConversation(
+  conversationId: string,
+  text: string,
+  attachment?: ReplyAttachment
+) {
   return apiFetch(`/api/mobile/inbox/conversations/${conversationId}/reply`, {
     method: "POST",
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, attachment }),
   });
+}
+
+/**
+ * Upload a file to the conversation via multipart/form-data. Returns the
+ * storage metadata to pass to replyToConversation().
+ */
+export async function uploadConversationMedia(
+  conversationId: string,
+  file: {
+    uri: string;
+    name: string;
+    type: string;
+  }
+): Promise<ReplyAttachment> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const form = new FormData();
+  // React Native's FormData accepts { uri, name, type } blobs directly.
+  form.append(
+    "file",
+    {
+      uri: file.uri,
+      name: file.name,
+      type: file.type,
+    } as unknown as Blob
+  );
+
+  const url = `${BASE}/api/mobile/inbox/conversations/${conversationId}/upload`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), DEFAULT_MUTATION_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      body: form,
+      headers: session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {},
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!res.ok) {
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      body = await res.text().catch(() => "");
+    }
+    throw new Error(
+      `[${res.status}] ${(body as { error?: string })?.error ?? res.statusText}`
+    );
+  }
+  return (await res.json()) as ReplyAttachment;
 }
 
 // ---- Manager surface ------------------------------------------------------

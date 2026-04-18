@@ -172,6 +172,49 @@ async function fetchManagerTeamMemberIds(
   return (data ?? []).map((r) => r.id as string);
 }
 
+/**
+ * Push to a single assigned agent when the customer sends a new inbound
+ * message on a conversation they've already claimed. Keeps the claiming
+ * agent informed even if the app is backgrounded.
+ */
+export async function notifyAssignedAgentOfNewMessage(
+  restaurantId: string,
+  conversationId: string,
+  assignedTeamMemberId: string,
+  preview: NewConversationPreview
+): Promise<void> {
+  try {
+    const tokens = await fetchPushTokens([assignedTeamMemberId]);
+    if (tokens.length === 0) return;
+
+    const title = preview.customerName
+      ? `${preview.customerName} — ${preview.customerPhone}`
+      : preview.customerPhone;
+    const body = truncate(preview.body || "رسالة جديدة", PREVIEW_MAX_LEN);
+
+    const messages: ExpoPushMessage[] = tokens.map((t) => ({
+      to: t.expo_token,
+      title,
+      body,
+      data: {
+        type: "assigned_message",
+        conversationId,
+        restaurantId,
+      },
+      priority: "high",
+      channelId: PUSH_CHANNEL,
+      sound: "default",
+    }));
+
+    const result = await sendExpoPush(messages);
+    if (result.invalidTokens.length > 0) {
+      await disableInvalidTokens(result.invalidTokens);
+    }
+  } catch (err) {
+    console.error("[assigned-agent-push] unexpected error:", err);
+  }
+}
+
 export async function notifyManagersOfSlaBreach(
   restaurantId: string,
   conversationId: string,

@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Linking,
@@ -23,7 +22,12 @@ import {
 } from "../../../lib/api";
 import { qk } from "../../../lib/query-keys";
 import { useSessionStore } from "../../../lib/session-store";
-import { ManagerCard, ManagerMetric } from "../../../components/manager-ui";
+import {
+  CardSkeleton,
+  ListSkeleton,
+  ManagerCard,
+  ManagerMetric,
+} from "../../../components/manager-ui";
 
 type Segment = "people" | "schedule";
 
@@ -77,14 +81,18 @@ export default function TeamScreen() {
 
   if (!restaurantId) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-gray-50">
-        <ActivityIndicator />
+      <SafeAreaView className="flex-1 bg-[#F6F8F7]" edges={["bottom"]}>
+        <View className="flex-row-reverse gap-2 px-3 pt-3 pb-2">
+          <CardSkeleton rows={1} className="flex-1" />
+          <CardSkeleton rows={1} className="flex-1" />
+        </View>
+        <ListSkeleton count={5} showAvatar />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-[#F6F8F7]" edges={["bottom"]}>
       {/* Segmented control */}
       <View className="flex-row-reverse gap-2 px-3 pt-3 pb-2">
         <SegButton
@@ -125,7 +133,7 @@ export default function TeamScreen() {
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            className="rounded-t-3xl bg-white p-4 pb-8"
+            className="rounded-t-lg bg-white p-4 pb-8"
           >
             <Text className="text-right text-lg font-bold text-gray-950">
               {selectedMember?.full_name ?? "موظف"}
@@ -143,7 +151,7 @@ export default function TeamScreen() {
                       : null
                   }
                   disabled={forceOfflineMutation.isPending}
-                  className="flex-row-reverse items-center justify-between rounded-xl bg-red-50 border border-red-200 p-3"
+                  className="flex-row-reverse items-center justify-between rounded-lg border border-red-200 bg-red-50 p-3"
                 >
                   <Text className="text-right text-sm font-semibold text-red-900">
                     إيقاف الاستلام الآن
@@ -151,7 +159,7 @@ export default function TeamScreen() {
                   <Ionicons name="moon-outline" size={20} color="#991B1B" />
                 </Pressable>
               ) : (
-                <View className="rounded-xl bg-gray-50 border border-gray-100 p-3">
+                <View className="rounded-lg border border-gray-100 bg-gray-50 p-3">
                   <Text className="text-right text-sm text-gray-600">
                     الموظف غير متاح حالياً
                   </Text>
@@ -159,7 +167,7 @@ export default function TeamScreen() {
               )}
               <Pressable
                 onPress={() => setSelectedMember(null)}
-                className="mt-3 items-center rounded-xl border border-gray-200 py-3"
+                className="mt-3 items-center rounded-lg border border-gray-200 py-3"
               >
                 <Text className="text-sm text-gray-700">إغلاق</Text>
               </Pressable>
@@ -183,7 +191,7 @@ function SegButton({
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-1 items-center rounded-xl border py-2 ${
+      className={`flex-1 items-center rounded-lg border py-2 ${
         active ? "border-emerald-200 bg-emerald-50" : "border-gray-200 bg-white"
       }`}
     >
@@ -233,8 +241,11 @@ function PeopleSegment({
 
   if (query.isLoading) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <ActivityIndicator />
+      <View className="flex-1">
+        <View className="px-4 pt-3">
+          <CardSkeleton rows={4} />
+        </View>
+        <ListSkeleton count={5} showAvatar />
       </View>
     );
   }
@@ -292,7 +303,7 @@ function PeopleSegment({
       renderItem={({ item }) => (
         <Pressable
           onPress={() => onSelectMember(item)}
-          className="mb-2 flex-row-reverse items-center gap-3 rounded-2xl border border-gray-100 bg-white p-3"
+          className="mb-2 flex-row-reverse items-center gap-3 rounded-lg border border-gray-200 bg-white p-3"
         >
           <View className="relative">
             <View className="h-11 w-11 items-center justify-center rounded-full bg-gray-100">
@@ -391,7 +402,7 @@ function ScheduleSegment({
           <Pressable
             key={idx}
             onPress={() => setSelectedDay(idx)}
-            className={`flex-1 items-center rounded-xl border py-2 ${
+            className={`flex-1 items-center rounded-lg border py-2 ${
               idx === selectedDay
                 ? "border-emerald-200 bg-emerald-50"
                 : "border-gray-100 bg-white"
@@ -410,8 +421,11 @@ function ScheduleSegment({
       </View>
 
       {query.isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator />
+        <View className="flex-1 px-4 pt-3">
+          <CardSkeleton rows={1} />
+          <View className="mt-3">
+            <ListSkeleton count={4} />
+          </View>
         </View>
       ) : (
         <FlatList
@@ -430,7 +444,7 @@ function ScheduleSegment({
             </View>
           }
           renderItem={({ item }) => (
-            <View className="mb-2 rounded-2xl border border-gray-100 bg-white p-3">
+            <View className="mb-2 rounded-lg border border-gray-200 bg-white p-3">
               <Text className="text-right text-base font-semibold text-gray-950">
                 {item.team_member_name ?? "—"}
               </Text>
@@ -451,7 +465,7 @@ function ScheduleSegment({
                 const base = process.env.EXPO_PUBLIC_APP_BASE_URL ?? "";
                 if (base) Linking.openURL(`${base}/dashboard/shifts`);
               }}
-              className="mt-3 items-center rounded-xl border border-gray-200 bg-white py-3"
+              className="mt-3 items-center rounded-lg border border-gray-200 bg-white py-3"
             >
               <Text className="text-sm text-gray-700">تعديل من الويب</Text>
             </Pressable>

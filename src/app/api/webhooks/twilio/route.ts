@@ -7,7 +7,10 @@ import {
 } from "@/lib/twilio";
 import { queueAIReplyJob, processPendingAIReplyJobs } from "@/lib/ai-reply-jobs";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
-import { notifyAgentsOfNewConversation } from "@/lib/conversation-notifications";
+import {
+  notifyAgentsOfNewConversation,
+  notifyAssignedAgentOfNewMessage,
+} from "@/lib/conversation-notifications";
 import {
   downloadTwilioMedia,
   uploadInboundMedia,
@@ -496,6 +499,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const handlerMode: string = (conversation.handler_mode as string) || "unassigned";
 
     if (handlerMode === "human") {
+      // Ping the agent currently claiming this conversation so they see the
+      // new message even with the app backgrounded. Fire-and-forget.
+      if (conversation.assigned_to) {
+        const preview = {
+          customerName: ProfileName || conversation.customer_name || null,
+          customerPhone,
+          body: tappedId
+            ? tappedTitle || Body || "رسالة جديدة"
+            : inboundContent,
+        };
+        void notifyAssignedAgentOfNewMessage(
+          restaurant.id,
+          conversation.id,
+          conversation.assigned_to,
+          preview
+        );
+      }
       logWebhookEvent(
         "inbound_human_owned",
         MessageSid,

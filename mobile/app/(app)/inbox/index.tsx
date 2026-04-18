@@ -26,6 +26,7 @@ import {
   type TeamMemberRosterRow,
 } from "../../../lib/api";
 import { qk } from "../../../lib/query-keys";
+import { ListSkeleton } from "../../../components/manager-ui";
 
 type Filter = "all" | "unassigned" | "mine" | "bot" | "expired";
 
@@ -163,10 +164,14 @@ export default function InboxScreen() {
         assigneeIds.length > 0
           ? supabase
               .from("team_members")
-              .select("id, full_name")
+              .select("id, full_name, role")
               .in("id", assigneeIds)
           : Promise.resolve({
-              data: [] as { id: string; full_name: string | null }[],
+              data: [] as {
+                id: string;
+                full_name: string | null;
+                role: "admin" | "agent";
+              }[],
               error: null,
             }),
       ]);
@@ -184,8 +189,13 @@ export default function InboxScreen() {
       for (const a of (membersRes.data ?? []) as {
         id: string;
         full_name: string | null;
+        role: "admin" | "agent";
       }[]) {
-        assigneeMap.set(a.id, a.full_name ?? "");
+        const trimmed = a.full_name?.trim();
+        assigneeMap.set(
+          a.id,
+          trimmed || (a.role === "admin" ? "المدير" : "موظف")
+        );
       }
 
       return rows.map((r) => ({
@@ -248,13 +258,13 @@ export default function InboxScreen() {
 
   const header = useMemo(
     () => (
-      <View className="border-b border-gray-100 bg-white">
-        <View className="px-4 pb-3 pt-2">
-          <Text className="text-2xl font-bold text-right text-gray-950">
+      <View className="border-b border-gray-200 bg-white">
+        <View className="px-4 pb-3 pt-3">
+          <Text className="text-right text-2xl font-bold text-gray-950">
             المحادثات
           </Text>
-          <Text className="mt-1 text-sm text-gray-500 text-right">
-            حسب الأولوية وحالة المسؤولية
+          <Text className="mt-1 text-right text-sm text-gray-500">
+            ابدئي بغير المستلمة والمنتهية ثم راجعي باقي المحادثات
           </Text>
         </View>
         <View className="flex-row-reverse gap-2 px-3 pb-3">
@@ -297,8 +307,10 @@ export default function InboxScreen() {
               <Pressable
                 key={f.key}
                 onPress={() => setFilter(f.key)}
-                className={`rounded-full px-3 py-2 ${
-                  active ? "bg-gray-950" : "bg-gray-100"
+                className={`rounded-lg border px-3 py-2 ${
+                  active
+                    ? "border-gray-950 bg-gray-950"
+                    : "border-gray-200 bg-white"
                 }`}
               >
                 <Text
@@ -322,12 +334,10 @@ export default function InboxScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50" edges={["top", "bottom"]}>
+    <SafeAreaView className="flex-1 bg-[#F6F8F7]" edges={["top", "bottom"]}>
       {header}
       {query.isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator />
-        </View>
+        <ListSkeleton count={6} />
       ) : (
         <FlatList
           data={items}
@@ -358,7 +368,13 @@ export default function InboxScreen() {
               onPress={() => openConversation(item.id)}
               onLongPress={manager ? () => setReassignTarget(item) : undefined}
               delayLongPress={400}
-              className="mx-3 my-2 rounded-2xl border border-gray-100 bg-white p-4"
+              className={`mx-3 my-2 rounded-lg border bg-white p-4 ${
+                item.is_expired
+                  ? "border-amber-300"
+                  : item.handler_mode === "unassigned"
+                  ? "border-red-300"
+                  : "border-gray-200"
+              }`}
             >
               <View className="mb-2 flex-row-reverse items-start justify-between gap-3">
                 <View className="flex-1">
@@ -386,7 +402,7 @@ export default function InboxScreen() {
                         setReassignTarget(item);
                       }}
                       hitSlop={8}
-                      className="flex-row-reverse items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1"
+                      className="flex-row-reverse items-center gap-1 rounded-lg bg-gray-100 px-2.5 py-1"
                     >
                       <Ionicons name="swap-horizontal" size={14} color="#374151" />
                       <Text className="text-xs font-semibold text-gray-700">
@@ -405,21 +421,19 @@ export default function InboxScreen() {
                 </Text>
               )}
               <View className="mt-3 flex-row-reverse flex-wrap items-center gap-2">
-                <ModeBadge mode={item.handler_mode} />
+                <ModeBadge
+                  mode={item.handler_mode}
+                  assigneeName={item.assignee_name}
+                />
                 {!!getWindowLabel(item.last_inbound_at) && (
                   <Text
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
                       item.is_expired
                         ? "bg-amber-50 text-amber-800"
                         : "bg-emerald-50 text-emerald-800"
                     }`}
                   >
                     {getWindowLabel(item.last_inbound_at)}
-                  </Text>
-                )}
-                {item.assignee_name && (
-                  <Text className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600">
-                    مع {item.assignee_name}
                   </Text>
                 )}
               </View>
@@ -441,7 +455,7 @@ export default function InboxScreen() {
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            className="rounded-t-3xl bg-white p-4 pb-8"
+            className="rounded-t-lg bg-white p-4 pb-8"
           >
             <Text className="text-right text-lg font-bold text-gray-950">
               نقل المحادثة
@@ -484,7 +498,8 @@ export default function InboxScreen() {
                             }`}
                           />
                           <Text className="text-right text-sm font-semibold text-gray-950">
-                            {m.full_name ?? "—"}
+                            {m.full_name?.trim() ||
+                              (m.role === "admin" ? "المدير" : "موظف")}
                           </Text>
                         </View>
                         <Text className="text-xs text-gray-500">
@@ -506,7 +521,7 @@ export default function InboxScreen() {
                     forceBot: true,
                   })
                 }
-                className="flex-row-reverse items-center justify-between rounded-xl border border-indigo-200 bg-indigo-50 p-3"
+                className="flex-row-reverse items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 p-3"
               >
                 <Text className="text-right text-sm font-semibold text-indigo-900">
                   إرجاع للبوت
@@ -522,7 +537,7 @@ export default function InboxScreen() {
                     unassign: true,
                   })
                 }
-                className="flex-row-reverse items-center justify-between rounded-xl border border-gray-200 bg-gray-50 p-3"
+                className="flex-row-reverse items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3"
               >
                 <Text className="text-right text-sm font-semibold text-gray-800">
                   إلغاء التعيين
@@ -531,7 +546,7 @@ export default function InboxScreen() {
               </Pressable>
               <Pressable
                 onPress={() => setReassignTarget(null)}
-                className="mt-1 items-center rounded-xl border border-gray-200 py-3"
+                className="mt-1 items-center rounded-lg border border-gray-200 py-3"
               >
                 <Text className="text-sm text-gray-700">إغلاق</Text>
               </Pressable>
@@ -569,7 +584,7 @@ function MetricCard({
       ? "text-indigo-800"
       : "text-amber-800";
   return (
-    <View className={`flex-1 rounded-xl border p-3 ${toneClass}`}>
+    <View className={`flex-1 rounded-lg border p-3 ${toneClass}`}>
       <Text className={`text-right text-xl font-bold ${textClass}`}>
         {value}
       </Text>
@@ -584,7 +599,13 @@ function MetricCard({
   );
 }
 
-function ModeBadge({ mode }: { mode: "unassigned" | "human" | "bot" }) {
+function ModeBadge({
+  mode,
+  assigneeName,
+}: {
+  mode: "unassigned" | "human" | "bot";
+  assigneeName?: string | null;
+}) {
   const bg =
     mode === "unassigned"
       ? "bg-red-50"
@@ -597,10 +618,17 @@ function ModeBadge({ mode }: { mode: "unassigned" | "human" | "bot" }) {
       : mode === "human"
       ? "text-emerald-800"
       : "text-indigo-800";
+  const trimmed = assigneeName?.trim();
   const label =
-    mode === "unassigned" ? "غير مستلمة" : mode === "human" ? "مع موظف" : "موكلة للبوت";
+    mode === "unassigned"
+      ? "غير مستلمة"
+      : mode === "human"
+      ? trimmed
+        ? `مع ${trimmed}`
+        : "مع موظف"
+      : "موكلة للبوت";
   return (
-    <View className={`rounded-full px-2.5 py-1 ${bg}`}>
+    <View className={`rounded-lg px-2.5 py-1 ${bg}`}>
       <Text className={`text-xs font-semibold ${fg}`}>{label}</Text>
     </View>
   );

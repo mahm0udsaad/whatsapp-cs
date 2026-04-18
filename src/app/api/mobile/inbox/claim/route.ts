@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
+import { catchUpAIReplyIfNeeded } from "@/lib/ai-reply-catchup";
 
 interface ClaimBody {
   conversationId?: string;
@@ -66,6 +67,15 @@ export async function POST(request: NextRequest) {
     });
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    // If the conversation was just handed to the bot AND there's an
+    // unanswered customer message, kick off an AI reply now — otherwise the
+    // customer waits until their next message to get a response.
+    if (mode === "bot") {
+      void catchUpAIReplyIfNeeded(conversationId).catch((err) =>
+        console.error("[mobile/claim] catchUpAIReplyIfNeeded error:", err)
+      );
     }
 
     return NextResponse.json({ conversation: claimed });

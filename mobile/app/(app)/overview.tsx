@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Linking,
   Pressable,
@@ -11,7 +10,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getAiStatus,
@@ -28,6 +26,8 @@ import {
   ManagerCard,
   ManagerMetric,
   PriorityAction,
+  SectionHeader,
+  DashboardSkeleton,
 } from "../../components/manager-ui";
 
 export default function OverviewScreen() {
@@ -137,53 +137,82 @@ export default function OverviewScreen() {
 
   if (!restaurantId) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-gray-50">
-        <ActivityIndicator />
+      <SafeAreaView className="flex-1 bg-[#F6F8F7]" edges={["bottom"]}>
+        <DashboardSkeleton />
+      </SafeAreaView>
+    );
+  }
+
+  if (kpisQuery.isLoading && !kpis) {
+    return (
+      <SafeAreaView className="flex-1 bg-[#F6F8F7]" edges={["bottom"]}>
+        <DashboardSkeleton />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-[#F6F8F7]" edges={["bottom"]}>
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 12, paddingBottom: 32 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 12 }}
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={refetchAll} />
         }
       >
-        <ManagerCard
-          className={`mb-3 ${
-            hasAlerts ? "border-red-200 bg-red-50" : "border-emerald-200 bg-emerald-50"
-          }`}
-        >
-          <View className="flex-row-reverse items-start justify-between gap-3">
+        <View className="rounded-lg bg-gray-950 p-5">
+          <View className="flex-row-reverse items-start justify-between gap-4">
             <View className="flex-1">
-              <Text
-                className={`text-right text-xl font-bold ${
-                  hasAlerts ? "text-red-950" : "text-emerald-950"
-                }`}
-              >
+              <Text className="text-right text-xs font-semibold text-emerald-300">
+                مركز الإدارة
+              </Text>
+              <Text className="mt-2 text-right text-2xl font-bold text-white">
                 {hasAlerts ? "يحتاج متابعة الآن" : "كل شيء تحت السيطرة"}
               </Text>
-              <Text className="mt-1 text-right text-sm leading-6 text-gray-700">
+              <Text className="mt-2 text-right text-sm leading-6 text-gray-300">
                 {hasAlerts
                   ? "ابدئي بالحالات العاجلة قبل مراجعة باقي الأرقام."
                   : "لا توجد محادثات عاجلة أو طلبات موافقة حالياً."}
               </Text>
             </View>
-            <Text
-              className={`text-4xl font-bold ${
-                hasAlerts ? "text-red-900" : "text-emerald-900"
+            <View
+              className={`min-w-20 items-center rounded-lg border px-4 py-3 ${
+                hasAlerts
+                  ? "border-red-400 bg-red-500"
+                  : "border-emerald-400 bg-emerald-500"
               }`}
             >
-              {needsAttentionCount}
-            </Text>
+              <Text className="text-4xl font-bold text-white">
+                {needsAttentionCount}
+              </Text>
+              <Text className="mt-1 text-xs font-semibold text-white">
+                عاجل
+              </Text>
+            </View>
           </View>
-        </ManagerCard>
+          <View className="mt-5 flex-row-reverse gap-2">
+            <Pressable
+              onPress={() => router.push("/(app)/inbox")}
+              className="flex-1 items-center rounded-lg bg-white py-3"
+            >
+              <Text className="text-sm font-bold text-gray-950">
+                فتح المحادثات
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => confirmToggleAi(!(ai?.enabled ?? true))}
+              disabled={toggleMutation.isPending}
+              className="flex-1 items-center rounded-lg border border-white/20 py-3"
+            >
+              <Text className="text-sm font-bold text-white">
+                {ai?.enabled ? "إيقاف البوت" : "تشغيل البوت"}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
 
         {hasAlerts && kpis ? (
-          <View className="mb-3 gap-2">
+          <View className="gap-2">
             {kpis.unassignedCount > 0 ? (
               <PriorityAction
                 title="محادثات غير مستلمة"
@@ -227,7 +256,8 @@ export default function OverviewScreen() {
           </View>
         ) : null}
 
-        <ManagerCard className="mb-3">
+        <ManagerCard>
+          <SectionHeader title="تشغيل اليوم" />
           <View className="flex-row-reverse items-center justify-between">
             <View className="flex-row-reverse items-center gap-2">
               <View
@@ -259,44 +289,12 @@ export default function OverviewScreen() {
           </View>
         </ManagerCard>
 
-        <View className="mb-3 flex-row-reverse gap-2">
-          <Pressable
-            onPress={() => confirmToggleAi(!(ai?.enabled ?? true))}
-            disabled={toggleMutation.isPending}
-            className={`flex-1 rounded-2xl border p-4 ${
-              ai?.enabled
-                ? "border-red-200 bg-red-50"
-                : "border-emerald-200 bg-emerald-50"
-            }`}
-          >
-            <View className="flex-row-reverse items-center gap-2">
-              <Ionicons
-                name={ai?.enabled ? "stop-circle" : "play-circle"}
-                size={22}
-                color={ai?.enabled ? "#991B1B" : "#065F46"}
-              />
-              <Text
-                className={`text-right text-sm font-semibold ${
-                  ai?.enabled ? "text-red-900" : "text-emerald-900"
-                }`}
-              >
-                {ai?.enabled ? "إيقاف المساعد الذكي" : "تشغيل المساعد الذكي"}
-              </Text>
-            </View>
-          </Pressable>
-        </View>
-
-        <ManagerCard className="mb-3">
-          <View className="flex-row-reverse items-center justify-between">
-            <Text className="text-right text-sm font-bold text-gray-950">
-              آخر طلبات الموافقة
-            </Text>
-            {approvals.length > 0 ? (
-              <Pressable onPress={() => router.push("/(app)/approvals")}>
-                <Text className="text-sm text-indigo-600">عرض الكل</Text>
-              </Pressable>
-            ) : null}
-          </View>
+        <ManagerCard>
+          <SectionHeader
+            title="آخر طلبات الموافقة"
+            actionLabel={approvals.length > 0 ? "عرض الكل" : undefined}
+            onActionPress={() => router.push("/(app)/approvals")}
+          />
           {approvals.length === 0 ? (
             <Text className="mt-2 text-right text-sm text-gray-500">
               لا توجد طلبات بانتظار الموافقة
@@ -308,7 +306,7 @@ export default function OverviewScreen() {
                 onPress={() =>
                   router.push(`/(app)/inbox/${a.conversation_id}`)
                 }
-                className="mt-3 border-t border-gray-100 pt-3"
+                className="mt-3 rounded-lg border border-gray-100 bg-gray-50 p-3"
               >
                 <Text className="text-right text-sm font-semibold text-gray-950">
                   {a.customer_name ?? a.customer_phone}
@@ -331,7 +329,7 @@ export default function OverviewScreen() {
               process.env.EXPO_PUBLIC_APP_BASE_URL ?? "";
             if (webUrl) Linking.openURL(`${webUrl}/dashboard`);
           }}
-          className="mt-2 items-center rounded-xl border border-gray-200 bg-white py-3"
+          className="items-center rounded-lg border border-gray-200 bg-white py-3"
         >
           <Text className="text-sm text-gray-700">فتح لوحة التحكم</Text>
         </Pressable>

@@ -18,18 +18,23 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
 import {
   asArray,
   claimConversation,
   getTeamRoster,
   reassignConversation,
   replyToConversation,
+  uploadConversationMedia,
+  type ReplyAttachment,
   type TeamMemberRosterRow,
 } from "../../../lib/api";
 import { supabase } from "../../../lib/supabase";
 import { useSessionStore } from "../../../lib/session-store";
 import { isManager } from "../../../lib/roles";
 import { qk } from "../../../lib/query-keys";
+import { SkeletonBlock } from "../../../components/manager-ui";
 
 type Msg = {
   id: string;
@@ -126,6 +131,11 @@ export default function ConversationDetail() {
   const [sending, setSending] = useState(false);
   const [claiming, setClaiming] = useState<"human" | "bot" | null>(null);
   const [reassignOpen, setReassignOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState<
+    | { uri: string; name: string; type: string; sizeBytes?: number }
+    | null
+  >(null);
+  const [uploading, setUploading] = useState(false);
 
   const rosterQuery = useQuery({
     queryKey: qk.teamRoster(restaurantId),
@@ -261,105 +271,193 @@ export default function ConversationDetail() {
   const onSend = useCallback(async () => {
     if (!id) return;
     const body = text.trim();
-    if (!body) return;
+    if (!body && !pendingFile) return;
     setSending(true);
     try {
-      await replyToConversation(id, body);
+      let attachment: ReplyAttachment | undefined;
+      if (pendingFile) {
+        setUploading(true);
+        attachment = await uploadConversationMedia(id, {
+          uri: pendingFile.uri,
+          name: pendingFile.name,
+          type: pendingFile.type,
+        });
+        setUploading(false);
+      }
+      await replyToConversation(id, body, attachment);
       setText("");
+      setPendingFile(null);
       qc.invalidateQueries({ queryKey });
     } catch (e: unknown) {
       const err = e as { message?: string };
       Alert.alert("تعذّر الإرسال", err?.message ?? "حاولي مرة أخرى");
     } finally {
       setSending(false);
+      setUploading(false);
     }
-  }, [id, text, qc, queryKey]);
+  }, [id, text, pendingFile, qc, queryKey]);
+
+  const pickImage = useCallback(async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert("إذن مطلوب", "يلزم السماح بالوصول إلى الصور لإرسالها.");
+        return;
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.85,
+        allowsEditing: false,
+      });
+      if (res.canceled || !res.assets?.[0]) return;
+      const a = res.assets[0];
+      const ext =
+        a.fileName?.split(".").pop()?.toLowerCase() ||
+        (a.mimeType?.split("/")[1] ?? "jpg");
+      setPendingFile({
+        uri: a.uri,
+        name: a.fileName ?? `image-${Date.now()}.${ext}`,
+        type: a.mimeType ?? `image/${ext === "jpg" ? "jpeg" : ext}`,
+        sizeBytes: a.fileSize,
+      });
+    } catch (e: unknown) {
+      Alert.alert(
+        "تعذّر اختيار الصورة",
+        e instanceof Error ? e.message : "حاولي مرة أخرى"
+      );
+    }
+  }, []);
+
+  const pickDocument = useCallback(async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: "*/*",
+        multiple: false,
+        copyToCacheDirectory: true,
+      });
+      if (res.canceled || !res.assets?.[0]) return;
+      const a = res.assets[0];
+      setPendingFile({
+        uri: a.uri,
+        name: a.name,
+        type: a.mimeType ?? "application/octet-stream",
+        sizeBytes: a.size ?? undefined,
+      });
+    } catch (e: unknown) {
+      Alert.alert(
+        "تعذّر اختيار الملف",
+        e instanceof Error ? e.message : "حاولي مرة أخرى"
+      );
+    }
+  }, []);
 
   if (!id) return null;
 
   if (query.isLoading || !conv) {
-    return (
-      <SafeAreaView
-        className="flex-1 items-center justify-center bg-gray-50"
-        edges={["top", "bottom"]}
-      >
-        <ActivityIndicator />
-      </SafeAreaView>
-    );
+    return <ChatSkeleton />;
   }
 
   const windowState = getWindowState(conv.last_inbound_at);
   const expired = windowState.expired;
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50" edges={["top", "bottom"]}>
-      <View className="flex-row-reverse items-center justify-between border-b border-gray-100 bg-white px-4 py-3">
-        <Pressable onPress={() => router.back()}>
-          <Text className="text-brand text-sm">رجوع</Text>
-        </Pressable>
-        <View className="flex-1 items-center px-3">
-          <Text className="text-base font-bold text-gray-950" numberOfLines={1}>
-            {conv.customer_name || conv.customer_phone}
-          </Text>
-          <Text className="mt-0.5 text-xs text-gray-500" selectable>
-            {conv.customer_phone}
-          </Text>
-        </View>
-        {manager ? (
-          <Pressable onPress={() => setReassignOpen(true)} hitSlop={8}>
-            <Ionicons name="ellipsis-horizontal" size={22} color="#374151" />
-          </Pressable>
-        ) : (
-          <View className="w-12" />
-        )}
-      </View>
-
-      <View className="border-b border-gray-100 bg-white px-4 py-3">
-        <View className="flex-row-reverse flex-wrap items-center gap-2">
-          <Text
-            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-              conv.handler_mode === "unassigned"
-                ? "bg-red-50 text-red-800"
-                : conv.handler_mode === "bot"
-                ? "bg-indigo-50 text-indigo-800"
-                : "bg-emerald-50 text-emerald-800"
-            }`}
+    <SafeAreaView className="flex-1 bg-[#F6F8F7]" edges={["top", "bottom"]}>
+      <View className="border-b border-gray-200 bg-white px-4 pb-3 pt-2">
+        <View className="flex-row-reverse items-center gap-3">
+          <Pressable
+            onPress={() => router.back()}
+            hitSlop={8}
+            className="h-10 w-10 items-center justify-center rounded-lg bg-gray-100"
           >
-            {getOwnerLabel(conv)}
-          </Text>
-          {conv.assignee_name && conv.handler_mode !== "human" && (
-            <Text className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600">
-              عبر {conv.assignee_name}
+            <Ionicons name="arrow-forward" size={20} color="#111827" />
+          </Pressable>
+          <View className="h-11 w-11 items-center justify-center rounded-lg bg-emerald-50">
+            <Ionicons name="person" size={20} color="#047857" />
+          </View>
+          <View className="flex-1">
+            <Text
+              className="text-right text-base font-bold text-gray-950"
+              numberOfLines={1}
+            >
+              {conv.customer_name || conv.customer_phone}
             </Text>
-          )}
+            <Text className="mt-0.5 text-right text-xs text-gray-500" selectable>
+              {conv.customer_phone}
+            </Text>
+          </View>
+          {manager ? (
+            <Pressable
+              onPress={() => setReassignOpen(true)}
+              hitSlop={8}
+              className="h-10 w-10 items-center justify-center rounded-lg bg-gray-100"
+            >
+              <Ionicons name="ellipsis-horizontal" size={22} color="#374151" />
+            </Pressable>
+          ) : null}
         </View>
         <View
-          className={`mt-3 rounded-xl border px-3 py-2 ${
+          className={`mt-3 rounded-lg border px-3 py-2 ${
             windowState.tone === "danger"
-              ? "border-red-100 bg-red-50"
+              ? "border-red-200 bg-red-50"
               : windowState.tone === "warning"
-              ? "border-amber-100 bg-amber-50"
+              ? "border-amber-200 bg-amber-50"
               : windowState.tone === "success"
-              ? "border-emerald-100 bg-emerald-50"
-              : "border-gray-100 bg-gray-50"
+              ? "border-emerald-200 bg-emerald-50"
+              : "border-gray-200 bg-gray-50"
           }`}
         >
-          <Text
-            className={`text-right text-sm font-semibold ${
-              windowState.tone === "danger"
-                ? "text-red-800"
-                : windowState.tone === "warning"
-                ? "text-amber-800"
-                : windowState.tone === "success"
-                ? "text-emerald-800"
-                : "text-gray-700"
-            }`}
-          >
-            {windowState.title}
-          </Text>
-          <Text className="mt-1 text-right text-xs leading-5 text-gray-600">
-            {windowState.description}
-          </Text>
+          <View className="flex-row-reverse items-start gap-2">
+            <Ionicons
+              name={
+                windowState.tone === "success"
+                  ? "checkmark-circle"
+                  : windowState.tone === "neutral"
+                  ? "information-circle"
+                  : "time"
+              }
+              size={18}
+              color={
+                windowState.tone === "danger"
+                  ? "#B91C1C"
+                  : windowState.tone === "warning"
+                  ? "#B45309"
+                  : windowState.tone === "success"
+                  ? "#047857"
+                  : "#4B5563"
+              }
+            />
+            <View className="flex-1">
+              <View className="flex-row-reverse flex-wrap items-center gap-2">
+                <Text
+                  className={`text-right text-sm font-semibold ${
+                    windowState.tone === "danger"
+                      ? "text-red-800"
+                      : windowState.tone === "warning"
+                      ? "text-amber-800"
+                      : windowState.tone === "success"
+                      ? "text-emerald-800"
+                      : "text-gray-700"
+                  }`}
+                >
+                  {windowState.title}
+                </Text>
+                <Text
+                  className={`rounded-lg px-2 py-0.5 text-xs font-semibold ${
+                    conv.handler_mode === "unassigned"
+                      ? "bg-red-100 text-red-800"
+                      : conv.handler_mode === "bot"
+                      ? "bg-indigo-100 text-indigo-800"
+                      : "bg-emerald-100 text-emerald-800"
+                  }`}
+                >
+                  {getOwnerLabel(conv)}
+                </Text>
+              </View>
+              <Text className="mt-1 text-right text-xs leading-5 text-gray-600">
+                {windowState.description}
+              </Text>
+            </View>
+          </View>
         </View>
       </View>
 
@@ -372,7 +470,7 @@ export default function ConversationDetail() {
           data={messages}
           keyExtractor={(m) => m.id}
           contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={{ padding: 12 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
           renderItem={({ item, index }) => {
             const prev = messages[index - 1];
             const showDate =
@@ -403,11 +501,16 @@ export default function ConversationDetail() {
           isMine={conv.is_mine}
           claiming={claiming}
           sending={sending}
+          uploading={uploading}
           text={text}
           setText={setText}
           onClaim={onClaim}
           onSend={onSend}
           expired={expired}
+          pendingFile={pendingFile}
+          onPickImage={pickImage}
+          onPickDocument={pickDocument}
+          onClearPendingFile={() => setPendingFile(null)}
         />
       </KeyboardAvoidingView>
 
@@ -424,7 +527,7 @@ export default function ConversationDetail() {
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            className="rounded-t-3xl bg-white p-4 pb-8"
+            className="rounded-t-lg bg-white p-4 pb-8"
           >
             <Text className="text-right text-lg font-bold text-gray-950">
               إدارة المحادثة
@@ -485,7 +588,7 @@ export default function ConversationDetail() {
                     forceBot: true,
                   })
                 }
-                className="flex-row-reverse items-center justify-between rounded-xl border border-indigo-200 bg-indigo-50 p-3"
+                className="flex-row-reverse items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 p-3"
               >
                 <Text className="text-right text-sm font-semibold text-indigo-900">
                   إرجاع للبوت
@@ -505,7 +608,7 @@ export default function ConversationDetail() {
                     unassign: true,
                   })
                 }
-                className="flex-row-reverse items-center justify-between rounded-xl border border-gray-200 bg-gray-50 p-3"
+                className="flex-row-reverse items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3"
               >
                 <Text className="text-right text-sm font-semibold text-gray-800">
                   إلغاء التعيين
@@ -514,7 +617,7 @@ export default function ConversationDetail() {
               </Pressable>
               <Pressable
                 onPress={() => setReassignOpen(false)}
-                className="mt-1 items-center rounded-xl border border-gray-200 py-3"
+                className="mt-1 items-center rounded-lg border border-gray-200 py-3"
               >
                 <Text className="text-sm text-gray-700">إغلاق</Text>
               </Pressable>
@@ -526,10 +629,75 @@ export default function ConversationDetail() {
   );
 }
 
+function ChatSkeleton() {
+  return (
+    <SafeAreaView className="flex-1 bg-[#F6F8F7]" edges={["top", "bottom"]}>
+      <View className="border-b border-gray-200 bg-white px-4 pb-3 pt-2">
+        <View className="flex-row-reverse items-center gap-3">
+          <SkeletonBlock className="h-10 w-10 rounded-lg" />
+          <SkeletonBlock className="h-11 w-11 rounded-lg" />
+          <View className="flex-1 items-end gap-2">
+            <SkeletonBlock className="h-4 w-32 rounded-lg" />
+            <SkeletonBlock className="h-3 w-24 rounded-lg" />
+          </View>
+          <SkeletonBlock className="h-10 w-10 rounded-lg" />
+        </View>
+        <View className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
+          <View className="flex-row-reverse items-start gap-2">
+            <SkeletonBlock className="h-4 w-4 rounded-lg" />
+            <View className="flex-1 items-end gap-2">
+              <View className="flex-row-reverse gap-2">
+                <SkeletonBlock className="h-4 w-36 rounded-lg" />
+                <SkeletonBlock className="h-4 w-16 rounded-lg" />
+              </View>
+              <SkeletonBlock className="h-3 w-48 rounded-lg" />
+            </View>
+          </View>
+        </View>
+      </View>
+
+      <View className="flex-1 px-4 py-4">
+        <View className="mb-5 items-center">
+          <SkeletonBlock className="h-6 w-28 rounded-lg bg-white" />
+        </View>
+
+        <View className="mb-4 items-start">
+          <SkeletonBlock className="mb-1 h-3 w-12 rounded-lg" />
+          <SkeletonBlock className="h-14 w-36 rounded-lg bg-white" />
+        </View>
+
+        <View className="mb-4 items-start">
+          <SkeletonBlock className="mb-1 h-3 w-12 rounded-lg" />
+          <SkeletonBlock className="h-12 w-56 rounded-lg bg-white" />
+        </View>
+
+        <View className="mb-4 items-end">
+          <SkeletonBlock className="mb-1 h-3 w-12 rounded-lg" />
+          <SkeletonBlock className="h-20 w-64 rounded-lg bg-emerald-200" />
+        </View>
+
+        <View className="items-end">
+          <SkeletonBlock className="mb-1 h-3 w-12 rounded-lg" />
+          <SkeletonBlock className="h-24 w-72 rounded-lg bg-emerald-200" />
+        </View>
+      </View>
+
+      <View className="border-t border-gray-200 bg-white px-3 pb-4 pt-3">
+        <View className="flex-row-reverse items-end gap-2">
+          <SkeletonBlock className="h-11 w-11 rounded-lg" />
+          <SkeletonBlock className="h-11 w-11 rounded-lg" />
+          <SkeletonBlock className="h-11 flex-1 rounded-lg" />
+          <SkeletonBlock className="h-11 w-16 rounded-lg bg-emerald-200" />
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
 function DateSeparator({ date }: { date: string }) {
   return (
     <View className="my-3 items-center">
-      <Text className="rounded-full bg-gray-200 px-3 py-1 text-xs font-medium text-gray-600">
+      <Text className="rounded-lg bg-white px-3 py-1 text-xs font-medium text-gray-500">
         {format(new Date(date), "EEEE d MMMM", { locale: ar })}
       </Text>
     </View>
@@ -542,26 +710,37 @@ function MessageBubble({ message }: { message: Msg }) {
   if (isSystem) {
     return (
       <View className="my-2 items-center">
-        <Text className="max-w-[86%] rounded-xl bg-amber-50 px-3 py-2 text-center text-xs leading-5 text-amber-800">
-          {message.content}
-        </Text>
+        <View className="max-w-[90%] flex-row-reverse items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+          <Ionicons name="alert-circle-outline" size={16} color="#B45309" />
+          <Text className="flex-1 text-center text-xs leading-5 text-amber-800" selectable>
+            {message.content}
+          </Text>
+        </View>
       </View>
     );
   }
 
   return (
-    <View className={`my-1 flex ${isCustomer ? "items-start" : "items-end"}`}>
+    <View className={`my-1.5 flex ${isCustomer ? "items-start" : "items-end"}`}>
+      <Text
+        className={`mb-1 text-[11px] font-semibold ${
+          isCustomer ? "text-gray-500" : "text-emerald-700"
+        }`}
+      >
+        {isCustomer ? "العميل" : "الفريق"}
+      </Text>
       <View
-        className={`max-w-[82%] rounded-2xl px-3 py-2 ${
+        className={`max-w-[84%] rounded-lg border px-3 py-2 ${
           isCustomer
-            ? "bg-white border border-gray-100"
-            : "bg-emerald-600"
+            ? "border-gray-200 bg-white"
+            : "border-emerald-700 bg-emerald-600"
         }`}
       >
         <Text
           className={`text-right text-sm leading-5 ${
             isCustomer ? "text-gray-950" : "text-white"
           }`}
+          selectable
         >
           {message.content}
         </Text>
@@ -582,81 +761,161 @@ function Footer({
   isMine,
   claiming,
   sending,
+  uploading,
   text,
   setText,
   onClaim,
   onSend,
   expired,
+  pendingFile,
+  onPickImage,
+  onPickDocument,
+  onClearPendingFile,
 }: {
   mode: "unassigned" | "human" | "bot";
   isMine: boolean;
   claiming: "human" | "bot" | null;
   sending: boolean;
+  uploading: boolean;
   text: string;
   setText: (v: string) => void;
   onClaim: (m: "human" | "bot") => void;
   onSend: () => void;
   expired: boolean;
+  pendingFile: {
+    uri: string;
+    name: string;
+    type: string;
+    sizeBytes?: number;
+  } | null;
+  onPickImage: () => void;
+  onPickDocument: () => void;
+  onClearPendingFile: () => void;
 }) {
   if (mode === "unassigned") {
     return (
-      <View className="border-t border-gray-100 bg-white p-3">
-        <Text className="mb-3 text-center text-xs leading-5 text-gray-500">
-          اختاري من سيتولى المحادثة قبل الرد على العميل.
-        </Text>
-        <Pressable
-          onPress={() => onClaim("human")}
-          disabled={claiming !== null}
-          className="mb-2 items-center rounded-xl bg-emerald-600 py-3.5"
-        >
-          {claiming === "human" ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text className="font-semibold text-white">استلام المحادثة</Text>
-          )}
-        </Pressable>
-        <Pressable
-          onPress={() => onClaim("bot")}
-          disabled={claiming !== null}
-          className="items-center rounded-xl border border-indigo-100 bg-indigo-50 py-3"
-        >
-          {claiming === "bot" ? (
-            <ActivityIndicator />
-          ) : (
-            <Text className="font-semibold text-indigo-800">توكيل للبوت</Text>
-          )}
-        </Pressable>
+      <View className="border-t border-gray-200 bg-white px-3 pb-4 pt-3">
+        <View className="mb-3 flex-row-reverse items-center gap-2">
+          <View className="h-9 w-9 items-center justify-center rounded-lg bg-red-50">
+            <Ionicons name="hand-left-outline" size={18} color="#B91C1C" />
+          </View>
+          <View className="flex-1">
+            <Text className="text-right text-sm font-bold text-gray-950">
+              المحادثة غير مستلمة
+            </Text>
+            <Text className="mt-0.5 text-right text-xs text-gray-500">
+              اختاري جهة الاستلام قبل الرد على العميل.
+            </Text>
+          </View>
+        </View>
+        <View className="flex-row-reverse gap-2">
+          <Pressable
+            onPress={() => onClaim("human")}
+            disabled={claiming !== null}
+            className="flex-1 items-center rounded-lg bg-emerald-600 py-3.5"
+          >
+            {claiming === "human" ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text className="font-semibold text-white">استلام الآن</Text>
+            )}
+          </Pressable>
+          <Pressable
+            onPress={() => onClaim("bot")}
+            disabled={claiming !== null}
+            className="flex-1 items-center rounded-lg border border-indigo-200 bg-indigo-50 py-3.5"
+          >
+            {claiming === "bot" ? (
+              <ActivityIndicator />
+            ) : (
+              <Text className="font-semibold text-indigo-800">توكيل للبوت</Text>
+            )}
+          </Pressable>
+        </View>
       </View>
     );
   }
 
   if (mode === "human" && isMine) {
+    const canSend = !!pendingFile || text.trim().length > 0;
+    const isImage = pendingFile?.type.startsWith("image/");
     return (
-      <View className="border-t border-gray-100 bg-white p-3">
+      <View className="border-t border-gray-200 bg-white px-3 pb-4 pt-3">
         {expired && (
-          <Text className="mb-2 rounded-xl bg-amber-50 px-3 py-2 text-center text-xs leading-5 text-amber-800">
-            انتهت نافذة الرد المجاني. تأكدي من سياسة قوالب واتساب قبل الإرسال.
-          </Text>
+          <View className="mb-2 flex-row-reverse items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+            <Ionicons name="warning-outline" size={17} color="#B45309" />
+            <Text className="flex-1 text-right text-xs leading-5 text-amber-800">
+              انتهت نافذة الرد المجاني. تأكدي من سياسة قوالب واتساب قبل الإرسال.
+            </Text>
+          </View>
         )}
-        <View className="flex-row-reverse items-center gap-2">
+        {pendingFile && (
+          <View className="mb-2 flex-row-reverse items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+            <Ionicons
+              name={isImage ? "image-outline" : "document-outline"}
+              size={18}
+              color="#374151"
+            />
+            <Text
+              className="flex-1 text-right text-xs text-gray-700"
+              numberOfLines={1}
+            >
+              {pendingFile.name}
+            </Text>
+            <Pressable
+              onPress={onClearPendingFile}
+              disabled={sending}
+              hitSlop={8}
+            >
+              <Ionicons name="close-circle" size={18} color="#6B7280" />
+            </Pressable>
+          </View>
+        )}
+        <View className="flex-row-reverse items-end gap-2">
+          <Pressable
+            onPress={onPickImage}
+            disabled={sending || !!pendingFile}
+            hitSlop={6}
+            className="h-11 w-11 items-center justify-center rounded-lg bg-gray-100"
+          >
+            <Ionicons
+              name="image-outline"
+              size={20}
+              color={sending || !!pendingFile ? "#9CA3AF" : "#374151"}
+            />
+          </Pressable>
+          <Pressable
+            onPress={onPickDocument}
+            disabled={sending || !!pendingFile}
+            hitSlop={6}
+            className="h-11 w-11 items-center justify-center rounded-lg bg-gray-100"
+          >
+            <Ionicons
+              name="attach-outline"
+              size={20}
+              color={sending || !!pendingFile ? "#9CA3AF" : "#374151"}
+            />
+          </Pressable>
           <TextInput
             value={text}
             onChangeText={setText}
-            placeholder="اكتبي ردك..."
-            className="max-h-28 flex-1 rounded-xl bg-gray-100 px-3 py-2 text-right text-gray-950"
+            placeholder={pendingFile ? "أضيفي تعليقًا (اختياري)..." : "اكتبي ردك..."}
+            className="min-h-11 max-h-28 flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-right text-gray-950"
             multiline
           />
           <Pressable
             onPress={onSend}
-            disabled={sending || !text.trim()}
-            className={`rounded-xl px-4 py-3 ${
-              sending || !text.trim() ? "bg-gray-300" : "bg-emerald-600"
+            disabled={sending || !canSend}
+            className={`h-11 min-w-16 items-center justify-center rounded-lg px-4 ${
+              sending || !canSend ? "bg-gray-300" : "bg-emerald-600"
             }`}
           >
             {sending ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text className="font-semibold text-white">إرسال</Text>
+              <Text className="font-semibold text-white">
+                {uploading ? "رفع..." : "إرسال"}
+              </Text>
             )}
           </Pressable>
         </View>
@@ -666,14 +925,24 @@ function Footer({
 
   if (mode === "bot") {
     return (
-      <View className="border-t border-gray-100 bg-white p-3">
-        <Text className="mb-3 text-center text-xs leading-5 text-gray-500">
-          البوت يدير هذه المحادثة الآن. يمكنك استلامها يدويًا عند الحاجة.
-        </Text>
+      <View className="border-t border-gray-200 bg-white px-3 pb-4 pt-3">
+        <View className="mb-3 flex-row-reverse items-center gap-2">
+          <View className="h-9 w-9 items-center justify-center rounded-lg bg-indigo-50">
+            <Ionicons name="hardware-chip-outline" size={18} color="#3730A3" />
+          </View>
+          <View className="flex-1">
+            <Text className="text-right text-sm font-bold text-gray-950">
+              البوت يدير المحادثة
+            </Text>
+            <Text className="mt-0.5 text-right text-xs text-gray-500">
+              استلميها يدويًا إذا احتاج العميل متابعة بشرية.
+            </Text>
+          </View>
+        </View>
         <Pressable
           onPress={() => onClaim("human")}
           disabled={claiming !== null}
-          className="items-center rounded-xl bg-emerald-600 py-3.5"
+          className="items-center rounded-lg bg-emerald-600 py-3.5"
         >
           {claiming === "human" ? (
             <ActivityIndicator color="#fff" />
@@ -686,10 +955,13 @@ function Footer({
   }
 
   return (
-    <View className="border-t border-gray-100 bg-white p-3">
-      <Text className="text-center text-xs leading-5 text-gray-500">
-        هذه المحادثة مستلمة من موظف آخر. يمكنك المتابعة للقراءة فقط.
-      </Text>
+    <View className="border-t border-gray-200 bg-white px-3 pb-4 pt-3">
+      <View className="flex-row-reverse items-center gap-2 rounded-lg bg-gray-50 px-3 py-3">
+        <Ionicons name="lock-closed-outline" size={18} color="#6B7280" />
+        <Text className="flex-1 text-right text-xs leading-5 text-gray-500">
+          هذه المحادثة مستلمة من موظف آخر. يمكنك المتابعة للقراءة فقط.
+        </Text>
+      </View>
     </View>
   );
 }

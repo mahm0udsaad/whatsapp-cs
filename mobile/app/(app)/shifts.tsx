@@ -1,4 +1,4 @@
-import { ActivityIndicator, FlatList, Text, View } from "react-native";
+import { FlatList, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -6,6 +6,7 @@ import { supabase } from "../../lib/supabase";
 import { qk } from "../../lib/query-keys";
 import { useSessionStore } from "../../lib/session-store";
 import { asArray } from "../../lib/api";
+import { ListSkeleton } from "../../components/manager-ui";
 
 type Shift = {
   id: string;
@@ -38,28 +39,28 @@ export default function ShiftsScreen() {
 
   if (query.isLoading) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <ActivityIndicator />
-      </View>
+      <SafeAreaView className="flex-1 bg-[#F6F8F7]" edges={["bottom"]}>
+        <ListSkeleton count={5} />
+      </SafeAreaView>
     );
   }
 
   const items = asArray<Shift>(query.data);
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-[#F6F8F7]" edges={["bottom"]}>
       <FlatList
         data={items}
         keyExtractor={(s) => s.id}
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ padding: 12 }}
+        contentContainerStyle={{ padding: 16 }}
         ListEmptyComponent={
           <View className="items-center py-20">
             <Text className="text-gray-500">لا توجد مناوبات مجدولة</Text>
           </View>
         }
         renderItem={({ item }) => (
-          <View className="bg-white rounded-2xl p-4 mb-2 border border-gray-100">
+          <View className="mb-2 rounded-lg border border-gray-200 bg-white p-4">
             <Text className="text-base font-semibold text-right">
               {format(new Date(item.starts_at), "EEEE d MMM")}
             </Text>

@@ -1,4 +1,4 @@
-import { Redirect, Tabs } from "expo-router";
+import { Redirect, Tabs, useSegments } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSessionStore } from "../../lib/session-store";
 import { isManager } from "../../lib/roles";
@@ -7,10 +7,13 @@ export default function AppLayout() {
   // Guard: if the active member was cleared (e.g. by sign-out), bounce to
   // the login stack so the (app) group never renders without a session.
   const member = useSessionStore((s) => s.activeMember);
+  const segments = useSegments();
   if (!member) {
     return <Redirect href="/(auth)/login" />;
   }
   const manager = isManager(member);
+  const isConversationDetail =
+    segments[1] === "inbox" && segments[2] !== undefined;
 
   return (
     <Tabs
@@ -18,10 +21,19 @@ export default function AppLayout() {
         headerShown: true,
         tabBarActiveTintColor: "#25D366",
         tabBarInactiveTintColor: "#6B7280",
+        headerTintColor: "#111827",
+        headerTitleStyle: {
+          fontWeight: "700",
+        },
+        headerStyle: {
+          backgroundColor: "#FFFFFF",
+        },
         tabBarStyle: {
-          borderTopColor: "#E5E7EB",
-          height: 64,
-          paddingBottom: 8,
+          display: isConversationDetail ? "none" : "flex",
+          backgroundColor: "#FFFFFF",
+          borderTopColor: "#D1D5DB",
+          height: 68,
+          paddingBottom: 10,
           paddingTop: 6,
         },
         tabBarLabelStyle: {

@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
+import { catchUpAIReplyIfNeeded } from "@/lib/ai-reply-catchup";
 
 interface ClaimBody {
   conversationId?: string;
@@ -76,6 +77,14 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    // Catch-up AI reply for any pending customer message (the webhook skipped
+    // it when handler_mode was still human/unassigned at arrival time).
+    if (mode === "bot") {
+      void catchUpAIReplyIfNeeded(conversationId).catch((err) =>
+        console.error("[dashboard/claim] catchUpAIReplyIfNeeded error:", err)
+      );
     }
 
     return NextResponse.json({ conversation: claimed });

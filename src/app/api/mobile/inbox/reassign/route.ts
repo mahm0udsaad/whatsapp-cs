@@ -20,6 +20,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
+import { catchUpAIReplyIfNeeded } from "@/lib/ai-reply-catchup";
 
 interface ReassignBody {
   conversationId?: string;
@@ -110,6 +111,14 @@ export async function POST(request: NextRequest) {
   });
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  // Manager sent the conversation to the bot — pick up any pending customer
+  // message that was sitting unanswered in human/unassigned mode.
+  if (body.forceBot) {
+    void catchUpAIReplyIfNeeded(conversationId).catch((err) =>
+      console.error("[mobile/reassign] catchUpAIReplyIfNeeded error:", err)
+    );
   }
 
   return NextResponse.json({ conversation: claimed });

@@ -21,6 +21,7 @@ import {
 } from "../../lib/session-store";
 import { isManager } from "../../lib/roles";
 import { qk } from "../../lib/query-keys";
+import { SkeletonBlock } from "../../components/manager-ui";
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -131,10 +132,10 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 p-4" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-[#F6F8F7] p-4" edges={["bottom"]}>
       {manager ? (
         <View
-          className={`mb-3 rounded-2xl border p-4 ${
+          className={`mb-3 rounded-lg border p-4 ${
             aiQuery.data?.enabled
               ? "border-indigo-100 bg-indigo-50"
               : "border-red-200 bg-red-50"
@@ -145,17 +146,19 @@ export default function ProfileScreen() {
               <Text className="text-right text-xs font-medium text-gray-500">
                 المساعد الذكي
               </Text>
-              <Text
-                className={`mt-1 text-right text-xl font-bold ${
-                  aiQuery.data?.enabled ? "text-indigo-900" : "text-red-900"
-                }`}
-              >
-                {aiQuery.isLoading
-                  ? "..."
-                  : aiQuery.data?.enabled
-                  ? "مُفعّل"
-                  : "متوقف"}
-              </Text>
+              {aiQuery.isLoading ? (
+                <View className="mt-2 items-end">
+                  <SkeletonBlock className="h-6 w-24 rounded-lg" />
+                </View>
+              ) : (
+                <Text
+                  className={`mt-1 text-right text-xl font-bold ${
+                    aiQuery.data?.enabled ? "text-indigo-900" : "text-red-900"
+                  }`}
+                >
+                  {aiQuery.data?.enabled ? "مُفعّل" : "متوقف"}
+                </Text>
+              )}
             </View>
             {toggleAiMutation.isPending ? (
               <ActivityIndicator />
@@ -166,16 +169,23 @@ export default function ProfileScreen() {
               />
             )}
           </View>
-          <Text className="mt-3 text-right text-sm leading-6 text-gray-600">
-            {aiQuery.data?.enabled
-              ? "يرد المساعد تلقائياً على الرسائل الجديدة عندما يكون في وضع البوت."
-              : "تم إيقاف الرد التلقائي لجميع المحادثات. الموظفون فقط يردون."}
-          </Text>
+          {aiQuery.isLoading ? (
+            <View className="mt-3 items-end gap-2">
+              <SkeletonBlock className="h-3 w-64 rounded-lg" />
+              <SkeletonBlock className="h-3 w-44 rounded-lg" />
+            </View>
+          ) : (
+            <Text className="mt-3 text-right text-sm leading-6 text-gray-600">
+              {aiQuery.data?.enabled
+                ? "يرد المساعد تلقائياً على الرسائل الجديدة عندما يكون في وضع البوت."
+                : "تم إيقاف الرد التلقائي لجميع المحادثات. الموظفون فقط يردون."}
+            </Text>
+          )}
         </View>
       ) : null}
 
       <View
-        className={`mb-3 rounded-2xl border p-4 ${
+        className={`mb-3 rounded-lg border p-4 ${
           available
             ? "border-emerald-100 bg-emerald-50"
             : "border-gray-100 bg-white"
@@ -207,7 +217,7 @@ export default function ProfileScreen() {
         </Text>
       </View>
 
-      <View className="mb-3 rounded-2xl border border-gray-100 bg-white p-4">
+      <View className="mb-3 rounded-lg border border-gray-200 bg-white p-4">
         <Text className="text-right text-xs font-medium text-gray-500">المتجر</Text>
         <Text className="mt-1 text-right text-lg font-semibold text-gray-950">
           {member?.restaurant?.name ?? member?.restaurant_id ?? "—"}
@@ -223,7 +233,7 @@ export default function ProfileScreen() {
             const base = process.env.EXPO_PUBLIC_APP_BASE_URL ?? "";
             if (base) Linking.openURL(`${base}/dashboard`);
           }}
-          className="mb-3 items-center rounded-xl border border-gray-200 bg-white py-3"
+          className="mb-3 items-center rounded-lg border border-gray-200 bg-white py-3"
         >
           <Text className="text-sm text-gray-700">فتح لوحة التحكم</Text>
         </Pressable>
@@ -232,7 +242,7 @@ export default function ProfileScreen() {
       <Pressable
         onPress={onLogout}
         disabled={loggingOut}
-        className="mt-4 items-center rounded-xl bg-red-600 py-4"
+        className="mt-4 items-center rounded-lg bg-red-600 py-4"
       >
         {loggingOut ? (
           <ActivityIndicator color="#fff" />
