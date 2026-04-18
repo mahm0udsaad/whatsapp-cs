@@ -496,7 +496,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     //   * bot        → AI auto-replies (existing flow)
     //   * human      → silent, the claimed agent will reply manually
     //   * unassigned → silent + broadcast push to on-shift agents
-    const handlerMode: string = (conversation.handler_mode as string) || "unassigned";
+    //
+    // AI-first promotion: if the tenant has AI enabled and nobody has claimed
+    // this conversation yet, auto-delegate to the bot. The eq('handler_mode',
+    // 'unassigned') filter keeps this race-safe against a concurrent claim.
+    let handlerMode: string = (conversation.handler_mode as string) || "unassigned";
+    if (handlerMode === "unassigned" && restaurant.ai_enabled === true) {
+      const { data: promoted, error: promoteErr } = await adminSupabaseClient
+        .from("conversations")
+        .update({ handler_mode: "bot" })
+        .eq("id", conversation.id)
+        .eq("handler_mode", "unassigned")
+        .select("id")
+        .maybeSingle();
+      if (!promoteErr && promoted) {
+        handlerMode = "bot";
+      }
+    }
 
     if (handlerMode === "human") {
       // Ping the agent currently claiming this conversation so they see the

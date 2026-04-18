@@ -188,9 +188,13 @@ export async function claimConversation(
   conversationId: string,
   mode: "human" | "bot"
 ) {
+  // Short 15s timeout on this mutation so a silent hang surfaces as an error
+  // in the UI instead of leaving the spinner stuck forever. The claim RPC
+  // itself is fast; anything longer means the request didn't reach Vercel.
   return apiFetch(`/api/mobile/inbox/claim`, {
     method: "POST",
     body: JSON.stringify({ conversationId, mode }),
+    timeoutMs: 15_000,
   });
 }
 
