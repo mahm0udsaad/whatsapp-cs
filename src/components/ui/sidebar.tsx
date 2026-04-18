@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Bot,
   BookOpen,
+  Brain,
+  CalendarClock,
   ClipboardList,
+  Inbox,
   LayoutDashboard,
   LogOut,
   Megaphone,
@@ -22,6 +25,7 @@ import { Button } from "./button";
 import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 import { LanguageSwitcher } from "./language-switcher";
 import { Locale, getClientLocale, createTranslator } from "@/lib/i18n";
+import { createClient } from "@/lib/supabase/client";
 
 interface SidebarProps {
   restaurantName?: string;
@@ -31,6 +35,8 @@ interface SidebarProps {
   onLogout?: () => void;
   locale?: Locale;
   showLanguageSwitcher?: boolean;
+  restaurantId?: string | null;
+  isOwner?: boolean;
 }
 
 export function Sidebar({
@@ -41,13 +47,64 @@ export function Sidebar({
   onLogout,
   locale: forcedLocale,
   showLanguageSwitcher = true,
+  restaurantId,
+  isOwner = false,
 }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [unclaimedCount, setUnclaimedCount] = useState<number>(0);
   const pathname = usePathname();
   const locale = forcedLocale ?? getClientLocale();
   const t = createTranslator(locale);
 
+  // Live count of unclaimed escalations for the badge on the Inbox nav item.
+  useEffect(() => {
+    if (!restaurantId) return;
+    const supabase = createClient();
+    let isMounted = true;
+
+    async function loadCount() {
+      const { count } = await supabase
+        .from("orders")
+        .select("id", { head: true, count: "exact" })
+        .eq("restaurant_id", restaurantId!)
+        .eq("type", "escalation")
+        .is("assigned_to", null)
+        .eq("status", "pending");
+      if (isMounted) setUnclaimedCount(count || 0);
+    }
+
+    loadCount();
+
+    const channel = supabase
+      .channel(`inbox-badge:${restaurantId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        () => {
+          loadCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [restaurantId]);
+
   const navItems = [
+    {
+      href: "/dashboard/inbox",
+      label: "صندوق التصعيدات",
+      description: "الطلبات غير المستلمة للتدخل البشري",
+      icon: Inbox,
+      badge: unclaimedCount,
+    },
     {
       href: "/dashboard",
       label: t("nav.overview"),
@@ -67,6 +124,22 @@ export function Sidebar({
       description: t("nav.aiAgent.desc"),
       icon: Bot,
     },
+    ...(isOwner
+      ? [
+          {
+            href: "/dashboard/ai-manager",
+            label: "مدرب الذكاء",
+            description: "درّب المساعد الذكي بتعليمات جديدة بالعربية",
+            icon: Brain,
+          },
+          {
+            href: "/dashboard/shifts",
+            label: "الجدول",
+            description: "جدول الموظفين ومن على الدوام الآن",
+            icon: CalendarClock,
+          },
+        ]
+      : []),
     {
       href: "/dashboard/knowledge-base",
       label: t("nav.knowledgeBase"),
@@ -197,8 +270,22 @@ export function Sidebar({
                       >
                         <Icon size={18} />
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold">{item.label}</p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold">{item.label}</p>
+                          {"badge" in item && typeof item.badge === "number" && item.badge > 0 ? (
+                            <span
+                              className={cn(
+                                "inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold",
+                                active
+                                  ? "bg-rose-600 text-white"
+                                  : "bg-rose-500 text-white shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"
+                              )}
+                            >
+                              {item.badge > 99 ? "99+" : item.badge}
+                            </span>
+                          ) : null}
+                        </div>
                         <p
                           className={cn(
                             "mt-1 text-xs leading-5",
@@ -226,7 +313,7 @@ export function Sidebar({
                 </Avatar>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-white">
-                    {userName || "User"}
+                    {userName || "مستخدم"}
                   </p>
                   <p className="truncate text-xs text-white/58">
                     {userEmail || "user@example.com"}

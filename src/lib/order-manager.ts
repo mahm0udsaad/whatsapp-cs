@@ -1,4 +1,5 @@
 import { adminSupabaseClient } from "@/lib/supabase/admin";
+import { triggerEscalationBroadcast } from "@/lib/escalation-broadcaster";
 
 export interface CreateOrderInput {
   restaurantId: string;
@@ -7,38 +8,80 @@ export interface CreateOrderInput {
   customerName?: string | null;
   type: "reservation" | "escalation";
   details: string;
+  /**
+   * For `type === 'escalation'`: the AI-generated reply that was held back.
+   * Populates `orders.ai_draft_reply` + `ai_draft_generated_at` so the agent
+   * can see/approve/edit it in the inbox before sending.
+   */
+  aiDraftReply?: string | null;
+  /** Machine-readable escalation reason tag (e.g. `'knowledge_gap'`). */
+  escalationReason?: string | null;
+  /** Defaults to `'normal'`. Schema enum: 'normal' | 'urgent'. */
+  priority?: "normal" | "urgent";
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<string | null> {
+  const nowIso = new Date().toISOString();
+
   // Prevent duplicates: if a pending order of the same type already exists
-  // for this conversation, just update the details instead of inserting a new row.
+  // for this conversation, update-in-place instead of inserting a new row.
   const { data: existing } = await adminSupabaseClient
     .from("orders")
-    .select("id")
+    .select("id, ai_draft_reply, escalation_reason")
     .eq("conversation_id", input.conversationId)
     .eq("type", input.type)
     .eq("status", "pending")
     .maybeSingle();
 
   if (existing) {
+    const patch: Record<string, unknown> = {
+      details: input.details,
+      updated_at: nowIso,
+    };
+    // Only fill draft/reason if we have a new value AND the existing row is
+    // empty — avoid clobbering a human edit on the row.
+    if (input.aiDraftReply && !existing.ai_draft_reply) {
+      patch.ai_draft_reply = input.aiDraftReply;
+      patch.ai_draft_generated_at = nowIso;
+    }
+    if (input.escalationReason && !existing.escalation_reason) {
+      patch.escalation_reason = input.escalationReason;
+    }
+    if (input.priority) {
+      patch.priority = input.priority;
+    }
+
     await adminSupabaseClient
       .from("orders")
-      .update({ details: input.details, updated_at: new Date().toISOString() })
+      .update(patch)
       .eq("id", existing.id);
-    return existing.id;
+    return existing.id as string;
+  }
+
+  const insertRow: Record<string, unknown> = {
+    restaurant_id: input.restaurantId,
+    conversation_id: input.conversationId,
+    customer_phone: input.customerPhone,
+    customer_name: input.customerName ?? null,
+    type: input.type,
+    details: input.details,
+    status: "pending",
+  };
+
+  if (input.aiDraftReply) {
+    insertRow.ai_draft_reply = input.aiDraftReply;
+    insertRow.ai_draft_generated_at = nowIso;
+  }
+  if (input.escalationReason) {
+    insertRow.escalation_reason = input.escalationReason;
+  }
+  if (input.priority) {
+    insertRow.priority = input.priority;
   }
 
   const { data, error } = await adminSupabaseClient
     .from("orders")
-    .insert({
-      restaurant_id: input.restaurantId,
-      conversation_id: input.conversationId,
-      customer_phone: input.customerPhone,
-      customer_name: input.customerName ?? null,
-      type: input.type,
-      details: input.details,
-      status: "pending",
-    })
+    .insert(insertRow)
     .select("id")
     .single();
 
@@ -47,5 +90,13 @@ export async function createOrder(input: CreateOrderInput): Promise<string | nul
     return null;
   }
 
-  return data.id;
+  const newId = data.id as string;
+
+  // Fan out a claim-first broadcast to on-duty agents for NEW escalations.
+  // Fire-and-forget — never blocks or throws upstream.
+  if (input.type === "escalation") {
+    void triggerEscalationBroadcast(newId);
+  }
+
+  return newId;
 }

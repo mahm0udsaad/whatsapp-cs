@@ -78,7 +78,7 @@ export function WhatsAppSetupForm({
   const handleDelete = async () => {
     if (
       !confirm(
-        "This will delete the current sender from Twilio so you can start over. Continue?"
+        "سيتم حذف مرسل واتساب الحالي من Twilio حتى تبدأ من جديد. هل تريد المتابعة؟"
       )
     ) {
       return;
@@ -92,7 +92,7 @@ export function WhatsAppSetupForm({
       });
       const result = await response.json();
       if (!response.ok) {
-        setError(result.error || "Failed to delete the sender.");
+        setError(result.error || "تعذر حذف المرسل.");
         return;
       }
       router.refresh();
@@ -100,7 +100,7 @@ export function WhatsAppSetupForm({
       setError(
         deleteError instanceof Error
           ? deleteError.message
-          : "Network error while deleting the sender."
+          : "حدث خطأ في الشبكة أثناء حذف المرسل."
       );
     } finally {
       setDeleting(false);
@@ -117,22 +117,22 @@ export function WhatsAppSetupForm({
       });
       const result = await response.json();
       if (!response.ok) {
-        setError(result.error || "Failed to sync status.");
+        setError(result.error || "تعذر مزامنة الحالة.");
         return;
       }
       if (result.onboardingStatus === "active") {
-        setSuccessMessage("Status synced — your sender is now active!");
+        setSuccessMessage("تمت مزامنة الحالة، والمرسل نشط الآن.");
         router.refresh();
         setTimeout(() => router.push("/dashboard"), 1500);
       } else {
         setSuccessMessage(
-          `Twilio status: ${result.twilioStatus}. Not active yet — try again in a moment.`
+          `حالة Twilio: ${result.twilioStatus}. لم يصبح نشطاً بعد. حاول مرة أخرى بعد قليل.`
         );
         router.refresh();
       }
     } catch (syncError) {
       setError(
-        syncError instanceof Error ? syncError.message : "Network error while syncing."
+        syncError instanceof Error ? syncError.message : "حدث خطأ في الشبكة أثناء المزامنة."
       );
     } finally {
       setSyncing(false);
@@ -145,7 +145,7 @@ export function WhatsAppSetupForm({
     setSuccessMessage(null);
 
     if (!verificationCode.trim()) {
-      setError("Please enter the verification code you received via SMS.");
+      setError("أدخل رمز التحقق الذي استلمته عبر الرسائل القصيرة.");
       return;
     }
 
@@ -163,14 +163,14 @@ export function WhatsAppSetupForm({
       const result = await response.json();
 
       if (!response.ok) {
-        setError(result.error || "Verification failed.");
+        setError(result.error || "فشل التحقق.");
         return;
       }
 
       setSuccessMessage(
         result.onboardingStatus === "active"
-          ? "WhatsApp sender verified and active!"
-          : "Code submitted. Waiting for Twilio to confirm activation."
+          ? "تم التحقق من مرسل واتساب وأصبح نشطاً."
+          : "تم إرسال الرمز. بانتظار تأكيد التفعيل من Twilio."
       );
       router.refresh();
       if (result.onboardingStatus === "active") {
@@ -180,7 +180,7 @@ export function WhatsAppSetupForm({
       setError(
         verifyError instanceof Error
           ? verifyError.message
-          : "Network error while verifying."
+          : "حدث خطأ في الشبكة أثناء التحقق."
       );
     } finally {
       setVerifying(false);
@@ -194,13 +194,13 @@ export function WhatsAppSetupForm({
 
     const trimmed = phoneNumber.trim();
     if (!trimmed) {
-      setError("Please enter your WhatsApp business phone number.");
+      setError("أدخل رقم واتساب الخاص بالنشاط.");
       return;
     }
 
     if (!acknowledged) {
       setError(
-        "Please confirm you have removed WhatsApp from this number before continuing."
+        "أكد أنك حذفت واتساب من هذا الرقم قبل المتابعة."
       );
       return;
     }
@@ -216,14 +216,14 @@ export function WhatsAppSetupForm({
       const result = await response.json();
 
       if (!response.ok) {
-        setError(result.error || "Registration failed.");
+        setError(result.error || "فشل التسجيل.");
         return;
       }
 
       setSuccessMessage(
         result.setupStatus === "active"
-          ? "WhatsApp sender registered and active."
-          : `Registration submitted to Twilio (status: ${result.senderStatus || "pending"}). We'll mark it active once verification completes.`
+          ? "تم تسجيل مرسل واتساب وأصبح نشطاً."
+          : `تم إرسال التسجيل إلى Twilio (الحالة: ${result.senderStatus || "pending"}). سنجعله نشطاً بعد اكتمال التحقق.`
       );
       router.refresh();
       setTimeout(() => {
@@ -233,7 +233,7 @@ export function WhatsAppSetupForm({
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "Network error while registering the number."
+          : "حدث خطأ في الشبكة أثناء تسجيل الرقم."
       );
     } finally {
       setSubmitting(false);
@@ -250,33 +250,27 @@ export function WhatsAppSetupForm({
             </div>
             <div>
               <CardTitle className="text-amber-900">
-                Delete WhatsApp from this number first
+                احذف واتساب من هذا الرقم أولاً
               </CardTitle>
               <CardDescription className="mt-1 text-amber-900/80">
-                This step is required by Twilio and Meta before a number can be
-                registered as a WhatsApp Business sender.
+                هذه الخطوة مطلوبة من Twilio وMeta قبل تسجيل الرقم كمرسل واتساب للأعمال.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-3 text-sm leading-6 text-amber-900">
           <p>
-            The phone number you enter below must <strong>not</strong> be active
-            on any WhatsApp account when you submit. If it is, the registration
-            will fail.
+            يجب ألا يكون رقم الهاتف الذي تدخله بالأسفل نشطاً على أي حساب واتساب عند الإرسال. إذا كان نشطاً، سيفشل التسجيل.
           </p>
           <ol className="list-decimal space-y-1 pl-5">
             <li>
-              Open WhatsApp (or WhatsApp Business) on the device using this
-              number.
+              افتح واتساب أو واتساب للأعمال على الجهاز الذي يستخدم هذا الرقم.
             </li>
             <li>
-              Go to <em>Settings → Account → Delete my account</em> and
-              completely remove the account.
+              اذهب إلى <em>الإعدادات ثم الحساب ثم حذف حسابي</em> واحذف الحساب بالكامل.
             </li>
             <li>
-              Wait a minute, then submit this form. Twilio will request a
-              verification code from Meta and bring the sender online.
+              انتظر دقيقة ثم أرسل هذا النموذج. سيطلب Twilio رمز تحقق من Meta ويفعل المرسل.
             </li>
           </ol>
         </CardContent>
@@ -289,10 +283,9 @@ export function WhatsAppSetupForm({
               <Smartphone size={20} />
             </div>
             <div>
-              <CardTitle>Register your WhatsApp sender</CardTitle>
+              <CardTitle>تسجيل مرسل واتساب</CardTitle>
               <CardDescription>
-                We&apos;ll register <strong>{businessName}</strong> as the
-                business profile with Twilio&apos;s Senders API.
+                سنسجل <strong>{businessName}</strong> كملف النشاط عبر واجهة مرسلي Twilio.
               </CardDescription>
             </div>
           </div>
@@ -312,14 +305,14 @@ export function WhatsAppSetupForm({
                 ) : (
                   <Loader2 size={16} className="animate-spin" />
                 )}
-                Current status: {existingStatus}
+                الحالة الحالية: {existingStatus}
               </div>
               <p className="mt-1 text-xs opacity-80">
-                Sender SID: <code>{existingSenderSid}</code>
+                معرف المرسل: <code>{existingSenderSid}</code>
               </p>
               {existingError ? (
                 <p className="mt-2 text-xs text-rose-700">
-                  Last error: {existingError}
+                  آخر خطأ: {existingError}
                 </p>
               ) : null}
               {!isAlreadyActive ? (
@@ -334,27 +327,24 @@ export function WhatsAppSetupForm({
                     {syncing ? (
                       <>
                         <Loader2 size={14} className="mr-2 animate-spin" />
-                        Checking…
+                        جارٍ الفحص...
                       </>
                     ) : (
                       <>
                         <RefreshCw size={14} className="mr-2" />
-                        Sync status from Twilio
+                        مزامنة الحالة من Twilio
                       </>
                     )}
                   </Button>
                   <p className="mt-1 text-xs text-slate-500">
-                    Already verified in the Twilio Console? Click to pull the
-                    latest status.
+                    هل تم التحقق بالفعل في لوحة Twilio؟ اضغط لجلب أحدث حالة.
                   </p>
                 </div>
               ) : null}
               {isPendingVerification ? (
                 <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
                   <p className="text-sm leading-5 text-slate-700">
-                    Twilio sent a verification code to this number via{" "}
-                    <strong>SMS</strong>. Enter it below to activate your
-                    WhatsApp sender.
+                    أرسل Twilio رمز تحقق إلى هذا الرقم عبر <strong>SMS</strong>. أدخله بالأسفل لتفعيل مرسل واتساب.
                   </p>
                   <form onSubmit={handleVerify} className="flex gap-2">
                     <Input
@@ -373,16 +363,16 @@ export function WhatsAppSetupForm({
                       {verifying ? (
                         <>
                           <Loader2 size={16} className="mr-2 animate-spin" />
-                          Verifying…
+                          جارٍ التحقق...
                         </>
                       ) : (
-                        "Submit code"
+                        "إرسال الرمز"
                       )}
                     </Button>
                   </form>
                   <div className="border-t border-slate-200 pt-3">
                     <p className="text-xs text-slate-500">
-                      Didn&apos;t receive a code or entered the wrong number?
+                      لم تستلم الرمز أو أدخلت رقماً خاطئاً؟
                     </p>
                     <Button
                       type="button"
@@ -394,10 +384,10 @@ export function WhatsAppSetupForm({
                       {deleting ? (
                         <>
                           <Loader2 size={16} className="mr-2 animate-spin" />
-                          Deleting…
+                          جارٍ الحذف...
                         </>
                       ) : (
-                        "Delete this sender and start over"
+                        "حذف هذا المرسل والبدء من جديد"
                       )}
                     </Button>
                   </div>
@@ -406,13 +396,7 @@ export function WhatsAppSetupForm({
               {isStuckPending ? (
                 <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
                   <p className="text-xs leading-5 text-slate-700">
-                    If verification has been pending for more than a few
-                    minutes, Meta likely rejected the number (most often
-                    because WhatsApp is still installed on it). Twilio reports
-                    this in the debugger as a 410 &ldquo;Phone Number In
-                    Use&rdquo; error and the sender cannot be retried — it
-                    must be deleted and recreated after WhatsApp is fully
-                    removed from the device.
+                    إذا ظل التحقق معلقاً لأكثر من بضع دقائق، فغالباً رفضت Meta الرقم لأن واتساب ما زال مثبتاً عليه. يظهر ذلك في Twilio كخطأ 410 Phone Number In Use، ولا يمكن إعادة محاولة المرسل نفسه. يجب حذفه وإنشاؤه من جديد بعد إزالة واتساب بالكامل من الجهاز.
                   </p>
                   <Button
                     type="button"
@@ -424,10 +408,10 @@ export function WhatsAppSetupForm({
                     {deleting ? (
                       <>
                         <Loader2 size={16} className="mr-2 animate-spin" />
-                        Deleting…
+                        جارٍ الحذف...
                       </>
                     ) : (
-                      "Delete this sender and start over"
+                      "حذف هذا المرسل والبدء من جديد"
                     )}
                   </Button>
                 </div>
@@ -451,7 +435,7 @@ export function WhatsAppSetupForm({
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-900">
-                  WhatsApp business phone number
+                  رقم واتساب الخاص بالنشاط
                 </label>
                 <Input
                   type="tel"
@@ -462,8 +446,7 @@ export function WhatsAppSetupForm({
                   dir="ltr"
                 />
                 <p className="text-xs text-slate-500">
-                  Use the international format with the country code. Example:
-                  +201234567890
+                  استخدم الصيغة الدولية مع رمز الدولة. مثال: +201234567890
                 </p>
               </div>
 
@@ -476,8 +459,7 @@ export function WhatsAppSetupForm({
                   disabled={submitting}
                 />
                 <span>
-                  I confirm WhatsApp (and WhatsApp Business) has been deleted from
-                  this phone number and I&apos;m ready for Twilio to register it.
+                  أؤكد حذف واتساب وواتساب للأعمال من هذا الرقم، وأنا جاهز لتسجيله عبر Twilio.
                 </span>
               </label>
 
@@ -489,10 +471,10 @@ export function WhatsAppSetupForm({
                 {submitting ? (
                   <>
                     <Loader2 size={16} className="mr-2 animate-spin" />
-                    Registering with Twilio…
+                    جارٍ التسجيل عبر Twilio...
                   </>
                 ) : (
-                  "Register WhatsApp sender"
+                  "تسجيل مرسل واتساب"
                 )}
               </Button>
             </form>

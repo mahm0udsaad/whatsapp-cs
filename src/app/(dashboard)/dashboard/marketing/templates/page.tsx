@@ -263,7 +263,7 @@ export default async function TemplatesPage() {
                           className="gap-1.5 rounded-full text-xs"
                         >
                           <Edit size={12} />
-                          Edit & Resubmit
+                          تعديل وإعادة الإرسال
                         </Button>
                       </Link>
                     )}
@@ -271,8 +271,8 @@ export default async function TemplatesPage() {
 
                   {/* Meta: date */}
                   <p className="mt-3 text-[11px] text-slate-400">
-                    Created{" "}
-                    {new Date(template.created_at).toLocaleDateString("en", {
+                    أُنشئ{" "}
+                    {new Date(template.created_at).toLocaleDateString("ar", {
                       month: "short",
                       day: "numeric",
                       year: "numeric",

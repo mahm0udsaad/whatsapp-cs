@@ -11,8 +11,13 @@ const googleAI = createGoogleGenerativeAI({
  */
 async function embedQuery(query: string): Promise<number[]> {
   const { embedding } = await embed({
-    model: googleAI.textEmbeddingModel("text-embedding-004"),
+    // Must match the ingestion model/dim (see scripts/ingest-knowledge-base.ts).
+    // 768d keeps compatibility with the existing vector(768) column.
+    model: googleAI.embeddingModel("gemini-embedding-001"),
     value: query,
+    providerOptions: {
+      google: { outputDimensionality: 768 },
+    },
   });
   return embedding;
 }

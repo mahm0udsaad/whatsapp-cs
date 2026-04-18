@@ -83,19 +83,19 @@ export default function NewTemplatePage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to save template");
+        throw new Error(data.error || "تعذر حفظ القالب");
       }
 
       router.push("/dashboard/marketing/templates");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save template");
+      setError(err instanceof Error ? err.message : "تعذر حفظ القالب");
     } finally {
       setSaving(false);
     }
   };
 
   // Use a fallback restaurant name - in production this would come from context
-  const restaurantName = "your restaurant";
+  const restaurantName = "مطعمك";
 
   return (
     <div className="flex-1 p-4 sm:p-6 lg:p-8">
@@ -110,10 +110,10 @@ export default function NewTemplatePage() {
           </Link>
           <div>
             <h1 className="text-2xl font-semibold tracking-[-0.04em] text-slate-950">
-              AI Template Builder
+              منشئ قوالب الذكاء الاصطناعي
             </h1>
             <p className="text-sm text-slate-500">
-              Chat with AI to create your perfect WhatsApp template
+              تحدث مع المساعد لإنشاء قالب واتساب مناسب لحملتك
             </p>
           </div>
         </div>
@@ -129,7 +129,7 @@ export default function NewTemplatePage() {
             ) : (
               <Save size={16} />
             )}
-            {saving ? "Saving..." : "Save Template"}
+            {saving ? "جارٍ الحفظ..." : "حفظ القالب"}
           </Button>
         )}
       </div>
@@ -158,12 +158,12 @@ export default function NewTemplatePage() {
           <Card className="overflow-hidden">
             <div className="border-b border-slate-200/70 px-6 py-4">
               <h3 className="text-sm font-semibold text-slate-950">
-                Template Preview
+                معاينة القالب
               </h3>
               <p className="text-xs text-slate-500">
                 {templateData
-                  ? "Live preview of your template"
-                  : "Preview will appear as the AI builds your template"}
+                  ? "معاينة مباشرة للقالب"
+                  : "ستظهر المعاينة أثناء بناء القالب"}
               </p>
             </div>
             <div className="p-6">
@@ -192,35 +192,35 @@ export default function NewTemplatePage() {
             <Card>
               <div className="p-5">
                 <h4 className="text-sm font-semibold text-slate-950 mb-3">
-                  Template Details
+                  تفاصيل القالب
                 </h4>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2.5">
-                    <span className="text-xs text-slate-500">Name</span>
+                    <span className="text-xs text-slate-500">الاسم</span>
                     <span className="text-sm font-medium text-slate-900">
                       {templateData.name}
                     </span>
                   </div>
                   <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2.5">
-                    <span className="text-xs text-slate-500">Language</span>
+                    <span className="text-xs text-slate-500">اللغة</span>
                     <span className="text-sm font-medium text-slate-900">
                       {templateData.language.toUpperCase()}
                     </span>
                   </div>
                   <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2.5">
-                    <span className="text-xs text-slate-500">Category</span>
+                    <span className="text-xs text-slate-500">الفئة</span>
                     <span className="text-sm font-medium text-slate-900">
                       {templateData.category}
                     </span>
                   </div>
                   <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2.5">
-                    <span className="text-xs text-slate-500">Variables</span>
+                    <span className="text-xs text-slate-500">المتغيرات</span>
                     <span className="text-sm font-medium text-slate-900">
                       {templateData.variables?.length || 0}
                     </span>
                   </div>
                   <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2.5">
-                    <span className="text-xs text-slate-500">Header</span>
+                    <span className="text-xs text-slate-500">الرأس</span>
                     <span className="text-sm font-medium text-slate-900 capitalize">
                       {templateData.headerType}
                     </span>

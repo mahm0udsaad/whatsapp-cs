@@ -16,7 +16,7 @@ export function ConversationsInbox({
   restaurantId,
   initialConversations,
 }: ConversationsInboxProps) {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [conversations, setConversations] =
     useState<Conversation[]>(initialConversations);
   const [selectedId, setSelectedId] = useState<string | null>(
@@ -57,9 +57,6 @@ export function ConversationsInbox({
 
       const nextConversations = (data || []) as Conversation[];
       setConversations(nextConversations);
-      if (!selectedId && nextConversations[0]?.id) {
-        setSelectedId(nextConversations[0].id);
-      }
       setLoading(false);
     }
 
@@ -87,7 +84,14 @@ export function ConversationsInbox({
       isMounted = false;
       supabase.removeChannel(convChannel);
     };
-  }, [restaurantId, selectedId, supabase]);
+  }, [restaurantId, supabase]);
+
+  // Auto-select first conversation once loaded.
+  useEffect(() => {
+    if (!selectedId && conversations[0]?.id) {
+      setSelectedId(conversations[0].id);
+    }
+  }, [conversations, selectedId]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -139,9 +143,9 @@ export function ConversationsInbox({
   return (
     <div className="flex h-[calc(100vh-8rem)] gap-4">
       <div className="flex w-80 flex-col gap-2 overflow-y-auto">
-        <h2 className="mb-2 text-lg font-semibold">Conversations</h2>
+        <h2 className="mb-2 text-lg font-semibold">المحادثات</h2>
         <Input
-          placeholder="Search by name or phone..."
+          placeholder="ابحث بالاسم أو الهاتف..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="mb-1"
@@ -158,18 +162,18 @@ export function ConversationsInbox({
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              {s.charAt(0).toUpperCase() + s.slice(1)}
+              {s === "all" ? "الكل" : s === "active" ? "نشطة" : "منتهية"}
             </button>
           ))}
         </div>
         {loading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
+          <p className="text-sm text-gray-500">جارٍ التحميل...</p>
         ) : null}
         {!loading && filteredConversations.length === 0 ? (
           <p className="text-sm text-gray-500">
             {conversations.length === 0
-              ? "No conversations yet. Send a WhatsApp message to start the first thread."
-              : "No conversations match your search."}
+              ? "لا توجد محادثات بعد. أرسل رسالة واتساب لبدء أول محادثة."
+              : "لا توجد محادثات تطابق البحث."}
           </p>
         ) : null}
         {filteredConversations.map((conversation) => (
@@ -177,7 +181,7 @@ export function ConversationsInbox({
             key={conversation.id}
             type="button"
             onClick={() => setSelectedId(conversation.id)}
-            className={`rounded-lg border p-3 text-left transition-colors ${
+            className={`rounded-lg border p-3 text-right transition-colors ${
               selectedId === conversation.id
                 ? "border-emerald-500 bg-emerald-50"
                 : "border-gray-200 hover:bg-gray-50"
@@ -191,7 +195,7 @@ export function ConversationsInbox({
                 variant={conversation.status === "active" ? "default" : "secondary"}
                 className="text-xs"
               >
-                {conversation.status}
+                {conversation.status === "active" ? "نشطة" : "منتهية"}
               </Badge>
             </div>
             <p className="mt-1 text-xs text-gray-500">
@@ -206,13 +210,13 @@ export function ConversationsInbox({
           <CardTitle className="text-base">
             {selectedConversation
               ? selectedConversation.customer_name || selectedConversation.customer_phone
-              : "Select a conversation"}
+              : "اختر محادثة"}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex-1 space-y-3 overflow-y-auto p-4">
           {messages.length === 0 && selectedId ? (
             <p className="mt-8 text-center text-sm text-gray-500">
-              No messages in this conversation.
+              لا توجد رسائل في هذه المحادثة.
             </p>
           ) : null}
           {messages.map((message) => {
@@ -248,7 +252,7 @@ export function ConversationsInbox({
                       dir={/[\u0600-\u06FF]/.test(interactive.body) ? "rtl" : "ltr"}
                     >
                       <p className="mb-1 text-[10px] uppercase tracking-wide opacity-70">
-                        {isList ? `List · ${interactive.button}` : "Buttons"}
+                        {isList ? `قائمة · ${interactive.button}` : "أزرار"}
                       </p>
                       <p className="whitespace-pre-wrap">{interactive.body}</p>
                       <div className="mt-2 flex flex-wrap gap-1">
@@ -288,7 +292,7 @@ export function ConversationsInbox({
                       }
                     >
                       <p className="italic">
-                        → Tapped: <span className="not-italic font-medium">{tap.title || tap.id}</span>
+                        تم الاختيار: <span className="not-italic font-medium">{tap.title || tap.id}</span>
                       </p>
                       <span className="mt-1 inline-block rounded bg-white/60 px-1.5 py-0.5 text-[10px] font-mono text-gray-700">
                         {tap.id}

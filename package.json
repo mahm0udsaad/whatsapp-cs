@@ -9,7 +9,10 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "ingest": "npx tsx scripts/ingest-knowledge-base.ts"
+    "ingest": "npx tsx scripts/ingest-knowledge-base.ts",
+    "seed:tenant-knowledge": "npx tsx --env-file=.env.local scripts/seed-tenant-knowledge.ts",
+    "seed:kiara": "npx tsx --env-file=.env.local scripts/seed-kiara.ts",
+    "seed:kiara-menu": "npx tsx --env-file=.env.local scripts/seed-kiara-menu.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.61",

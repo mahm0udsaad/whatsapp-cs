@@ -9,6 +9,8 @@ interface DashboardShellProps {
   children: ReactNode;
   restaurantName: string;
   restaurantLogo?: string | null;
+  restaurantId?: string | null;
+  isOwner?: boolean;
   userName?: string | null;
   userEmail?: string | null;
   locale?: "ar" | "en";
@@ -18,6 +20,8 @@ export function DashboardShell({
   children,
   restaurantName,
   restaurantLogo,
+  restaurantId,
+  isOwner = false,
   userName,
   userEmail,
   locale = "ar",
@@ -39,6 +43,8 @@ export function DashboardShell({
       <Sidebar
         restaurantName={restaurantName}
         restaurantLogo={restaurantLogo ?? undefined}
+        restaurantId={restaurantId ?? undefined}
+        isOwner={isOwner}
         userName={userName ?? undefined}
         userEmail={userEmail ?? undefined}
         onLogout={handleLogout}

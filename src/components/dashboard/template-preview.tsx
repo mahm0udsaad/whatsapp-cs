@@ -48,7 +48,7 @@ export function TemplatePreview({
   return (
     <div className={cn("flex items-center justify-center", className)}>
       {/* Phone mockup */}
-      <div className="relative w-[320px] rounded-[40px] border-[3px] border-slate-800 bg-slate-900 p-2 shadow-2xl">
+      <div className="relative w-[320px] rounded-[40px] border-[3px] border-slate-800 bg-slate-900 p-2 shadow-2xl" dir="rtl">
         {/* Notch */}
         <div className="absolute top-0 start-1/2 z-10 h-6 w-28 -translate-x-1/2 rounded-b-2xl bg-slate-900" />
 
@@ -60,8 +60,8 @@ export function TemplatePreview({
               W
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold text-white">WhatsApp Preview</p>
-              <p className="text-[10px] text-white/70">Template message</p>
+              <p className="text-sm font-semibold text-white">معاينة واتساب</p>
+              <p className="text-[10px] text-white/70">رسالة قالب</p>
             </div>
           </div>
 
@@ -70,7 +70,7 @@ export function TemplatePreview({
             {!hasContent ? (
               <div className="flex h-[340px] items-center justify-center">
                 <p className="text-center text-sm text-slate-500">
-                  Your template preview will appear here as you build it
+                  ستظهر معاينة القالب هنا أثناء إنشائه
                 </p>
               </div>
             ) : (
@@ -82,14 +82,14 @@ export function TemplatePreview({
                     <div className="mb-2 overflow-hidden rounded-lg">
                       <img
                         src={headerImageUrl}
-                        alt="Header"
+                        alt="رأس القالب"
                         className="h-32 w-full object-cover"
                       />
                     </div>
                   )}
                   {headerType === "image" && !headerImageUrl && (
                     <div className="mb-2 flex h-32 items-center justify-center rounded-lg bg-slate-100">
-                      <p className="text-xs text-slate-400">Image placeholder</p>
+                      <p className="text-xs text-slate-400">موضع الصورة</p>
                     </div>
                   )}
                   {headerType === "text" && headerText && (
@@ -114,7 +114,7 @@ export function TemplatePreview({
 
                   {/* Time */}
                   <p className="mt-1 text-end text-[10px] text-slate-400">
-                    12:00 PM
+                    12:00 م
                   </p>
                 </div>
 

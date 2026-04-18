@@ -1,0 +1,441 @@
+{
+  "totalCount": 4,
+  "items": [
+    {
+      "name": "ايس",
+      "description": "",
+      "imageId": null,
+      "imageUrl": null,
+      "iCalListingId": null,
+      "slotsCount": 1,
+      "maxParallelReservations": null,
+      "bufferBetweenSlots": null,
+      "serviceAreas": null,
+      "schedules": [
+        {
+          "scheduleId": "3a1f5488-dfcd-ff14-bc79-1f888218a50f",
+          "scheduleName": "ايس - schedule",
+          "from": "2026-03-19T21:00:00Z",
+          "to": "2026-12-29T21:00:00Z",
+          "hasCustomDates": true,
+          "scheduleItems": [
+            {
+              "day": 0,
+              "startAt": "10:00:00",
+              "endAt": "00:00:00"
+            },
+            {
+              "day": 1,
+              "startAt": "10:00:00",
+              "endAt": "00:00:00"
+            },
+            {
+              "day": 2,
+              "startAt": "10:00:00",
+              "endAt": "00:00:00"
+            },
+            {
+              "day": 3,
+              "startAt": "10:00:00",
+              "endAt": "00:00:00"
+            },
+            {
+              "day": 4,
+              "startAt": "10:00:00",
+              "endAt": "00:00:00"
+            },
+            {
+              "day": 5,
+              "startAt": "10:00:00",
+              "endAt": "00:00:00"
+            },
+            {
+              "day": 6,
+              "startAt": "10:00:00",
+              "endAt": "00:00:00"
+            }
+          ],
+          "items": [
+            {
+              "day": 0,
+              "startAt": "10:00:00",
+              "endAt": "00:00:00"
+            },
+            {
+              "day": 1,
+              "startAt": "10:00:00",
+              "endAt": "00:00:00"
+            },
+            {
+              "day": 2,
+              "startAt": "10:00:00",
+              "endAt": "00:00:00"
+            },
+            {
+              "day": 3,
+              "startAt": "10:00:00",
+              "endAt": "00:00:00"
+            },
+            {
+              "day": 4,
+              "startAt": "10:00:00",
+              "endAt": "00:00:00"
+            },
+            {
+              "day": 5,
+              "startAt": "10:00:00",
+              "endAt": "00:00:00"
+            },
+            {
+              "day": 6,
+              "startAt": "10:00:00",
+              "endAt": "00:00:00"
+            }
+          ]
+        }
+      ],
+      "scheduleOverrides": [],
+      "isGeoFenced": false,
+      "branches": [],
+      "branchIds": [
+        "3a1f363a-bf15-a6bc-d083-6da7f6c26cf5"
+      ],
+      "holidays": [],
+      "systemTag": null,
+      "isDeleted": false,
+      "deleterId": null,
+      "deletionTime": null,
+      "lastModificationTime": null,
+      "lastModifierId": null,
+      "creationTime": "0001-01-01T00:00:00Z",
+      "creatorId": null,
+      "id": "3a1f5488-e0c8-b979-3628-ef211a7ea624"
+    },
+    {
+      "name": "روز",
+      "description": "",
+      "imageId": null,
+      "imageUrl": null,
+      "iCalListingId": null,
+      "slotsCount": 1,
+      "maxParallelReservations": null,
+      "bufferBetweenSlots": null,
+      "serviceAreas": null,
+      "schedules": [
+        {
+          "scheduleId": "3a1f5485-af86-6476-3399-2c40af4ec840",
+          "scheduleName": "روز - schedule",
+          "from": "2026-03-19T21:00:00Z",
+          "to": "2026-12-31T21:00:00Z",
+          "hasCustomDates": true,
+          "scheduleItems": [
+            {
+              "day": 0,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 1,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 2,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 3,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 4,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 5,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 6,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            }
+          ],
+          "items": [
+            {
+              "day": 0,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 1,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 2,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 3,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 4,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 5,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 6,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            }
+          ]
+        }
+      ],
+      "scheduleOverrides": [],
+      "isGeoFenced": false,
+      "branches": [],
+      "branchIds": [
+        "3a1f363a-bf15-a6bc-d083-6da7f6c26cf5"
+      ],
+      "holidays": [],
+      "systemTag": null,
+      "isDeleted": false,
+      "deleterId": null,
+      "deletionTime": null,
+      "lastModificationTime": null,
+      "lastModifierId": null,
+      "creationTime": "0001-01-01T00:00:00Z",
+      "creatorId": null,
+      "id": "3a1f5485-b129-3130-a50d-dad7a0c8a842"
+    },
+    {
+      "name": "ميرا ",
+      "description": "",
+      "imageId": null,
+      "imageUrl": null,
+      "iCalListingId": null,
+      "slotsCount": 1,
+      "maxParallelReservations": null,
+      "bufferBetweenSlots": null,
+      "serviceAreas": null,
+      "schedules": [
+        {
+          "scheduleId": "3a1f5480-6c5e-a79f-4eef-69759f9e5f02",
+          "scheduleName": "ميرا  - schedule",
+          "from": "2026-02-12T21:00:00Z",
+          "to": "2026-12-29T21:00:00Z",
+          "hasCustomDates": true,
+          "scheduleItems": [
+            {
+              "day": 0,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 1,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 2,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 3,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 4,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 5,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 6,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            }
+          ],
+          "items": [
+            {
+              "day": 0,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 1,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 2,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 3,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 4,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 5,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 6,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            }
+          ]
+        }
+      ],
+      "scheduleOverrides": [],
+      "isGeoFenced": false,
+      "branches": [],
+      "branchIds": [],
+      "holidays": [],
+      "systemTag": null,
+      "isDeleted": false,
+      "deleterId": null,
+      "deletionTime": null,
+      "lastModificationTime": null,
+      "lastModifierId": null,
+      "creationTime": "0001-01-01T00:00:00Z",
+      "creatorId": null,
+      "id": "3a1f5480-6df9-1a78-5ed9-be620fa79829"
+    },
+    {
+      "name": "أنيسه ",
+      "description": "",
+      "imageId": null,
+      "imageUrl": null,
+      "iCalListingId": null,
+      "slotsCount": 1,
+      "maxParallelReservations": null,
+      "bufferBetweenSlots": null,
+      "serviceAreas": null,
+      "schedules": [
+        {
+          "scheduleId": "3a1f547a-559f-37a8-4382-e9c1f53af870",
+          "scheduleName": "أنيسه  - schedule",
+          "from": "2026-03-20T21:00:00Z",
+          "to": "2026-12-30T21:00:00Z",
+          "hasCustomDates": true,
+          "scheduleItems": [
+            {
+              "day": 0,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 1,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 3,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 4,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 5,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 6,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 2,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            }
+          ],
+          "items": [
+            {
+              "day": 0,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 1,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 3,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 4,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 5,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 6,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            },
+            {
+              "day": 2,
+              "startAt": "10:00:00",
+              "endAt": "02:00:00"
+            }
+          ]
+        }
+      ],
+      "scheduleOverrides": [],
+      "isGeoFenced": false,
+      "branches": [],
+      "branchIds": [],
+      "holidays": [],
+      "systemTag": null,
+      "isDeleted": false,
+      "deleterId": null,
+      "deletionTime": null,
+      "lastModificationTime": null,
+      "lastModifierId": null,
+      "creationTime": "0001-01-01T00:00:00Z",
+      "creatorId": null,
+      "id": "3a1f547a-56bd-1b6d-228b-4cf0c456a143"
+    }
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "totalCount": 6,
+  "items": [
+    {
+      "startDate": "2026-04-08",
+      "endDate": "2026-04-08",
+      "startTime": "13:15:00",
+      "endTime": "15:15:00",
+      "isFullDay": false,
+      "type": 6,
+      "description": null,
+      "providerIds": [
+        "3a1f5485-b129-3130-a50d-dad7a0c8a842"
+      ],
+      "isDeleted": false,
+      "deleterId": null,
+      "deletionTime": null,
+      "lastModificationTime": "2026-04-04T23:48:50.110298Z",
+      "lastModifierId": "3a2000e6-a9a2-7af2-b5c1-862f8fc29a57",
+      "creationTime": "2026-04-04T23:47:34.811179Z",
+      "creatorId": "3a2000e6-a9a2-7af2-b5c1-862f8fc29a57",
+      "id": "3a206d11-e917-3b28-ce2b-a66d38124d90"
+    },
+    {
+      "startDate": "2026-04-02",
+      "endDate": "2026-04-02",
+      "startTime": "12:15:00",
+      "endTime": "13:55:00",
+      "isFullDay": false,
+      "type": 6,
+      "description": null,
+      "providerIds": [
+        "3a1f5488-e0c8-b979-3628-ef211a7ea624"
+      ],
+      "isDeleted": false,
+      "deleterId": null,
+      "deletionTime": null,
+      "lastModificationTime": null,
+      "lastModifierId": null,
+      "creationTime": "2026-04-01T18:47:28.941852Z",
+      "creatorId": "3a1f3638-e8e7-1cbc-1104-bcd886245291",
+      "id": "3a205c8c-15aa-a476-035b-0bafe123dc4e"
+    },
+    {
+      "startDate": "2026-03-12",
+      "endDate": "2026-03-20",
+      "startTime": "21:00:00",
+      "endTime": "20:59:59",
+      "isFullDay": true,
+      "type": 1,
+      "description": null,
+      "providerIds": [
+        "3a1f547a-56bd-1b6d-228b-4cf0c456a143"
+      ],
+      "isDeleted": false,
+      "deleterId": null,
+      "deletionTime": null,
+      "lastModificationTime": null,
+      "lastModifierId": null,
+      "creationTime": "2026-03-11T04:05:44.33615Z",
+      "creatorId": "3a1f666f-75ce-7415-53ab-54e253d1e69d",
+      "id": "3a1fed3f-470d-f8fe-6dc1-c2686a9b3be8"
+    },
+    {
+      "startDate": "2026-03-12",
+      "endDate": "2026-03-20",
+      "startTime": "21:00:00",
+      "endTime": "20:59:59",
+      "isFullDay": true,
+      "type": 1,
+      "description": null,
+      "providerIds": [
+        "3a1f5480-6df9-1a78-5ed9-be620fa79829"
+      ],
+      "isDeleted": false,
+      "deleterId": null,
+      "deletionTime": null,
+      "lastModificationTime": null,
+      "lastModifierId": null,
+      "creationTime": "2026-03-11T04:05:06.425761Z",
+      "creatorId": "3a1f666f-75ce-7415-53ab-54e253d1e69d",
+      "id": "3a1fed3e-b2f6-85dd-5f20-402563f0284e"
+    },
+    {
+      "startDate": "2026-03-12",
+      "endDate": "2026-03-20",
+      "startTime": "21:00:00",
+      "endTime": "20:59:59",
+      "isFullDay": true,
+      "type": 1,
+      "description": null,
+      "providerIds": [
+        "3a1f5485-b129-3130-a50d-dad7a0c8a842"
+      ],
+      "isDeleted": false,
+      "deleterId": null,
+      "deletionTime": null,
+      "lastModificationTime": null,
+      "lastModifierId": null,
+      "creationTime": "2026-03-11T04:04:44.259907Z",
+      "creatorId": "3a1f666f-75ce-7415-53ab-54e253d1e69d",
+      "id": "3a1fed3e-5c60-96de-ffbb-fe41b2fc1120"
+    },
+    {
+      "startDate": "2026-03-12",
+      "endDate": "2026-03-20",
+      "startTime": "21:00:00",
+      "endTime": "20:59:59",
+      "isFullDay": true,
+      "type": 1,
+      "description": null,
+      "providerIds": [
+        "3a1f5488-e0c8-b979-3628-ef211a7ea624"
+      ],
+      "isDeleted": false,
+      "deleterId": null,
+      "deletionTime": null,
+      "lastModificationTime": null,
+      "lastModifierId": null,
+      "creationTime": "2026-03-11T04:04:28.067881Z",
+      "creatorId": "3a1f666f-75ce-7415-53ab-54e253d1e69d",
+      "id": "3a1fed3e-1d1e-5af9-dcd8-56627385f7da"
+    }
+  ]
+}

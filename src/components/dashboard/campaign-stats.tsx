@@ -29,7 +29,7 @@ function ProgressBar({
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-xs font-medium text-slate-600">{label}</span>
         <span className="text-xs font-semibold text-slate-900">
-          {value.toLocaleString()} ({pct}%)
+          {value.toLocaleString("ar")} ({pct.toLocaleString("ar")}%)
         </span>
       </div>
       <div className="h-2 rounded-full bg-slate-100">
@@ -53,25 +53,25 @@ export function CampaignStats({
   return (
     <div className={cn("space-y-4", className)}>
       <ProgressBar
-        label="Sent"
+        label="تم الإرسال"
         value={sent}
         total={total}
         color="bg-sky-500"
       />
       <ProgressBar
-        label="Delivered"
+        label="تم التسليم"
         value={delivered}
         total={total}
         color="bg-emerald-500"
       />
       <ProgressBar
-        label="Read"
+        label="تمت القراءة"
         value={read}
         total={total}
         color="bg-violet-500"
       />
       <ProgressBar
-        label="Failed"
+        label="فشلت"
         value={failed}
         total={total}
         color="bg-red-500"

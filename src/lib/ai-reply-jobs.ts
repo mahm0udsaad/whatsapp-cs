@@ -7,6 +7,8 @@ import { isSessionWindowOpen } from "@/lib/session-window";
 import { retrieveKnowledgeChunks } from "@/lib/rag";
 import { classifyIntent } from "@/lib/intent-classifier";
 import { createOrder } from "@/lib/order-manager";
+import { loadActiveAgentInstructions } from "@/lib/agent-instructions";
+import { classifyEscalation } from "@/lib/escalation-classifier";
 import type { InteractiveReply } from "@/lib/types";
 
 interface QueueAIReplyJobInput {
@@ -153,11 +155,21 @@ async function fallbackKeywordKB(restaurantId: string, expandedQuery: string) {
   return scored.join("\n\n");
 }
 
+interface KnowledgeBaseResult {
+  context: string;
+  /**
+   * Rough count of how many RAG hits grounded this turn. Drives the
+   * escalation classifier's "knowledge gap" rule — zero hits on a
+   * non-trivial question triggers handoff to a human.
+   */
+  chunkCount: number;
+}
+
 async function queryKnowledgeBase(
   restaurantId: string,
   query: string,
   history: Array<{ role: "user" | "assistant"; content: string }>
-) {
+): Promise<KnowledgeBaseResult> {
   // Expand the retrieval query with the last couple of USER turns. Short
   // follow-ups like "ايوا عرفني الانواع" carry no topical signal on their
   // own — the topic lives in the previous user turn — and that's true for
@@ -173,47 +185,68 @@ async function queryKnowledgeBase(
   // by `scripts/ingest-knowledge-base.ts`.
   const ragResult = await retrieveKnowledgeChunks(restaurantId, expandedQuery, 5);
   if (ragResult.trim().length > 0) {
-    return ragResult;
+    // retrieveKnowledgeChunks returns chunks joined by \n\n — count gives us
+    // a cheap proxy for "how many hits".
+    const chunkCount = ragResult.split(/\n\n+/).filter((s) => s.trim()).length;
+    return { context: ragResult, chunkCount };
   }
 
   // Fallback: legacy keyword search over the older `knowledge_base` table
   // (populated by the website crawler during onboarding). Ensures the agent
   // still has grounding for tenants that haven't run chunk ingestion.
-  return fallbackKeywordKB(restaurantId, expandedQuery);
+  const fallback = await fallbackKeywordKB(restaurantId, expandedQuery);
+  const chunkCount = fallback.trim()
+    ? fallback.split(/\n\n+/).filter((s) => s.trim()).length
+    : 0;
+  return { context: fallback, chunkCount };
 }
 
 async function getMenuContext(restaurantId: string) {
+  // Bumped from 30 → 200 because tenants like Kiara have ~79 services and
+  // RAG+menu work best as complementary channels: RAG handles deep semantic
+  // queries, menu_context provides the always-visible flat catalog so price
+  // questions get answered without a vector hop.
   const { data } = await adminSupabaseClient
     .from("menu_items")
-    .select("name_ar, name_en, description_ar, description_en, price, currency, category")
+    .select(
+      "name_ar, name_en, description_ar, description_en, price, currency, category, subcategory"
+    )
     .eq("restaurant_id", restaurantId)
     .eq("is_available", true)
-    .limit(30);
+    .order("category", { ascending: true })
+    .order("sort_order", { ascending: true })
+    .limit(200);
 
   if (!data?.length) {
     return "";
   }
 
-  return data
-    .map((item) => {
+  // Group by category so the prompt is scannable for the model.
+  const byCategory = new Map<string, typeof data>();
+  for (const row of data) {
+    const cat = row.category || "أخرى";
+    if (!byCategory.has(cat)) byCategory.set(cat, []);
+    byCategory.get(cat)!.push(row);
+  }
+
+  const lines: string[] = [];
+  for (const [cat, items] of byCategory) {
+    lines.push(`# ${cat}`);
+    for (const item of items) {
       const name = item.name_ar || item.name_en || "Unknown";
       const description = item.description_ar || item.description_en || "";
-      const parts = [`${name}: ${item.price} ${item.currency}`];
-      if (description) {
-        parts.push(description);
-      }
-      if (item.category) {
-        parts.push(`Category: ${item.category}`);
-      }
-      return parts.join(" | ");
-    })
-    .join("\n");
+      const parts = [`- ${name}: ${item.price} ${item.currency}`];
+      if (description) parts.push(description.slice(0, 120));
+      lines.push(parts.join(" — "));
+    }
+  }
+  return lines.join("\n");
 }
 
 async function getConversationContext(conversationId: string) {
   const { data } = await adminSupabaseClient
     .from("conversations")
-    .select("customer_name, last_inbound_at, bot_paused")
+    .select("customer_name, last_inbound_at, bot_paused, handler_mode, assigned_to")
     .eq("id", conversationId)
     .maybeSingle();
 
@@ -314,14 +347,37 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
         continue;
       }
 
+      // Claim-first gate: bot only runs when the conversation is explicitly
+      // delegated to it. Covers the race where a job was queued before the
+      // human-claim landed.
+      const handlerMode = (conversation as { handler_mode?: string } | null)?.handler_mode;
+      if (handlerMode && handlerMode !== "bot") {
+        console.warn(
+          `[ai-reply] handler_mode=${handlerMode} for conversation ${job.conversation_id}. Skipping.`
+        );
+        await adminSupabaseClient
+          .from("ai_reply_jobs")
+          .update({
+            status: "completed",
+            processed_at: new Date().toISOString(),
+            last_error: `handler_mode_${handlerMode}`,
+          })
+          .eq("id", job.id);
+        continue;
+      }
+
       const history = await getConversationHistory(job.conversation_id, 12);
-      const ragContext = await queryKnowledgeBase(
-        job.restaurant_id,
-        inboundMessage.content,
-        history
-      );
+      const { context: ragContext, chunkCount: ragChunkCount } =
+        await queryKnowledgeBase(
+          job.restaurant_id,
+          inboundMessage.content,
+          history
+        );
       const menuContext = await getMenuContext(job.restaurant_id);
       const businessContext = buildBusinessSupportContext(restaurant);
+      const agentInstructions = (
+        await loadActiveAgentInstructions(job.restaurant_id)
+      ).map((i) => ({ title: i.title, body: i.body }));
 
       const userLanguage = detectLanguage(inboundMessage.content);
       let responseText: string;
@@ -339,6 +395,7 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
           businessContext,
           ragContext,
           menuContext,
+          agentInstructions,
           conversationHistory: history.slice(0, -1),
           userMessage: inboundMessage.content,
           languagePreference:
@@ -352,25 +409,6 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
 
         responseText = result.content;
         reply = result.reply;
-
-        // Fire-and-forget: classify intent and create order/escalation if needed.
-        // Uses the plain-text preview (responseText) so the classifier sees the
-        // same content for both text and interactive replies. Escalation
-        // detection still works because the prompt now allows the model to use
-        // "I'll check with our team" only when it genuinely has no answer.
-        classifyIntent(inboundMessage.content, responseText, history)
-          .then(async ({ intent, details }) => {
-            if (intent === "none" || !details.trim()) return;
-            await createOrder({
-              restaurantId: job.restaurant_id,
-              conversationId: job.conversation_id,
-              customerPhone: (job.payload as { customerPhone?: string })?.customerPhone || "",
-              customerName: conversation?.customer_name ?? null,
-              type: intent,
-              details,
-            });
-          })
-          .catch(() => {/* non-fatal */});
       } catch {
         responseText =
           userLanguage === "ar"
@@ -379,11 +417,74 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
         reply = { type: "text", content: responseText };
       }
 
+      // -----------------------------------------------------------------
+      // Claim-first escalation gate. Run BEFORE Twilio send.
+      // If the classifier decides a human should take over, we DO NOT send
+      // the AI reply to the customer — instead we stash it as
+      // `orders.ai_draft_reply` and let the inbox / mobile agent pick it up.
+      // -----------------------------------------------------------------
+      const customerPhoneForJob =
+        (job.payload as { customerPhone?: string | null })?.customerPhone || "";
+
+      const escalation = classifyEscalation({
+        customerMessage: inboundMessage.content,
+        aiReply: responseText,
+        ragChunkCount: ragChunkCount,
+      });
+
+      if (escalation.shouldEscalate) {
+        await createOrder({
+          restaurantId: job.restaurant_id,
+          conversationId: job.conversation_id,
+          customerPhone: customerPhoneForJob,
+          customerName: conversation?.customer_name ?? null,
+          type: "escalation",
+          details: inboundMessage.content,
+          aiDraftReply: responseText,
+          escalationReason: escalation.reason,
+          priority:
+            escalation.reason === "sensitive" ? "urgent" : "normal",
+        });
+
+        await adminSupabaseClient
+          .from("ai_reply_jobs")
+          .update({
+            status: "completed",
+            processed_at: new Date().toISOString(),
+            last_error: `escalated:${escalation.reason}`,
+          })
+          .eq("id", job.id);
+
+        processed += 1;
+        continue;
+      }
+
+      // Non-escalation path: still run the soft reservation classifier so
+      // we can capture bookings as orders. Fire-and-forget — it's not on
+      // the critical send path.
+      classifyIntent(inboundMessage.content, responseText, history)
+        .then(async ({ intent, details }) => {
+          if (intent === "none" || !details.trim()) return;
+          // Escalation-intent from this classifier is already covered by
+          // the deterministic gate above; skip to avoid duplicate rows.
+          if (intent !== "reservation") return;
+          await createOrder({
+            restaurantId: job.restaurant_id,
+            conversationId: job.conversation_id,
+            customerPhone: customerPhoneForJob,
+            customerName: conversation?.customer_name ?? null,
+            type: intent,
+            details,
+          });
+        })
+        .catch(() => {
+          /* non-fatal */
+        });
+
       const senderPhoneNumber =
         (job.payload as { senderPhoneNumber?: string | null })?.senderPhoneNumber ||
         restaurant.twilio_phone_number;
-      const customerPhone =
-        (job.payload as { customerPhone?: string | null })?.customerPhone || "";
+      const customerPhone = customerPhoneForJob;
 
       // Check 24-hour session window before sending
       if (!isSessionWindowOpen(conversation?.last_inbound_at)) {

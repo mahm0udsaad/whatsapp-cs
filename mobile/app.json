@@ -1,0 +1,68 @@
+{
+  "expo": {
+    "name": "Agent Console",
+    "slug": "whatsapp-cs-agent",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "whatsapp-cs-agent",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "com.whatsappcs.agentconsole",
+      "supportsTablet": false,
+      "infoPlist": {
+        "UIBackgroundModes": ["remote-notification"]
+      }
+    },
+    "android": {
+      "package": "com.whatsappcs.agentconsole",
+      "adaptiveIcon": {
+        "backgroundColor": "#25D366"
+      },
+      "useNextNotificationsApi": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "color": "#25D366",
+          "defaultChannel": "escalations"
+        }
+      ]
+    ],
+    "extra": {
+      "i18n": {
+        "localeLang": "ar"
+      },
+      "notifications": {
+        "ios": {
+          "categories": [
+            {
+              "identifier": "escalations",
+              "actions": [
+                { "identifier": "view", "buttonTitle": "عرض" }
+              ]
+            }
+          ]
+        },
+        "android": {
+          "channels": [
+            {
+              "id": "escalations",
+              "name": "Escalations",
+              "importance": "max",
+              "sound": "default",
+              "vibrationPattern": [0, 250, 250, 250],
+              "lockscreenVisibility": "public"
+            }
+          ]
+        }
+      }
+    },
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

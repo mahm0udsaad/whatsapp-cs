@@ -19,7 +19,7 @@ export function BrandLockup({
       <div className={cn("overflow-hidden rounded-lg border border-white/30 bg-[#1f3596] shadow-[0_24px_60px_-32px_rgba(23,37,84,0.75)]", imageClassName)}>
         <Image
           src="/logo.png"
-          alt="Jehgz Bot"
+          alt="جهز بوت"
           width={220}
           height={220}
           priority
@@ -28,7 +28,7 @@ export function BrandLockup({
       </div>
       <div className="mt-4 space-y-1">
         <h1 className={cn("text-2xl font-semibold text-[#172554]", titleClassName)}>
-          Jehgz Bot
+          جهز بوت
         </h1>
         {subtitle ? (
           <p className="text-sm leading-6 text-slate-600">{subtitle}</p>

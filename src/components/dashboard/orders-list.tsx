@@ -20,10 +20,10 @@ function formatDate(iso: string) {
 
 function StatusBadge({ status }: { status: Order["status"] }) {
   const map: Record<Order["status"], { label: string; class: string }> = {
-    pending:   { label: "Pending",   class: "bg-amber-100 text-amber-800" },
-    confirmed: { label: "Confirmed", class: "bg-emerald-100 text-emerald-800" },
-    rejected:  { label: "Rejected",  class: "bg-red-100 text-red-700" },
-    replied:   { label: "Replied",   class: "bg-sky-100 text-sky-800" },
+    pending:   { label: "قيد الانتظار",   class: "bg-amber-100 text-amber-800" },
+    confirmed: { label: "مؤكد", class: "bg-emerald-100 text-emerald-800" },
+    rejected:  { label: "مرفوض",  class: "bg-red-100 text-red-700" },
+    replied:   { label: "تم الرد",   class: "bg-sky-100 text-sky-800" },
   };
   const { label, class: cls } = map[status];
   return (
@@ -57,7 +57,7 @@ function OrderCard({ order }: { order: Order }) {
       });
 
       if (!res.ok) {
-        setError("Failed to send response. Please try again.");
+        setError("تعذر إرسال الرد. حاول مرة أخرى.");
         return;
       }
 
@@ -84,7 +84,7 @@ function OrderCard({ order }: { order: Order }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold text-slate-900">
-              {isReservation ? "Reservation Request" : "Escalation"}
+              {isReservation ? "طلب حجز" : "تصعيد"}
             </span>
             <StatusBadge status={localStatus} />
           </div>
@@ -113,7 +113,7 @@ function OrderCard({ order }: { order: Order }) {
       {/* Admin note if already handled */}
       {order.admin_reply && localStatus !== "pending" && (
         <div className="mt-3 rounded-[16px] border border-emerald-100 bg-emerald-50/70 p-3 text-sm text-emerald-900">
-          <span className="font-medium">Sent: </span>{order.admin_reply}
+          <span className="font-medium">تم الإرسال: </span>{order.admin_reply}
         </div>
       )}
 
@@ -128,8 +128,8 @@ function OrderCard({ order }: { order: Order }) {
             }
             placeholder={
               isReservation
-                ? "Optional note to include with confirmation (e.g. date/time confirmed)…"
-                : "Your reply to send to the customer…"
+                ? "ملاحظة اختيارية تضاف مع التأكيد، مثل التاريخ والوقت..."
+                : "الرد الذي تريد إرساله للعميل..."
             }
             rows={2}
             className="w-full rounded-[14px] border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
@@ -148,7 +148,7 @@ function OrderCard({ order }: { order: Order }) {
                   className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
                 >
                   <CheckCircle2 size={15} />
-                  Confirm Booking
+                  تأكيد الحجز
                 </button>
                 <button
                   onClick={() => respond("reject")}
@@ -156,7 +156,7 @@ function OrderCard({ order }: { order: Order }) {
                   className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
                 >
                   <XCircle size={15} />
-                  Reject
+                  رفض
                 </button>
               </>
             ) : (
@@ -166,7 +166,7 @@ function OrderCard({ order }: { order: Order }) {
                 className="inline-flex items-center gap-2 rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-50"
               >
                 <MessageSquare size={15} />
-                Send Reply on WhatsApp
+                إرسال الرد على واتساب
               </button>
             )}
           </div>
@@ -183,7 +183,7 @@ export function OrdersList({ orders }: OrdersListProps) {
   if (orders.length === 0) {
     return (
       <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50/80 p-10 text-center text-sm text-slate-500">
-        No orders or escalations yet. They will appear here when customers make booking requests or ask questions the AI can&apos;t answer.
+        لا توجد طلبات أو تصعيدات بعد. ستظهر هنا عندما يطلب العملاء حجزاً أو يسألون عن شيء لا يستطيع المساعد الإجابة عنه.
       </div>
     );
   }
@@ -193,7 +193,7 @@ export function OrdersList({ orders }: OrdersListProps) {
       {pending.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
-            Needs Action ({pending.length})
+            تحتاج إجراء ({pending.length})
           </h2>
           {pending.map((order) => (
             <OrderCard key={order.id} order={order} />
@@ -204,7 +204,7 @@ export function OrdersList({ orders }: OrdersListProps) {
       {done.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-            Handled ({done.length})
+            تم التعامل معها ({done.length})
           </h2>
           {done.map((order) => (
             <OrderCard key={order.id} order={order} />

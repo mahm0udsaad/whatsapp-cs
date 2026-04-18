@@ -1,0 +1,28 @@
+{
+  "totalCount": 1,
+  "items": [
+    {
+      "id": "75675ce2-91e8-4cbd-b7e4-eb9b80e96c7d",
+      "name": "رسوم التوصيل",
+      "description": null,
+      "rules": [
+        {
+          "condition": {
+            "type": 1
+          },
+          "action": {
+            "type": 1
+          },
+          "id": "ef71d7fd-0d1b-4c6e-8a49-2d3b72ed8325",
+          "runningOrder": 1,
+          "isDiscount": false
+        }
+      ],
+      "feeType": 1,
+      "feeApplicationMethod": 1,
+      "amount": 35,
+      "percentage": 0,
+      "amountWithTax": 35
+    }
+  ]
+}

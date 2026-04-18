@@ -29,7 +29,7 @@ export function TemplateBuilderChat({
   >([
     {
       role: "assistant",
-      content: `Welcome! I'll help you create a WhatsApp marketing template for ${restaurantName}. What kind of campaign are you planning? For example: a promotion, new product launch, event invitation, or seasonal offer.`,
+      content: `مرحباً. سأساعدك في إنشاء قالب تسويقي على واتساب لـ ${restaurantName}. ما نوع الحملة التي تخطط لها؟ مثال: عرض ترويجي، إطلاق منتج جديد، دعوة لفعالية، أو عرض موسمي.`,
     },
   ]);
   const [input, setInput] = useState("");
@@ -78,7 +78,7 @@ export function TemplateBuilderChat({
       });
 
       if (!res.ok) {
-        throw new Error("Failed to get AI response");
+        throw new Error("تعذر الحصول على رد المساعد");
       }
 
       const data: AITemplateBuilderResponse = await res.json();
@@ -102,7 +102,7 @@ export function TemplateBuilderChat({
         {
           role: "assistant",
           content:
-            "Sorry, something went wrong. Please try again.",
+            "حدث خطأ. حاول مرة أخرى.",
         },
       ]);
     } finally {
@@ -120,14 +120,14 @@ export function TemplateBuilderChat({
         </div>
         <div>
           <h3 className="text-sm font-semibold text-slate-950">
-            AI Template Builder
+            منشئ قوالب الذكاء الاصطناعي
           </h3>
           <p className="text-xs text-slate-500">
             {status === "collecting"
-              ? "Gathering your requirements..."
+              ? "جارٍ جمع المتطلبات..."
               : status === "generating"
-              ? "Generating your template..."
-              : "Template ready!"}
+              ? "جارٍ إنشاء القالب..."
+              : "القالب جاهز"}
           </p>
         </div>
       </div>
@@ -177,7 +177,7 @@ export function TemplateBuilderChat({
             <div className="rounded-2xl rounded-tl-sm bg-slate-100 px-4 py-3">
               <div className="flex items-center gap-2 text-sm text-slate-500">
                 <Loader2 size={14} className="animate-spin" />
-                Thinking...
+                جارٍ التفكير...
               </div>
             </div>
           </div>
@@ -201,8 +201,8 @@ export function TemplateBuilderChat({
             }}
             placeholder={
               status === "complete"
-                ? "Template is ready! Save it above."
-                : "Describe your campaign..."
+                ? "القالب جاهز. احفظه من الأعلى."
+                : "صف حملتك..."
             }
             disabled={isLoading || status === "complete"}
             className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:opacity-50"

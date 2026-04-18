@@ -61,6 +61,66 @@ export async function sendWhatsAppMessage(
   }
 }
 
+export interface SendWhatsAppMediaOptions {
+  fromPhoneNumber?: string;
+  statusCallback?: string;
+  /** Single media URL. If both `mediaUrl` and `mediaUrls` are set, both lists are merged. */
+  mediaUrl?: string;
+  /** Up to 10 media URLs (Twilio WhatsApp limit). */
+  mediaUrls?: string[];
+  /** Optional text caption to send alongside the media. */
+  caption?: string;
+}
+
+/**
+ * Send a WhatsApp message with one or more media attachments via Twilio.
+ * Media URLs must be publicly reachable by Twilio (use a signed Storage URL).
+ * Returns the Twilio messageSid.
+ */
+export async function sendWhatsAppMedia(
+  to: string,
+  options: SendWhatsAppMediaOptions
+): Promise<string> {
+  try {
+    const merged: string[] = [];
+    if (options.mediaUrl) merged.push(options.mediaUrl);
+    if (options.mediaUrls && options.mediaUrls.length > 0) {
+      merged.push(...options.mediaUrls);
+    }
+    if (merged.length === 0) {
+      throw new Error("sendWhatsAppMedia: at least one mediaUrl is required");
+    }
+    if (merged.length > 10) {
+      throw new Error("sendWhatsAppMedia: Twilio allows at most 10 media URLs");
+    }
+
+    const messageData: {
+      from: string;
+      to: string;
+      body: string;
+      mediaUrl: string[];
+      statusCallback?: string;
+    } = {
+      from: `whatsapp:${options.fromPhoneNumber || twilioPhoneNumber}`,
+      to: `whatsapp:${to}`,
+      body: options.caption || "",
+      mediaUrl: merged,
+    };
+
+    if (options.statusCallback) {
+      messageData.statusCallback = options.statusCallback;
+    }
+
+    const message = await client.messages.create(messageData);
+    return message.sid;
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unknown Twilio media error";
+    console.error("Error sending WhatsApp media:", error);
+    throw new Error(`sendWhatsAppMedia failed: ${message}`);
+  }
+}
+
 /**
  * Validate incoming Twilio request using signature verification
  */

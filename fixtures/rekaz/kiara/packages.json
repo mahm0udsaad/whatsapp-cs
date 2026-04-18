@@ -1,0 +1,279 @@
+{
+  "totalCount": 2,
+  "items": [
+    {
+      "customerId": "b6837436-f3a4-49a1-bc2a-fe81486f5105",
+      "customerName": "raneen saeed",
+      "customerMobileNumber": "966536075154",
+      "startAt": "2026-02-15T20:00:31.888Z",
+      "nextBillingAt": "2026-03-16T20:00:31.888Z",
+      "billingPeriod": 30,
+      "billingCycle": 0,
+      "name": "باقة مساج الاخشاب ",
+      "occurrence": null,
+      "occurenceDays": [],
+      "status": 1,
+      "customStatus": null,
+      "statusString": "Pending",
+      "days": 0,
+      "discount": 0.0,
+      "code": "SUB-uncbm",
+      "branchId": "3a1f363a-bf15-a6bc-d083-6da7f6c26cf5",
+      "branchName": "كيارا سبا",
+      "order": {
+        "customerId": "b6837436-f3a4-49a1-bc2a-fe81486f5105",
+        "customer": null,
+        "sequentialNumber": 1000061,
+        "status": "Pending",
+        "paymentStatus": "Pending",
+        "refundStatus": null,
+        "subtotal": 720.0,
+        "discountAmount": 0.0,
+        "discount": {
+          "type": "Fixed",
+          "value": 0.0
+        },
+        "totalAmount": 755.0,
+        "taxAmount": 0.0,
+        "paidAmount": 0.0,
+        "remainingAmount": 755.0,
+        "tax": null,
+        "currency": {
+          "code": "SAR"
+        },
+        "exchangeRateToSAR": 1.0,
+        "branchIds": [
+          "3a1f363a-bf15-a6bc-d083-6da7f6c26cf5"
+        ],
+        "branches": null,
+        "coupon": null,
+        "fees": [],
+        "feesAmount": 35,
+        "feesTaxAmount": 0,
+        "feesTotalAmount": 35,
+        "utmTracking": null,
+        "source": "Internal",
+        "items": [],
+        "transactions": [],
+        "invoices": [],
+        "issuedInvoiceSequentialNumber": null,
+        "links": {
+          "summary": "/orders/summary/3a1f7511-315a-4480-a37c-ecb406bb20a0",
+          "payment": "/orders/pay/y5uoTSphVr746j0B",
+          "paymentCallback": "/payment/order/y5uoTSphVr746j0B/callback",
+          "tamara": {
+            "success": "/payment/tamara/orders/y5uoTSphVr746j0B/callback",
+            "cancel": "/orders/pay/y5uoTSphVr746j0B?cancel=true",
+            "failure": "/payment/tamara/orders/y5uoTSphVr746j0B/callback"
+          },
+          "tabby": {
+            "success": "/payment/tabby/orders/y5uoTSphVr746j0B/success/callback",
+            "cancel": "/payment/tabby/orders/y5uoTSphVr746j0B/cancel/callback",
+            "failure": "/payment/tabby/orders/y5uoTSphVr746j0B/failure/callback"
+          }
+        },
+        "paidAt": null,
+        "issuedAt": "2026-02-15T20:00:58.140964Z",
+        "dueDate": "2026-02-15T20:00:58.140964Z",
+        "suppliedAt": "2026-02-15T20:00:58.140964Z",
+        "creatorName": null,
+        "lastModificationTime": null,
+        "lastModifierId": null,
+        "creationTime": "2026-02-15T20:00:58.205682Z",
+        "creatorId": "3a1ec49c-005a-3c9c-eb54-a2985738c30f",
+        "id": "3a1f7511-315a-4480-a37c-ecb406bb20a0"
+      },
+      "items": [
+        {
+          "id": "3a1f7511-30d7-e1cb-44bb-1704ddf96151",
+          "priceId": "3a1f750f-eff4-8f85-b190-18b95b66a249",
+          "immutablePriceId": "00000000-0000-0000-0000-000000000000",
+          "productId": null,
+          "name": "باقة مساج الاخشاب  - باقة مساج الاخشاب ",
+          "productName": null,
+          "localizedProductName": {
+            "OtherLanguages": {
+              "ar": "باقة مساج الاخشاب "
+            }
+          },
+          "quantity": 1,
+          "totalPrice": 0,
+          "isUsageBased": false,
+          "usageType": 3,
+          "ruleBasedItems": [],
+          "billingCycle": 0,
+          "billingPeriod": null,
+          "externalId": null,
+          "productTemplates": [],
+          "customFields": {},
+          "customFieldsList": [],
+          "package": null,
+          "pauseConfig": null,
+          "packageItem": {
+            "packageId": "3a1f750f-eff4-0a67-6d80-2085b5cd16ec",
+            "quantity": 5,
+            "usages": 0
+          },
+          "packageFullyUsed": false,
+          "packageTotalQuantity": null,
+          "packageTotalUsages": 0
+        }
+      ],
+      "pausedAt": null,
+      "resumeAt": null,
+      "customFields": {},
+      "transferredFromSubscriptionId": null,
+      "transferredToSubscriptionId": null,
+      "renewedFromSubscriptionId": null,
+      "renewedToSubscriptionId": null,
+      "pauses": [],
+      "groupId": "3a1f7511-30d7-a38f-3b32-e06b9e575e62",
+      "source": 0,
+      "isDeleted": false,
+      "deleterId": null,
+      "deletionTime": null,
+      "lastModificationTime": null,
+      "lastModifierId": null,
+      "creationTime": "2026-02-15T20:00:58.209068Z",
+      "creatorId": null,
+      "id": "3a1f7511-30d7-a38f-3b32-e06b9e575e62"
+    },
+    {
+      "customerId": "c338799c-cbfc-4c1e-9ca5-ae4d316f8380",
+      "customerName": "الهنوف",
+      "customerMobileNumber": "966537219481",
+      "startAt": "2026-02-12T21:00:00Z",
+      "nextBillingAt": "2028-07-30T21:00:00Z",
+      "billingPeriod": 900,
+      "billingCycle": 0,
+      "name": "بكج اخشاب ",
+      "occurrence": null,
+      "occurenceDays": [],
+      "status": 1,
+      "customStatus": null,
+      "statusString": "Pending",
+      "days": 0,
+      "discount": 0,
+      "code": "SUB-ut5ja",
+      "branchId": "3a1f363a-bf15-a6bc-d083-6da7f6c26cf5",
+      "branchName": "كيارا سبا",
+      "order": {
+        "customerId": "c338799c-cbfc-4c1e-9ca5-ae4d316f8380",
+        "customer": null,
+        "sequentialNumber": 1000011,
+        "status": "Cancelled",
+        "paymentStatus": "Pending",
+        "refundStatus": null,
+        "subtotal": 250.0,
+        "discountAmount": 0.0,
+        "discount": {
+          "type": "Fixed",
+          "value": 0.0
+        },
+        "totalAmount": 250.0,
+        "taxAmount": 0.0,
+        "paidAmount": 0.0,
+        "remainingAmount": 250.0,
+        "tax": null,
+        "currency": {
+          "code": "SAR"
+        },
+        "exchangeRateToSAR": 1.0,
+        "branchIds": [
+          "3a1f363a-bf15-a6bc-d083-6da7f6c26cf5"
+        ],
+        "branches": null,
+        "coupon": null,
+        "fees": [],
+        "feesAmount": 0,
+        "feesTaxAmount": 0,
+        "feesTotalAmount": 0,
+        "utmTracking": null,
+        "source": "Internal",
+        "items": [],
+        "transactions": [],
+        "invoices": [],
+        "issuedInvoiceSequentialNumber": null,
+        "links": {
+          "summary": "/orders/summary/3a1f66ae-dba0-c11d-1912-ff7a8bda0f7e",
+          "payment": "/orders/pay/r0RLS1luv5KksBPw",
+          "paymentCallback": "/payment/order/r0RLS1luv5KksBPw/callback",
+          "tamara": {
+            "success": "/payment/tamara/orders/r0RLS1luv5KksBPw/callback",
+            "cancel": "/orders/pay/r0RLS1luv5KksBPw?cancel=true",
+            "failure": "/payment/tamara/orders/r0RLS1luv5KksBPw/callback"
+          },
+          "tabby": {
+            "success": "/payment/tabby/orders/r0RLS1luv5KksBPw/success/callback",
+            "cancel": "/payment/tabby/orders/r0RLS1luv5KksBPw/cancel/callback",
+            "failure": "/payment/tabby/orders/r0RLS1luv5KksBPw/failure/callback"
+          }
+        },
+        "paidAt": null,
+        "issuedAt": "2026-02-13T00:58:52.639836Z",
+        "dueDate": "2026-02-13T00:58:52.639836Z",
+        "suppliedAt": "2026-02-13T00:58:52.639836Z",
+        "creatorName": null,
+        "lastModificationTime": "2026-02-13T01:32:02.454949Z",
+        "lastModifierId": "3a1f3638-e8e7-1cbc-1104-bcd886245291",
+        "creationTime": "2026-02-13T00:58:52.707641Z",
+        "creatorId": "3a1f3638-e8e7-1cbc-1104-bcd886245291",
+        "id": "3a1f66ae-dba0-c11d-1912-ff7a8bda0f7e"
+      },
+      "items": [
+        {
+          "id": "3a1f66ae-db5f-085f-bf34-408841536439",
+          "priceId": "3a1f8676-675c-e63c-b756-481049f813c3",
+          "immutablePriceId": "00000000-0000-0000-0000-000000000000",
+          "productId": null,
+          "name": "بكج اخشاب  - بكج اخشاب ",
+          "productName": null,
+          "localizedProductName": {
+            "OtherLanguages": {
+              "ar": "بكج اخشاب "
+            }
+          },
+          "quantity": 1,
+          "totalPrice": 0,
+          "isUsageBased": false,
+          "usageType": 3,
+          "ruleBasedItems": [],
+          "billingCycle": 0,
+          "billingPeriod": null,
+          "externalId": null,
+          "productTemplates": [],
+          "customFields": {},
+          "customFieldsList": [],
+          "package": null,
+          "pauseConfig": null,
+          "packageItem": {
+            "packageId": "3a1f8676-675c-faf4-8c4c-63ba7d0e4a19",
+            "quantity": -1,
+            "usages": 0
+          },
+          "packageFullyUsed": false,
+          "packageTotalQuantity": null,
+          "packageTotalUsages": 0
+        }
+      ],
+      "pausedAt": null,
+      "resumeAt": null,
+      "customFields": {},
+      "transferredFromSubscriptionId": null,
+      "transferredToSubscriptionId": null,
+      "renewedFromSubscriptionId": null,
+      "renewedToSubscriptionId": null,
+      "pauses": [],
+      "groupId": "3a1f66ae-db5f-1138-04a6-0ac7a7e8c995",
+      "source": 2,
+      "isDeleted": false,
+      "deleterId": null,
+      "deletionTime": null,
+      "lastModificationTime": null,
+      "lastModifierId": null,
+      "creationTime": "2026-02-13T00:58:52.721585Z",
+      "creatorId": null,
+      "id": "3a1f66ae-db5f-1138-04a6-0ac7a7e8c995"
+    }
+  ]
+}

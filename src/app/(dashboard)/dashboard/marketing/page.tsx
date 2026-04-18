@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 import { getCurrentUser, getRestaurantForUserId } from "@/lib/tenant";
 
-const dateFormatter = new Intl.DateTimeFormat("en", {
+const dateFormatter = new Intl.DateTimeFormat("ar", {
   month: "short",
   day: "numeric",
   hour: "numeric",
@@ -31,9 +31,9 @@ const dateFormatter = new Intl.DateTimeFormat("en", {
 });
 
 function formatDate(value: string | null) {
-  if (!value) return "N/A";
+  if (!value) return "غير متاح";
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "N/A";
+  if (Number.isNaN(d.getTime())) return "غير متاح";
   return dateFormatter.format(d);
 }
 
@@ -223,7 +223,7 @@ export default async function MarketingHubPage() {
                   <div>
                     <p className="text-sm text-white/62">المستلمون</p>
                     <p className="mt-2 text-3xl font-semibold tracking-[-0.05em]">
-                      {totalRecipients.toLocaleString()}
+                      {totalRecipients.toLocaleString("ar")}
                     </p>
                   </div>
                   <span className="text-xs text-white/45">
@@ -352,10 +352,10 @@ export default async function MarketingHubPage() {
                             <div className="mt-3">
                               <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
                                 <span>
-                                  {campaign.sent_count}/{campaign.total_recipients}{" "}
+                                  {campaign.sent_count.toLocaleString("ar")}/{campaign.total_recipients.toLocaleString("ar")}{" "}
                                   تم الإرسال
                                 </span>
-                                <span>{progress}%</span>
+                                <span>{progress.toLocaleString("ar")}%</span>
                               </div>
                               <div className="h-1.5 rounded-full bg-slate-100">
                                 <div
@@ -369,14 +369,14 @@ export default async function MarketingHubPage() {
                         {/* Delivery stats */}
                         <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
                           {campaign.delivered_count > 0 && (
-                            <span>تم التسليم: {campaign.delivered_count}</span>
+                            <span>تم التسليم: {campaign.delivered_count.toLocaleString("ar")}</span>
                           )}
                           {campaign.read_count > 0 && (
-                            <span>تمت القراءة: {campaign.read_count}</span>
+                            <span>تمت القراءة: {campaign.read_count.toLocaleString("ar")}</span>
                           )}
                           {campaign.failed_count > 0 && (
                             <span className="text-red-600">
-                              فشل: {campaign.failed_count}
+                              فشل: {campaign.failed_count.toLocaleString("ar")}
                             </span>
                           )}
                           <span>

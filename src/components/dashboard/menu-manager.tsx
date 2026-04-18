@@ -1,13 +1,27 @@
 "use client";
 
-import { useState } from "react";
-import { Edit2, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Edit2,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MenuItem, Restaurant } from "@/lib/types";
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
+type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
+type TabKey = "all" | "available" | "unavailable";
 
 interface MenuManagerProps {
   restaurant: Restaurant;
@@ -26,9 +40,20 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
     name: "",
     description: "",
     price: "",
-    category: "General",
+    category: "عام",
     isAvailable: true,
   });
+
+  // Pagination + search state — shared across tabs. Tab/query/pageSize change
+  // resets to page 1 (handled by the effects below).
+  const [activeTab, setActiveTab] = useState<TabKey>("all");
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<PageSize>(25);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, query, pageSize]);
 
   const resetForm = () => {
     setEditingId(null);
@@ -36,7 +61,7 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
       name: "",
       description: "",
       price: "",
-      category: "General",
+      category: "عام",
       isAvailable: true,
     });
   };
@@ -68,7 +93,7 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
       const result = await response.json();
 
       if (!response.ok) {
-        setError(result.error || "Failed to save menu item.");
+        setError(result.error || "تعذر حفظ عنصر القائمة.");
         return;
       }
 
@@ -85,7 +110,7 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "Failed to save menu item."
+          : "تعذر حفظ عنصر القائمة."
       );
     } finally {
       setIsSaving(false);
@@ -102,7 +127,7 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
       const result = await response.json();
 
       if (!response.ok) {
-        setError(result.error || "Failed to delete menu item.");
+        setError(result.error || "تعذر حذف عنصر القائمة.");
         return;
       }
 
@@ -114,7 +139,7 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
       setError(
         deleteError instanceof Error
           ? deleteError.message
-          : "Failed to delete menu item."
+          : "تعذر حذف عنصر القائمة."
       );
     }
   };
@@ -154,12 +179,12 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
       const result = await response.json();
 
       if (!response.ok) {
-        setError(result.error || "Failed to crawl menu.");
+        setError(result.error || "تعذر قراءة القائمة.");
         return;
       }
 
       setCrawlMessage(
-        `Imported ${result.items_extracted} items and created ${result.knowledge_base_entries} knowledge base entries.`
+        `تم استيراد ${result.items_extracted} عنصر وإنشاء ${result.knowledge_base_entries} إدخال في قاعدة المعرفة.`
       );
 
       const refreshed = await fetch(window.location.pathname, {
@@ -174,23 +199,69 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
       setError(
         crawlError instanceof Error
           ? crawlError.message
-          : "Failed to crawl menu."
+          : "تعذر قراءة القائمة."
       );
     } finally {
       setIsCrawling(false);
     }
   };
 
-  const availableItems = items.filter((item) => item.is_available);
-  const unavailableItems = items.filter((item) => !item.is_available);
+  const availableItems = useMemo(
+    () => items.filter((item) => item.is_available),
+    [items]
+  );
+  const unavailableItems = useMemo(
+    () => items.filter((item) => !item.is_available),
+    [items]
+  );
+
+  const tabItems: Record<TabKey, MenuItem[]> = {
+    all: items,
+    available: availableItems,
+    unavailable: unavailableItems,
+  };
+
+  const sourceForActive = tabItems[activeTab];
+
+  // Filter the active list by search query (matches Arabic + English names,
+  // descriptions, and category — case-insensitive).
+  const filteredItems = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return sourceForActive;
+    return sourceForActive.filter((item) => {
+      const haystack = [
+        item.name_ar,
+        item.name_en,
+        item.description_ar,
+        item.description_en,
+        item.category,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [sourceForActive, query]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const startIdx = (safePage - 1) * pageSize;
+  const endIdx = Math.min(startIdx + pageSize, filteredItems.length);
+  const pageItems = filteredItems.slice(startIdx, endIdx);
+
+  // If the current page becomes empty (e.g. after deleting the last row on
+  // it), bounce back one page so the list doesn't look empty.
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   return (
     <div className="space-y-8">
       <Card>
         <CardHeader>
-          <CardTitle>Menu Crawling</CardTitle>
+          <CardTitle>قراءة القائمة</CardTitle>
           <CardDescription>
-            Import menu items from the restaurant’s public menu URL.
+            استورد عناصر القائمة من رابط القائمة العام للمطعم.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -209,7 +280,7 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
           <div className="flex items-end gap-3">
             <div className="flex-1">
               <label className="mb-2 block text-sm font-medium text-gray-700">
-                Menu URL
+                رابط القائمة
               </label>
               <Input
                 value={menuUrl}
@@ -223,61 +294,94 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
               className="gap-2"
             >
               <RefreshCw size={18} />
-              {isCrawling ? "Crawling..." : "Crawl Menu"}
+              {isCrawling ? "جارٍ قراءة القائمة..." : "قراءة القائمة"}
             </Button>
           </div>
         </CardContent>
       </Card>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <Tabs defaultValue="all" className="w-full">
+        <div className="lg:col-span-2 space-y-3">
+          <Tabs
+            value={activeTab}
+            onValueChange={(v) => setActiveTab(v as TabKey)}
+            className="w-full"
+          >
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="all">All ({items.length})</TabsTrigger>
+              <TabsTrigger value="all">الكل ({items.length})</TabsTrigger>
               <TabsTrigger value="available">
-                Available ({availableItems.length})
+                المتاح ({availableItems.length})
               </TabsTrigger>
               <TabsTrigger value="unavailable">
-                Unavailable ({unavailableItems.length})
+                غير المتاح ({unavailableItems.length})
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="all" className="mt-4 space-y-3">
-              {items.length === 0 ? (
-                <div className="py-8 text-center text-gray-600">
-                  No items yet. Add the first menu item or import from a menu URL.
+            {/* Search + page-size controls — visible across all tabs */}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search
+                  size={14}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+                <label htmlFor="menu-search" className="sr-only">
+                  البحث في العناصر
+                </label>
+                <Input
+                  id="menu-search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="ابحثي بالاسم، الوصف، أو الفئة…"
+                  className="ps-9"
+                  dir="rtl"
+                />
+              </div>
+              <label className="flex items-center gap-2 text-xs text-slate-600">
+                <span>العرض:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value) as PageSize)}
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm"
+                  aria-label="عدد العناصر في الصفحة"
+                >
+                  {PAGE_SIZE_OPTIONS.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            {/* Single shared list — TabsContent triggers re-render via activeTab */}
+            <TabsContent value={activeTab} className="mt-4 space-y-3">
+              {filteredItems.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-slate-300 py-8 text-center text-sm text-gray-600">
+                  {query
+                    ? `لا توجد نتائج لـ "${query}".`
+                    : "لا توجد عناصر بعد. أضيفي أول عنصر أو استوردي من رابط القائمة."}
                 </div>
-              ) : null}
-              {items.map((item) => (
-                <MenuItemCard
-                  key={item.id}
-                  item={item}
-                  onEdit={() => handleEdit(item)}
-                  onDelete={() => handleDelete(item.id)}
-                />
-              ))}
-            </TabsContent>
-
-            <TabsContent value="available" className="mt-4 space-y-3">
-              {availableItems.map((item) => (
-                <MenuItemCard
-                  key={item.id}
-                  item={item}
-                  onEdit={() => handleEdit(item)}
-                  onDelete={() => handleDelete(item.id)}
-                />
-              ))}
-            </TabsContent>
-
-            <TabsContent value="unavailable" className="mt-4 space-y-3">
-              {unavailableItems.map((item) => (
-                <MenuItemCard
-                  key={item.id}
-                  item={item}
-                  onEdit={() => handleEdit(item)}
-                  onDelete={() => handleDelete(item.id)}
-                />
-              ))}
+              ) : (
+                <>
+                  {pageItems.map((item) => (
+                    <MenuItemCard
+                      key={item.id}
+                      item={item}
+                      onEdit={() => handleEdit(item)}
+                      onDelete={() => handleDelete(item.id)}
+                    />
+                  ))}
+                  <PaginationBar
+                    page={safePage}
+                    totalPages={totalPages}
+                    startIdx={startIdx}
+                    endIdx={endIdx}
+                    total={filteredItems.length}
+                    onChange={setPage}
+                  />
+                </>
+              )}
             </TabsContent>
           </Tabs>
         </div>
@@ -287,26 +391,26 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Plus size={20} />
-                {editingId ? "Edit Item" : "Add Item"}
+                {editingId ? "تعديل عنصر" : "إضافة عنصر"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">
-                  Name
+                  الاسم
                 </label>
                 <Input
                   value={formData.name}
                   onChange={(event) =>
                     setFormData({ ...formData, name: event.target.value })
                   }
-                  placeholder="e.g., Grilled Salmon"
+                  placeholder="مثال: سلمون مشوي"
                 />
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">
-                  Description
+                  الوصف
                 </label>
                 <Input
                   value={formData.description}
@@ -316,14 +420,14 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
                       description: event.target.value,
                     })
                   }
-                  placeholder="Item description"
+                  placeholder="وصف العنصر"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
-                    Price
+                    السعر
                   </label>
                   <Input
                     type="number"
@@ -336,7 +440,7 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
-                    Category
+                    الفئة
                   </label>
                   <select
                     value={formData.category}
@@ -345,12 +449,12 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
                     }
                     className="w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm text-gray-900"
                   >
-                    <option>General</option>
-                    <option>Main Course</option>
-                    <option>Starters</option>
-                    <option>Desserts</option>
-                    <option>Beverages</option>
-                    <option>Sides</option>
+                    <option>عام</option>
+                    <option>طبق رئيسي</option>
+                    <option>مقبلات</option>
+                    <option>حلويات</option>
+                    <option>مشروبات</option>
+                    <option>إضافات</option>
                   </select>
                 </div>
               </div>
@@ -368,7 +472,7 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
                   className="h-4 w-4"
                 />
                 <span className="text-sm text-gray-700">
-                  Available
+                  متاح
                 </span>
               </label>
 
@@ -379,14 +483,14 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
                   disabled={!formData.name || !formData.price || isSaving}
                 >
                   {isSaving
-                    ? "Saving..."
+                    ? "جارٍ الحفظ..."
                     : editingId
-                    ? "Update Item"
-                    : "Add Item"}
+                    ? "تحديث العنصر"
+                    : "إضافة العنصر"}
                 </Button>
                 {editingId ? (
                   <Button variant="outline" className="w-full" onClick={resetForm}>
-                    Cancel
+                    إلغاء
                   </Button>
                 ) : null}
               </div>
@@ -395,6 +499,89 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+function PaginationBar({
+  page,
+  totalPages,
+  startIdx,
+  endIdx,
+  total,
+  onChange,
+}: {
+  page: number;
+  totalPages: number;
+  startIdx: number;
+  endIdx: number;
+  total: number;
+  onChange: (n: number) => void;
+}) {
+  if (totalPages <= 1) {
+    // Still show the count summary so it's clear there's no hidden page.
+    return (
+      <p className="px-1 pt-2 text-xs text-slate-500">
+        عرض {total} عنصر
+      </p>
+    );
+  }
+  return (
+    <nav
+      aria-label="صفحات قائمة الخدمات"
+      className="flex flex-wrap items-center justify-between gap-2 px-1 pt-2 text-xs text-slate-600"
+    >
+      <p
+        className="[font-variant-numeric:tabular-nums]"
+        aria-live="polite"
+      >
+        عرض {startIdx + 1}–{endIdx} من {total}
+      </p>
+      <div className="flex items-center gap-1">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onChange(1)}
+          disabled={page <= 1}
+          aria-label="الصفحة الأولى"
+        >
+          <ChevronsRight size={14} aria-hidden="true" />
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onChange(page - 1)}
+          disabled={page <= 1}
+          aria-label="الصفحة السابقة"
+        >
+          <ChevronRight size={14} aria-hidden="true" />
+        </Button>
+        <span className="px-2 [font-variant-numeric:tabular-nums]">
+          {page} / {totalPages}
+        </span>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onChange(page + 1)}
+          disabled={page >= totalPages}
+          aria-label="الصفحة التالية"
+        >
+          <ChevronLeft size={14} aria-hidden="true" />
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onChange(totalPages)}
+          disabled={page >= totalPages}
+          aria-label="الصفحة الأخيرة"
+        >
+          <ChevronsLeft size={14} aria-hidden="true" />
+        </Button>
+      </div>
+    </nav>
   );
 }
 
@@ -407,8 +594,8 @@ function MenuItemCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const name = item.name_en || item.name_ar || "Untitled item";
-  const description = item.description_en || item.description_ar || "";
+  const name = item.name_ar || item.name_en || "عنصر بدون اسم";
+  const description = item.description_ar || item.description_en || "";
 
   return (
     <div className="rounded-lg border border-gray-200 p-4">
@@ -419,11 +606,11 @@ function MenuItemCard({
               {name}
             </h4>
             <Badge variant={item.is_available ? "default" : "secondary"}>
-              {item.is_available ? "Available" : "Unavailable"}
+              {item.is_available ? "متاح" : "غير متاح"}
             </Badge>
           </div>
           <p className="text-sm text-gray-600">
-            {description || "No description"}
+            {description || "لا يوجد وصف"}
           </p>
           <p className="mt-2 text-sm font-medium text-gray-900">
             {item.price} {item.currency}
@@ -437,7 +624,7 @@ function MenuItemCard({
             type="button"
             onClick={onEdit}
             className="p-2 text-gray-500 transition-colors hover:text-emerald-600"
-            title="Edit"
+            title="تعديل"
           >
             <Edit2 size={16} />
           </button>
@@ -445,7 +632,7 @@ function MenuItemCard({
             type="button"
             onClick={onDelete}
             className="p-2 text-gray-500 transition-colors hover:text-red-600"
-            title="Delete"
+            title="حذف"
           >
             <Trash2 size={16} />
           </button>

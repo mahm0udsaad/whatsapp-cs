@@ -18,27 +18,27 @@ interface AIAgentSettingsFormProps {
 const personalities = [
   {
     value: "friendly",
-    label: "Friendly",
-    desc: "Warm, welcoming, and conversational",
-    sample: "Hey there! Happy to help.",
+    label: "ودود",
+    desc: "دافئ ومرحب وقريب من العميل",
+    sample: "أهلاً بك، يسعدني مساعدتك.",
   },
   {
     value: "professional",
-    label: "Professional",
-    desc: "Formal, precise, and business-like",
-    sample: "Good day. How may I assist you?",
+    label: "احترافي",
+    desc: "رسمي ودقيق ومناسب للأعمال",
+    sample: "مرحباً، كيف يمكنني مساعدتك؟",
   },
   {
     value: "creative",
-    label: "Creative",
-    desc: "Fun, engaging, and entertaining",
-    sample: "Let’s cook up some solutions.",
+    label: "إبداعي",
+    desc: "مرح وجذاب وأكثر تعبيراً",
+    sample: "خلينا نوصل للإجابة المناسبة بسرعة.",
   },
   {
     value: "strict",
-    label: "Strict",
-    desc: "Direct, efficient, and to the point",
-    sample: "State your question. I’ll help.",
+    label: "مباشر",
+    desc: "مختصر وفعال وواضح",
+    sample: "اكتب سؤالك وسأساعدك مباشرة.",
   },
 ];
 
@@ -80,7 +80,7 @@ export function AIAgentSettingsForm({
       const result = await response.json();
 
       if (!response.ok) {
-        setError(result.error || "Failed to save AI agent settings.");
+        setError(result.error || "تعذر حفظ إعدادات المساعد.");
         return;
       }
 
@@ -90,7 +90,7 @@ export function AIAgentSettingsForm({
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "Failed to save AI agent settings."
+          : "تعذر حفظ إعدادات المساعد."
       );
     } finally {
       setIsSaving(false);
@@ -102,15 +102,15 @@ export function AIAgentSettingsForm({
       <div className="space-y-6 lg:col-span-2">
         <Card>
           <CardHeader>
-            <CardTitle>Agent Details</CardTitle>
+            <CardTitle>بيانات المساعد</CardTitle>
             <CardDescription>
-              Basic identity and tone for tenant-specific customer support.
+              الهوية الأساسية ونبرة الرد لخدمة العملاء الخاصة بالمطعم.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">
-                Agent Name
+                اسم المساعد
               </label>
               <Input
                 value={formData.name}
@@ -122,7 +122,7 @@ export function AIAgentSettingsForm({
 
             <div className="space-y-3">
               <label className="text-sm font-medium text-gray-700">
-                Personality Style
+                أسلوب الشخصية
               </label>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {personalities.map((personality) => (
@@ -135,7 +135,7 @@ export function AIAgentSettingsForm({
                         personality: personality.value,
                       })
                     }
-                    className={`rounded-lg border-2 p-4 text-left transition-all ${
+                    className={`rounded-lg border-2 p-4 text-right transition-all ${
                       formData.personality === personality.value
                         ? "border-emerald-500 bg-emerald-50"
                         : "border-gray-200 hover:border-gray-300"
@@ -157,15 +157,15 @@ export function AIAgentSettingsForm({
 
         <Card>
           <CardHeader>
-            <CardTitle>System Instructions</CardTitle>
+            <CardTitle>تعليمات النظام</CardTitle>
             <CardDescription>
-              These instructions directly shape how the assistant replies to customers.
+              هذه التعليمات تحدد طريقة رد المساعد على العملاء.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
               <div className="text-sm text-emerald-900">
-                Load a neutral customer-service template that fits any business type.
+                استخدم قالب خدمة عملاء محايد يناسب أي نوع نشاط.
               </div>
               <Button
                 type="button"
@@ -181,7 +181,7 @@ export function AIAgentSettingsForm({
                   })
                 }
               >
-                Use Customer Service Template
+                استخدام قالب خدمة العملاء
               </Button>
             </div>
 
@@ -198,7 +198,7 @@ export function AIAgentSettingsForm({
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">
-                Language Preference
+                اللغة المفضلة
               </label>
               <select
                 value={formData.languagePreference}
@@ -210,15 +210,15 @@ export function AIAgentSettingsForm({
                 }
                 className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900"
               >
-                <option value="auto">Auto-detect</option>
-                <option value="en">English</option>
-                <option value="ar">Arabic</option>
+                <option value="auto">اكتشاف تلقائي</option>
+                <option value="en">الإنجليزية</option>
+                <option value="ar">العربية</option>
               </select>
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">
-                Off-topic Response
+                رد خارج النطاق
               </label>
               <Textarea
                 rows={3}
@@ -240,7 +240,7 @@ export function AIAgentSettingsForm({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Eye size={20} />
-              Live Preview
+              معاينة مباشرة
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -252,7 +252,7 @@ export function AIAgentSettingsForm({
 
             {saved ? (
               <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
-                Configuration saved.
+                تم حفظ الإعدادات.
               </div>
             ) : null}
 
@@ -265,20 +265,20 @@ export function AIAgentSettingsForm({
               </div>
               <div className="space-y-2">
                 <div className="rounded bg-white p-2 text-xs text-emerald-700">
-                  <p className="mb-1 font-medium">Sample conversation:</p>
+                  <p className="mb-1 font-medium">محادثة تجريبية:</p>
                   <p className="text-emerald-900">
-                    Customer: What are your hours?
+                    العميل: ما هي ساعات العمل؟
                   </p>
                 </div>
                 <div className="ml-6 rounded border-l-2 border-emerald-600 bg-emerald-100 p-2 text-xs">
                   <p className="text-emerald-900">
                     {formData.personality === "friendly"
-                      ? "We’re happy to help with products, services, hours, and support questions."
+                      ? "يسعدنا مساعدتك في المنتجات والخدمات وساعات العمل وأسئلة الدعم."
                       : formData.personality === "professional"
-                      ? "I can assist with availability, bookings, and business information."
+                      ? "يمكنني المساعدة في التوفر والحجوزات ومعلومات النشاط."
                       : formData.personality === "creative"
-                      ? "Let’s get you the right answer quickly."
-                      : "I can answer business-related questions directly."}
+                      ? "دعنا نصل للإجابة المناسبة بسرعة."
+                      : "يمكنني الرد مباشرة على الأسئلة المتعلقة بالنشاط."}
                   </p>
                 </div>
               </div>
@@ -286,19 +286,19 @@ export function AIAgentSettingsForm({
 
             <div className="space-y-1 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
               <div>
-                <span className="font-medium">Personality:</span>{" "}
+                <span className="font-medium">الشخصية:</span>{" "}
                 <Badge variant="default" className="ml-1">
                   {formData.personality}
                 </Badge>
               </div>
               <div>
-                <span className="font-medium">Language:</span>{" "}
+                <span className="font-medium">اللغة:</span>{" "}
                 {formData.languagePreference}
               </div>
             </div>
 
             <Button className="w-full" onClick={handleSave} disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Configuration"}
+              {isSaving ? "جارٍ الحفظ..." : "حفظ الإعدادات"}
             </Button>
           </CardContent>
         </Card>
@@ -307,17 +307,17 @@ export function AIAgentSettingsForm({
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Settings size={20} />
-              Status
+              الحالة
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Agent Status</span>
-              <Badge variant="default">Active</Badge>
+              <span className="text-gray-600">حالة المساعد</span>
+              <Badge variant="default">نشط</Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-gray-600">
-                Last Updated
+                آخر تحديث
               </span>
               <span className="font-medium text-gray-900">
                 {new Date(aiAgent.updated_at).toLocaleString()}

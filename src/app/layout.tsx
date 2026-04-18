@@ -16,8 +16,8 @@ const notoSansArabic = Noto_Sans_Arabic({
 });
 
 export const metadata: Metadata = {
-  title: "WhatsApp AI Customer Service Dashboard",
-  description: "Manage your restaurant's WhatsApp AI customer service bot",
+  title: "لوحة خدمة عملاء واتساب الذكية",
+  description: "إدارة مساعد خدمة العملاء الذكي على واتساب لمطعمك",
   icons: {
     icon: "/favicon.ico",
   },

@@ -37,13 +37,13 @@ export function ImageGenerator({
       });
 
       if (!res.ok) {
-        throw new Error("Failed to generate image");
+        throw new Error("تعذر إنشاء الصورة");
       }
 
       const data = await res.json();
       setImageUrl(data.imageUrl);
     } catch {
-      setError("Image generation failed. Please try again.");
+      setError("فشل إنشاء الصورة. حاول مرة أخرى.");
     } finally {
       setIsGenerating(false);
     }
@@ -69,10 +69,10 @@ export function ImageGenerator({
         </div>
         <div>
           <h4 className="text-sm font-semibold text-slate-950">
-            AI Image Generation
+            إنشاء صورة بالذكاء الاصطناعي
           </h4>
           <p className="text-xs text-slate-500">
-            Create a header image for your template
+            أنشئ صورة رأس للقالب
           </p>
         </div>
       </div>
@@ -80,7 +80,7 @@ export function ImageGenerator({
       {/* Prompt display */}
       <div className="mb-4 rounded-xl bg-slate-50 p-3">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1">
-          Prompt
+          الوصف
         </p>
         <p className="text-sm text-slate-700">{prompt}</p>
       </div>
@@ -90,7 +90,7 @@ export function ImageGenerator({
         <div className="mb-4 overflow-hidden rounded-xl border border-slate-200">
           <img
             src={imageUrl}
-            alt="Generated template header"
+            alt="صورة رأس القالب المنشأة"
             className="w-full object-cover"
           />
         </div>
@@ -108,14 +108,14 @@ export function ImageGenerator({
         {!imageUrl && !isGenerating && (
           <Button onClick={generateImage} className="gap-2">
             <ImageIcon size={14} />
-            Generate Image
+            إنشاء صورة
           </Button>
         )}
 
         {isGenerating && (
           <Button disabled className="gap-2">
             <Loader2 size={14} className="animate-spin" />
-            Generating...
+            جارٍ الإنشاء...
           </Button>
         )}
 
@@ -123,7 +123,7 @@ export function ImageGenerator({
           <>
             <Button onClick={handleAccept} className="gap-2">
               <Check size={14} />
-              Use This Image
+              استخدام هذه الصورة
             </Button>
             <Button
               variant="outline"
@@ -132,7 +132,7 @@ export function ImageGenerator({
               className="gap-2"
             >
               <RefreshCw size={14} />
-              Regenerate
+              إعادة الإنشاء
             </Button>
           </>
         )}
@@ -140,7 +140,7 @@ export function ImageGenerator({
         {accepted && (
           <div className="flex items-center gap-2 text-sm text-emerald-700">
             <Check size={14} />
-            Image accepted
+            تم اعتماد الصورة
           </div>
         )}
       </div>

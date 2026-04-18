@@ -59,7 +59,7 @@ export function RestaurantSettingsForm({
       const result = await response.json();
 
       if (!response.ok) {
-        setError(result.error || "Failed to save restaurant settings.");
+        setError(result.error || "تعذر حفظ إعدادات المطعم.");
         return;
       }
 
@@ -69,7 +69,7 @@ export function RestaurantSettingsForm({
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "Failed to save restaurant settings."
+          : "تعذر حفظ إعدادات المطعم."
       );
     } finally {
       setIsSaving(false);
@@ -88,17 +88,17 @@ export function RestaurantSettingsForm({
       const result = await response.json();
 
       if (!response.ok) {
-        setError(result.error || "Failed to run provisioning.");
+        setError(result.error || "تعذر تشغيل التفعيل.");
         return;
       }
 
       if (result.assignedPhoneNumber) {
         setProvisioningMessage(
-          `Provisioning completed. Assigned WhatsApp number: ${result.assignedPhoneNumber}.`
+          `اكتمل التفعيل. رقم واتساب المخصص: ${result.assignedPhoneNumber}.`
         );
       } else {
         setProvisioningMessage(
-          "Provisioning ran successfully, but no WhatsApp number is currently available."
+          "تم تشغيل التفعيل بنجاح، لكن لا يوجد رقم واتساب متاح حالياً."
         );
       }
 
@@ -107,7 +107,7 @@ export function RestaurantSettingsForm({
       setError(
         provisioningError instanceof Error
           ? provisioningError.message
-          : "Failed to run provisioning."
+          : "تعذر تشغيل التفعيل."
       );
     } finally {
       setIsProvisioning(false);
@@ -119,17 +119,16 @@ export function RestaurantSettingsForm({
       <div className="space-y-6 lg:col-span-2">
         <Card>
           <CardHeader>
-            <CardTitle>Business Identity</CardTitle>
+            <CardTitle>هوية النشاط</CardTitle>
             <CardDescription>
-              Core tenant information used in provisioning and customer-facing
-              responses.
+              البيانات الأساسية المستخدمة في التفعيل والردود التي تظهر للعملاء.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">
-                  Restaurant Name
+                  اسم المطعم
                 </label>
                 <Input
                   value={formData.name}
@@ -141,7 +140,7 @@ export function RestaurantSettingsForm({
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">
-                  Arabic Name
+                  الاسم بالعربية
                 </label>
                 <Input
                   value={formData.nameAr}
@@ -155,7 +154,7 @@ export function RestaurantSettingsForm({
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">
-                  Country
+                  الدولة
                 </label>
                 <Select
                   value={formData.country}
@@ -167,17 +166,17 @@ export function RestaurantSettingsForm({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="EG">Egypt</SelectItem>
-                    <SelectItem value="SA">Saudi Arabia</SelectItem>
-                    <SelectItem value="AE">UAE</SelectItem>
-                    <SelectItem value="KW">Kuwait</SelectItem>
+                    <SelectItem value="EG">مصر</SelectItem>
+                    <SelectItem value="SA">السعودية</SelectItem>
+                    <SelectItem value="AE">الإمارات</SelectItem>
+                    <SelectItem value="KW">الكويت</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">
-                  Currency
+                  العملة
                 </label>
                 <Select
                   value={formData.currency}
@@ -202,15 +201,15 @@ export function RestaurantSettingsForm({
 
         <Card>
           <CardHeader>
-            <CardTitle>Digital Sources</CardTitle>
+            <CardTitle>المصادر الرقمية</CardTitle>
             <CardDescription>
-              URLs used for public identity and future menu synchronization.
+              روابط الهوية العامة ومزامنة القائمة لاحقاً.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">
-                Website URL
+                رابط الموقع
               </label>
               <Input
                 type="url"
@@ -223,7 +222,7 @@ export function RestaurantSettingsForm({
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">
-                Menu URL
+                رابط القائمة
               </label>
               <Input
                 type="url"
@@ -240,7 +239,7 @@ export function RestaurantSettingsForm({
       <div>
         <Card className="sticky top-4">
           <CardHeader>
-            <CardTitle className="text-lg">Tenant Status</CardTitle>
+            <CardTitle className="text-lg">حالة الحساب</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {error ? (
@@ -252,7 +251,7 @@ export function RestaurantSettingsForm({
             {saved ? (
               <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
                 <Check size={16} />
-                Changes saved.
+                تم حفظ التغييرات.
               </div>
             ) : null}
 
@@ -264,23 +263,23 @@ export function RestaurantSettingsForm({
 
             <div className="rounded-lg bg-gray-50 p-3 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">Setup</span>
+                <span className="text-gray-600">الإعداد</span>
                 <span className="font-medium text-gray-900">
                   {restaurant.setup_status || "draft"}
                 </span>
               </div>
               <div className="mt-2 flex items-center justify-between">
                 <span className="text-gray-600">
-                  WhatsApp Number
+                  رقم واتساب
                 </span>
                 <span className="font-medium text-gray-900">
-                  {restaurant.twilio_phone_number || "Pending"}
+                  {restaurant.twilio_phone_number || "قيد الانتظار"}
                 </span>
               </div>
             </div>
 
             <Button className="w-full" onClick={handleSave} disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Changes"}
+              {isSaving ? "جارٍ الحفظ..." : "حفظ التغييرات"}
             </Button>
             <Button
               variant="outline"
@@ -288,7 +287,7 @@ export function RestaurantSettingsForm({
               onClick={handleProvisioningRetry}
               disabled={isProvisioning}
             >
-              {isProvisioning ? "Provisioning..." : "Retry WhatsApp Provisioning"}
+              {isProvisioning ? "جارٍ التفعيل..." : "إعادة محاولة تفعيل واتساب"}
             </Button>
           </CardContent>
         </Card>

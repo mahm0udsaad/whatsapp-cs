@@ -1,0 +1,23 @@
+{
+  "Pending": [],
+  "Confirmed": [],
+  "Cancelled": [],
+  "Done": [],
+  "RequestToCancel": [
+    {
+      "name": "اكثر من حجز",
+      "color": "#42445a",
+      "model": 0,
+      "parentStatus": "RequestToCancel",
+      "isActive": true,
+      "isDeleted": false,
+      "deleterId": null,
+      "deletionTime": null,
+      "lastModificationTime": "2026-02-13T00:34:34.938684Z",
+      "lastModifierId": "3a1f3638-e8e7-1cbc-1104-bcd886245291",
+      "creationTime": "2026-02-13T00:32:34.035553Z",
+      "creatorId": "3a1f3638-e8e7-1cbc-1104-bcd886245291",
+      "id": "e550e17f-41f0-471d-a0de-79797d72b5cb"
+    }
+  ]
+}

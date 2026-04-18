@@ -25,7 +25,7 @@ import { adminSupabaseClient } from "@/lib/supabase/admin";
 import { getCurrentUser, getRestaurantForUserId } from "@/lib/tenant";
 import type { MarketingCampaign } from "@/lib/types";
 
-const dateFormatter = new Intl.DateTimeFormat("en", {
+const dateFormatter = new Intl.DateTimeFormat("ar", {
   month: "short",
   day: "numeric",
   year: "numeric",
@@ -34,9 +34,9 @@ const dateFormatter = new Intl.DateTimeFormat("en", {
 });
 
 function formatDate(value: string | null) {
-  if (!value) return "N/A";
+  if (!value) return "غير متاح";
   const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? "N/A" : dateFormatter.format(d);
+  return Number.isNaN(d.getTime()) ? "غير متاح" : dateFormatter.format(d);
 }
 
 const statusBadge: Record<
@@ -208,7 +208,7 @@ export default async function CampaignsPage() {
                           تم الإنشاء: {formatDate(campaign.created_at)}
                         </span>
                         <span>
-                          {campaign.total_recipients.toLocaleString()} مستلماً
+                          {campaign.total_recipients.toLocaleString("ar")} مستلماً
                         </span>
                       </div>
 
@@ -218,10 +218,10 @@ export default async function CampaignsPage() {
                           <div className="mt-4 max-w-md">
                             <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5">
                               <span>
-                                {campaign.sent_count.toLocaleString()}/
-                                {campaign.total_recipients.toLocaleString()} تم الإرسال
+                                {campaign.sent_count.toLocaleString("ar")}/
+                                {campaign.total_recipients.toLocaleString("ar")} تم الإرسال
                               </span>
-                              <span>{progress}%</span>
+                              <span>{progress.toLocaleString("ar")}%</span>
                             </div>
                             <div className="h-2 rounded-full bg-slate-100">
                               <div
@@ -269,7 +269,7 @@ export default async function CampaignsPage() {
                               className="gap-1.5 rounded-full text-xs"
                             >
                               <Send size={12} />
-                              Send Now
+                              إرسال الآن
                             </Button>
                           </form>
                         )}

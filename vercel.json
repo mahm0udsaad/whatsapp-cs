@@ -1,1 +1,8 @@
-{}
+{
+  "crons": [
+    {
+      "path": "/api/internal/escalation-timeout-sweep",
+      "schedule": "* * * * *"
+    }
+  ]
+}

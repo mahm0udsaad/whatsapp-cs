@@ -28,6 +28,8 @@ interface GeminiContext {
   userMessage: string;
   languagePreference: "ar" | "en" | "auto";
   offTopicResponse: string;
+  /** Versioned owner-authored rules (AI Manager output). Optional. */
+  agentInstructions?: Array<{ title: string; body: string }> | null;
 }
 
 /**
@@ -252,6 +254,7 @@ function buildSystemPrompt(
     businessContext: context.businessContext,
     ragContext: context.ragContext,
     menuContext: context.menuContext,
+    agentInstructions: context.agentInstructions ?? null,
   });
 
   const rules = INTERACTIVE_RULES.replace(

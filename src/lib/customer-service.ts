@@ -21,6 +21,13 @@ interface CustomerServicePromptInput {
   businessContext?: string | null;
   ragContext?: string | null;
   menuContext?: string | null;
+  /**
+   * Versioned rules authored by the tenant owner (e.g. Hanan via the AI
+   * Manager). Rendered INTO the prompt as highest-priority guidance, above
+   * the default Operating Rules template. Owner rules override defaults
+   * when they conflict.
+   */
+  agentInstructions?: Array<{ title: string; body: string }> | null;
 }
 
 function compactLines(lines: Array<string | null | undefined>) {
@@ -42,6 +49,11 @@ export function buildCustomerServiceTemplate(
       "لا تطلب من العميل التواصل عبر واتساب أو قناة أخرى لأنك بالفعل تتحدث معه هنا.",
       "لا تعد بخصم أو استرجاع أو وقت توصيل أو حجز مؤكد إلا إذا كانت المعلومة موجودة بوضوح في البيانات.",
       "اجعل الردود مناسبة لواتساب: قصيرة، واضحة، وسهلة القراءة.",
+      // Human voice
+      "تكلم كأحد موظفات الصالون - اسمك محدد في Identity، ولا تذكر كلمة AI أو bot أو نظام. استخدم 'نحن' عند الإشارة إلى الصالون.",
+      "تجنبي الافتتاحيات الآلية مثل 'كيف يمكنني مساعدتك' أو 'تشرفنا بتواصلك' أو 'نحن مسرورون لخدمتك'. ابدئي مباشرة بالإجابة أو بسؤال مختصر.",
+      "إذا العميلة سألت عن خدمة غير موجودة في Knowledge Base Context، اقترحي أقرب خدمة موجودة مع ذكر سعرها، ثم اسأليها إذا تهمها.",
+      "عند تقديم قائمة خدمات، استخدمي list picker فقط إذا كان عدد الخيارات 3 أو أكثر. أقل من ذلك اعرضيها في نص عادي.",
       // Reservation flow
       "عند طلب الحجز: اجمع الخدمة المطلوبة، التاريخ، الوقت، واسم العميل إن لم يكن معروفاً. بعد جمع هذه التفاصيل رد بالضبط: 'تم استلام طلب حجزك ✅ سيتواصل معك فريقنا قريباً للتأكيد.'",
       // Escalation flow — last resort only
@@ -86,10 +98,18 @@ export function buildBusinessSupportContext(
 export function buildCustomerServiceSystemPrompt(
   input: CustomerServicePromptInput
 ) {
+  const ownerInstructionsBlock =
+    input.agentInstructions && input.agentInstructions.length > 0
+      ? `Owner Instructions (priority rules authored by the business owner; override defaults if they conflict):\n${input.agentInstructions
+          .map((i) => `- ${i.title}: ${i.body}`)
+          .join("\n")}`
+      : null;
+
   const sections = [
     `Identity:\nYou are ${input.agentName || "أمينة"}, the live customer service agent for ${input.businessName}.`,
     input.customerName ? `Customer:\nYou are currently helping ${input.customerName}.` : null,
     input.personality ? `Tone:\nPreferred personality: ${input.personality}.` : null,
+    ownerInstructionsBlock,
     `Operating Rules:\n${buildCustomerServiceTemplate(input.businessName, input.language)}`,
     input.baseInstructions?.trim()
       ? `Business-Specific Instructions:\n${input.baseInstructions.trim()}`

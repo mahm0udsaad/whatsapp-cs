@@ -1,0 +1,151 @@
+{
+  "tenant": {
+    "name": "kyara-sba-1",
+    "id": "3a1f3638-e6dc-d864-4aa7-df60cdbb1146",
+    "owner_email": "maram369@gmali.com",
+    "owner_display": "حنان"
+  },
+  "scraped_at": "2026-04-17T03:17:05.818622Z",
+  "source": "https://platform.rekaz.io/api/app/*  (authenticated dashboard session)",
+  "note": "Internal dashboard API, not the paid /api/public API. All calls made with cookies + RequestVerificationToken of logged-in owner.",
+  "endpoints": {
+    "branches_public": {
+      "path": "/api/app/branch/public-branches",
+      "status": 200,
+      "bytes": 139,
+      "items_count": 1,
+      "total_count": null
+    },
+    "branch_list": {
+      "path": "/api/app/branch/branch-list",
+      "status": 200,
+      "bytes": 172,
+      "items_count": 1,
+      "total_count": null
+    },
+    "branch_rule": {
+      "path": "/api/app/branch/branch-rule",
+      "status": 200,
+      "bytes": 107,
+      "items_count": null,
+      "total_count": null
+    },
+    "providers": {
+      "path": "/api/app/provider?MaxResultCount=1000",
+      "status": 200,
+      "bytes": 5676,
+      "items_count": 4,
+      "total_count": 4
+    },
+    "providers_readonly": {
+      "path": "/api/app/provider/read-only-list",
+      "status": 200,
+      "bytes": 5807,
+      "items_count": 4,
+      "total_count": null
+    },
+    "holidays": {
+      "path": "/api/app/holiday?MaxResultCount=1000",
+      "status": 200,
+      "bytes": 2720,
+      "items_count": 6,
+      "total_count": 6
+    },
+    "fees": {
+      "path": "/api/app/fee?MaxResultCount=1000",
+      "status": 200,
+      "bytes": 331,
+      "items_count": 1,
+      "total_count": 1
+    },
+    "reservation_statuses": {
+      "path": "/api/app/reservation/custom-status?onlyActive=true",
+      "status": 200,
+      "bytes": 478,
+      "items_count": null,
+      "total_count": null
+    },
+    "subscription_counts": {
+      "path": "/api/app/subscription/status-counts",
+      "status": 200,
+      "bytes": 529,
+      "items_count": 8,
+      "total_count": null
+    },
+    "product_categories": {
+      "path": "/api/app/product-category?MaxResultCount=1000&SkipCount=0",
+      "status": 200,
+      "bytes": 122953,
+      "items_count": 13,
+      "total_count": 13
+    },
+    "products_simple": {
+      "path": "/api/app/product?MaxResultCount=1000&SkipCount=0&Sorting=",
+      "status": 200,
+      "bytes": 352054,
+      "items_count": 79,
+      "total_count": 79
+    },
+    "products_v2": {
+      "path": "/api/app/product/product-list-v2?includeBranches=true&includeInternalProducts=true",
+      "status": 200,
+      "bytes": 241447,
+      "items_count": 79,
+      "total_count": null
+    },
+    "customers": {
+      "path": "/api/app/customer?keyword=&&hasNoDealStage=false&sorting=&skipCount=0&maxResultCount=1000",
+      "status": 200,
+      "bytes": 600299,
+      "items_count": 678,
+      "total_count": 678
+    },
+    "orders": {
+      "path": "/api/app/order?&&&sorting=sequentialNumber%20desc&skipCount=0&maxResultCount=1000",
+      "status": 200,
+      "bytes": 2239012,
+      "items_count": 884,
+      "total_count": 884
+    },
+    "packages": {
+      "path": "/api/app/package?&&customerId=&keyword=&skipCount=0&maxResultCount=1000",
+      "status": 200,
+      "bytes": 6533,
+      "items_count": 2,
+      "total_count": 2
+    },
+    "subscriptions": {
+      "path": "/api/app/subscription?&&&keyword=&skipCount=0&maxResultCount=1000",
+      "status": 200,
+      "bytes": 27,
+      "items_count": 0,
+      "total_count": 0
+    },
+    "reservations_list": {
+      "path": "/api/app/reservation?&&providerId=&checkedIn=&upcoming=false&hasPendingCancellationRequest=&keyword=&skipCount=0&maxResultCount=1000",
+      "status": 200,
+      "bytes": 1651736,
+      "items_count": 1000,
+      "total_count": 1698
+    },
+    "reservations_wide": {
+      "path": "/api/app/reservation?DateMin=2024-01-01T00%3A00%3A00.000%2B03%3A00&DateMax=2027-01-01T23%3A59%3A59.000%2B03%3A00&MaxResultCount=10000&Statuses=1&Statuses=2&Statuses=4&Statuses=5",
+      "status": 400,
+      "bytes": 505,
+      "items_count": null,
+      "total_count": null
+    },
+    "appconfig": {
+      "path": "/api/abp/application-configuration?includeLocalizationResources=false",
+      "status": 200,
+      "bytes": 34684,
+      "items_count": null,
+      "total_count": null
+    }
+  },
+  "summary": {
+    "total_endpoints_scraped": 19,
+    "total_bytes": 5265209,
+    "successful_200": 18
+  }
+}

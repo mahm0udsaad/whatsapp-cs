@@ -1,0 +1,16 @@
+{
+  "error": {
+    "code": null,
+    "message": "طلبك غير صحيح!",
+    "details": "تم الكشف عن الأخطاء التالية أثناء التحقق .\n - لا يمكن أن يكون MaxResultCount أكثر من 1000! قم بزيادةVolo.Abp.Application.Dtos.LimitedResultRequestDto. MaxMaxResultCount على الخادم للسماح بمزيد من النتائج.\n",
+    "data": null,
+    "validationErrors": [
+      {
+        "message": "لا يمكن أن يكون MaxResultCount أكثر من 1000! قم بزيادةVolo.Abp.Application.Dtos.LimitedResultRequestDto. MaxMaxResultCount على الخادم للسماح بمزيد من النتائج.",
+        "members": [
+          "maxResultCount"
+        ]
+      }
+    ]
+  }
+}

@@ -34,10 +34,10 @@ interface ParsedRecipient {
 }
 
 const STEPS = [
-  { label: "Campaign", icon: FileText },
-  { label: "Recipients", icon: Users },
-  { label: "Schedule", icon: Calendar },
-  { label: "Confirm", icon: Check },
+  { label: "الحملة", icon: FileText },
+  { label: "المستلمون", icon: Users },
+  { label: "الجدولة", icon: Calendar },
+  { label: "التأكيد", icon: Check },
 ];
 
 export default function NewCampaignPage() {
@@ -103,14 +103,14 @@ export default function NewCampaignPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to parse file");
+        throw new Error(data.error || "تعذر قراءة الملف");
       }
 
       const data = await res.json();
       setParsedRecipients(data.recipients || []);
     } catch (err) {
       setUploadError(
-        err instanceof Error ? err.message : "Failed to parse file"
+        err instanceof Error ? err.message : "تعذر قراءة الملف"
       );
       setParsedRecipients([]);
     } finally {
@@ -170,12 +170,12 @@ export default function NewCampaignPage() {
 
       if (!campaignRes.ok) {
         const data = await campaignRes.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to create campaign");
+        throw new Error(data.error || "تعذر إنشاء الحملة");
       }
 
       router.push("/dashboard/marketing/campaigns");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create campaign");
+      setError(err instanceof Error ? err.message : "تعذر إنشاء الحملة");
     } finally {
       setSaving(false);
     }
@@ -193,10 +193,10 @@ export default function NewCampaignPage() {
         </Link>
         <div>
           <h1 className="text-2xl font-semibold tracking-[-0.04em] text-slate-950">
-            Create Campaign
+            إنشاء حملة
           </h1>
           <p className="text-sm text-slate-500">
-            Set up and launch a WhatsApp marketing campaign
+            جهز وأطلق حملة تسويقية عبر واتساب
           </p>
         </div>
       </div>
@@ -267,35 +267,35 @@ export default function NewCampaignPage() {
             <CardContent className="p-6 space-y-6">
               <div>
                 <label className="text-sm font-semibold text-slate-900 mb-2 block">
-                  Campaign Name
+                  اسم الحملة
                 </label>
                 <Input
                   value={campaignName}
                   onChange={(e) => setCampaignName(e.target.value)}
-                  placeholder="e.g., Summer Special Offer"
+                  placeholder="مثال: عرض الصيف الخاص"
                   className="rounded-xl"
                 />
               </div>
 
               <div>
                 <label className="text-sm font-semibold text-slate-900 mb-2 block">
-                  Select Template
+                  اختر القالب
                 </label>
                 {loadingTemplates ? (
                   <div className="flex items-center gap-2 py-4 text-sm text-slate-500">
                     <Loader2 size={14} className="animate-spin" />
-                    Loading templates...
+                    جارٍ تحميل القوالب...
                   </div>
                 ) : templates.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 p-6 text-center">
                     <p className="text-sm text-slate-600">
-                      No approved templates available.
+                      لا توجد قوالب معتمدة متاحة.
                     </p>
                     <Link
                       href="/dashboard/marketing/templates/new"
                       className="mt-2 inline-flex text-sm font-medium text-emerald-600 hover:text-emerald-700"
                     >
-                      Create a template first
+                      أنشئ قالباً أولاً
                     </Link>
                   </div>
                 ) : (
@@ -344,7 +344,7 @@ export default function NewCampaignPage() {
             <CardContent className="p-6 space-y-6">
               <div>
                 <label className="text-sm font-semibold text-slate-900 mb-2 block">
-                  Upload Recipient List
+                  رفع قائمة المستلمين
                 </label>
                 <div
                   onDragOver={(e) => e.preventDefault()}
@@ -377,16 +377,16 @@ export default function NewCampaignPage() {
                         {file.name}
                       </p>
                       <p className="mt-1 text-xs text-emerald-600">
-                        Click to replace
+                        اضغط للاستبدال
                       </p>
                     </>
                   ) : (
                     <>
                       <p className="text-sm font-medium text-slate-700">
-                        Click to upload or drag and drop
+                        اضغط للرفع أو اسحب الملف هنا
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
-                        CSV or XLSX file with phone numbers
+                        ملف CSV أو XLSX يحتوي على أرقام الهواتف
                       </p>
                     </>
                   )}
@@ -396,7 +396,7 @@ export default function NewCampaignPage() {
               {uploading && (
                 <div className="flex items-center gap-2 text-sm text-slate-500">
                   <Loader2 size={14} className="animate-spin" />
-                  Parsing file...
+                  جارٍ قراءة الملف...
                 </div>
               )}
 
@@ -410,11 +410,10 @@ export default function NewCampaignPage() {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-semibold text-slate-900">
-                      {parsedRecipients.length.toLocaleString()} recipients
-                      parsed
+                      تم قراءة {parsedRecipients.length.toLocaleString("ar")} مستلم
                     </p>
                     <Badge className="rounded-full bg-emerald-500/12 px-3 py-1 text-xs text-emerald-700">
-                      Ready
+                      جاهز
                     </Badge>
                   </div>
 
@@ -424,10 +423,10 @@ export default function NewCampaignPage() {
                       <thead>
                         <tr className="bg-slate-50">
                           <th className="px-4 py-2.5 text-start text-xs font-semibold text-slate-500">
-                            Phone
+                            الهاتف
                           </th>
                           <th className="px-4 py-2.5 text-start text-xs font-semibold text-slate-500">
-                            Name
+                            الاسم
                           </th>
                         </tr>
                       </thead>
@@ -449,7 +448,7 @@ export default function NewCampaignPage() {
                     </table>
                     {parsedRecipients.length > 5 && (
                       <div className="border-t border-slate-100 bg-slate-50 px-4 py-2 text-center text-xs text-slate-500">
-                        and {parsedRecipients.length - 5} more...
+                        و{parsedRecipients.length - 5} مستلم إضافي...
                       </div>
                     )}
                   </div>
@@ -458,12 +457,10 @@ export default function NewCampaignPage() {
 
               <div className="rounded-xl bg-sky-50 border border-sky-200 p-4">
                 <p className="text-sm font-medium text-sky-900 mb-1">
-                  File format
+                  صيغة الملف
                 </p>
                 <p className="text-xs text-sky-800">
-                  Your file should have a &quot;phone&quot; or
-                  &quot;phone_number&quot; column (required) and an optional
-                  &quot;name&quot; column. Headers are required.
+                  يجب أن يحتوي الملف على عمود &quot;phone&quot; أو &quot;phone_number&quot; إلزامي، ويمكن إضافة عمود &quot;name&quot; اختياري. يجب وجود عناوين للأعمدة.
                 </p>
               </div>
             </CardContent>
@@ -476,7 +473,7 @@ export default function NewCampaignPage() {
             <CardContent className="p-6 space-y-6">
               <div>
                 <label className="text-sm font-semibold text-slate-900 mb-4 block">
-                  When to send
+                  وقت الإرسال
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
@@ -490,10 +487,10 @@ export default function NewCampaignPage() {
                   >
                     <div className="text-2xl mb-1">&#9889;</div>
                     <p className="text-sm font-semibold text-slate-900">
-                      Send Now
+                      الإرسال الآن
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
-                      Start sending immediately
+                      بدء الإرسال فوراً
                     </p>
                   </button>
                   <button
@@ -507,10 +504,10 @@ export default function NewCampaignPage() {
                   >
                     <div className="text-2xl mb-1">&#128197;</div>
                     <p className="text-sm font-semibold text-slate-900">
-                      Schedule
+                      جدولة
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
-                      Pick a date and time
+                      اختر التاريخ والوقت
                     </p>
                   </button>
                 </div>
@@ -520,7 +517,7 @@ export default function NewCampaignPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-medium text-slate-600 mb-1.5 block">
-                      Date
+                      التاريخ
                     </label>
                     <Input
                       type="date"
@@ -531,7 +528,7 @@ export default function NewCampaignPage() {
                   </div>
                   <div>
                     <label className="text-xs font-medium text-slate-600 mb-1.5 block">
-                      Time
+                      الوقت
                     </label>
                     <Input
                       type="time"
@@ -551,47 +548,46 @@ export default function NewCampaignPage() {
           <Card>
             <CardContent className="p-6 space-y-5">
               <h3 className="text-lg font-semibold text-slate-950">
-                Campaign Summary
+                ملخص الحملة
               </h3>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                  <span className="text-sm text-slate-500">Campaign Name</span>
+                  <span className="text-sm text-slate-500">اسم الحملة</span>
                   <span className="text-sm font-semibold text-slate-900">
                     {campaignName}
                   </span>
                 </div>
                 <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                  <span className="text-sm text-slate-500">Template</span>
+                  <span className="text-sm text-slate-500">القالب</span>
                   <span className="text-sm font-semibold text-slate-900">
-                    {selectedTemplate?.name || "N/A"}
+                    {selectedTemplate?.name || "غير متاح"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                  <span className="text-sm text-slate-500">Recipients</span>
+                  <span className="text-sm text-slate-500">المستلمون</span>
                   <span className="text-sm font-semibold text-slate-900">
-                    {parsedRecipients.length.toLocaleString()}
+                    {parsedRecipients.length.toLocaleString("ar")}
                   </span>
                 </div>
                 <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                  <span className="text-sm text-slate-500">Schedule</span>
+                  <span className="text-sm text-slate-500">الجدولة</span>
                   <span className="text-sm font-semibold text-slate-900">
                     {scheduleType === "now"
-                      ? "Send immediately"
-                      : `${scheduledDate} at ${scheduledTime}`}
+                      ? "إرسال فوري"
+                      : `${scheduledDate} الساعة ${scheduledTime}`}
                   </span>
                 </div>
               </div>
 
               <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
                 <p className="text-sm text-amber-800">
-                  This will send a WhatsApp message to{" "}
-                  <strong>{parsedRecipients.length.toLocaleString()}</strong>{" "}
-                  recipients using the &quot;{selectedTemplate?.name}&quot;
-                  template.{" "}
+                  سيتم إرسال رسالة واتساب إلى{" "}
+                  <strong>{parsedRecipients.length.toLocaleString("ar")}</strong>{" "}
+                  مستلم باستخدام قالب &quot;{selectedTemplate?.name}&quot;.{" "}
                   {scheduleType === "now"
-                    ? "Messages will start sending immediately."
-                    : `Messages will be sent on ${scheduledDate} at ${scheduledTime}.`}
+                    ? "سيبدأ إرسال الرسائل فوراً."
+                    : `سيتم إرسال الرسائل يوم ${scheduledDate} الساعة ${scheduledTime}.`}
                 </p>
               </div>
             </CardContent>
@@ -607,7 +603,7 @@ export default function NewCampaignPage() {
             className="gap-2 rounded-full"
           >
             <ArrowLeft size={16} />
-            Back
+            السابق
           </Button>
 
           {step < 3 ? (
@@ -616,7 +612,7 @@ export default function NewCampaignPage() {
               disabled={!canProceed()}
               className="gap-2 rounded-full"
             >
-              Next
+              التالي
               <ArrowRight size={16} />
             </Button>
           ) : (
@@ -630,7 +626,7 @@ export default function NewCampaignPage() {
               ) : (
                 <Check size={16} />
               )}
-              {saving ? "Creating..." : "Create Campaign"}
+              {saving ? "جارٍ الإنشاء..." : "إنشاء الحملة"}
             </Button>
           )}
         </div>

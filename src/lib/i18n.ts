@@ -8,10 +8,7 @@ export const locales: Locale[] = ["ar", "en"];
 const dictionaries: Record<Locale, Record<string, string>> = { en, ar };
 
 export async function getLocale(): Promise<Locale> {
-  const { cookies } = await import("next/headers");
-  const cookieStore = await cookies();
-  const locale = cookieStore.get("locale")?.value as Locale;
-  return locales.includes(locale) ? locale : defaultLocale;
+  return defaultLocale;
 }
 
 export function getDirection(locale: Locale): "rtl" | "ltr" {
@@ -27,7 +24,5 @@ export function createTranslator(locale: Locale) {
 
 /** Client-side locale reader (reads from document.cookie). */
 export function getClientLocale(): Locale {
-  if (typeof document === "undefined") return defaultLocale;
-  const match = document.cookie.match(/locale=(\w+)/);
-  return (match?.[1] as Locale) || defaultLocale;
+  return defaultLocale;
 }

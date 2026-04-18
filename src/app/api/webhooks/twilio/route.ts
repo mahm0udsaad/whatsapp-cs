@@ -7,6 +7,14 @@ import {
 } from "@/lib/twilio";
 import { queueAIReplyJob, processPendingAIReplyJobs } from "@/lib/ai-reply-jobs";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { notifyAgentsOfNewConversation } from "@/lib/conversation-notifications";
+import {
+  downloadTwilioMedia,
+  uploadInboundMedia,
+  messageTypeFromContentType,
+  placeholderCaptionFor,
+  MAX_INBOUND_MEDIA_BYTES,
+} from "@/lib/storage-media";
 
 const EMPTY_TWIML = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
 
@@ -261,7 +269,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const tappedId = ListId || ButtonPayload || "";
     const tappedTitle = ListTitle || ButtonText || "";
 
-    if (!From || !To || !MessageSid || (!Body && !tappedId)) {
+    // Allow messages with no Body/tap when they include media attachments.
+    const numMedia = Number(params.NumMedia || "0") || 0;
+    if (!From || !To || !MessageSid || (!Body && !tappedId && numMedia <= 0)) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -356,13 +366,108 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Find or create conversation (now tracks last_inbound_at)
     const conversation = await findOrCreateConversation(restaurant.id, customerPhone);
 
+    // --- Media ingest ---
+    // If Twilio posted NumMedia > 0, download each item with Basic auth, push
+    // into Supabase Storage, and persist a single "customer" message row
+    // whose message_type reflects the first (primary) media kind. Each media
+    // slot is captured in metadata.media[] so the dashboard can render all of
+    // them and we keep Twilio's original URL for auditing.
+    interface MediaSlot {
+      storage_path: string | null;
+      content_type: string;
+      size_bytes: number | null;
+      twilio_url: string;
+      original_filename: string | null;
+      delivery_status?: "stored" | "too_large" | "failed";
+      error?: string;
+      needs_transcription?: boolean;
+    }
+    const mediaSlots: MediaSlot[] = [];
+    if (numMedia > 0) {
+      for (let i = 0; i < numMedia; i++) {
+        const twilioUrl = params[`MediaUrl${i}`] || "";
+        const contentType = params[`MediaContentType${i}`] || "application/octet-stream";
+        if (!twilioUrl) continue;
+
+        try {
+          // Cheap HEAD probe via GET — downloadTwilioMedia enforces both
+          // the declared content-length and the actual body size against
+          // MAX_INBOUND_MEDIA_BYTES (20MB).
+          const { buffer, contentType: serverCt, sizeBytes } =
+            await downloadTwilioMedia(twilioUrl);
+
+          const effectiveCt = contentType || serverCt;
+          const { storagePath } = await uploadInboundMedia({
+            restaurantId: restaurant.id,
+            conversationId: conversation.id,
+            contentType: effectiveCt,
+            buffer,
+          });
+
+          const slot: MediaSlot = {
+            storage_path: storagePath,
+            content_type: effectiveCt,
+            size_bytes: sizeBytes,
+            twilio_url: twilioUrl,
+            original_filename: null,
+            delivery_status: "stored",
+          };
+          if (
+            effectiveCt.toLowerCase().startsWith("audio/ogg") ||
+            effectiveCt.toLowerCase() === "audio/opus"
+          ) {
+            slot.needs_transcription = true;
+          }
+          mediaSlots.push(slot);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "download failed";
+          const tooLarge = /too large/i.test(msg);
+          mediaSlots.push({
+            storage_path: null,
+            content_type: contentType,
+            size_bytes: null,
+            twilio_url: twilioUrl,
+            original_filename: null,
+            delivery_status: tooLarge ? "too_large" : "failed",
+            error: msg.slice(0, 500),
+          });
+          console.error(
+            `[webhook] media ${i} ingest failed (${contentType}) — ${msg}. cap=${MAX_INBOUND_MEDIA_BYTES}`
+          );
+        }
+      }
+    }
+
+    // Derive message_type + content from media (when present). Keep taps
+    // taking precedence since they come from interactive message replies
+    // and shouldn't be confused with media uploads.
+    const primaryMedia = mediaSlots[0];
+    let inboundMessageType: string;
+    let inboundContent: string;
+    if (tappedId) {
+      inboundMessageType = "interactive_reply";
+      inboundContent = effectiveBody;
+    } else if (primaryMedia) {
+      inboundMessageType = messageTypeFromContentType(primaryMedia.content_type);
+      inboundContent = Body && Body.trim().length > 0
+        ? Body
+        : placeholderCaptionFor(inboundMessageType);
+    } else {
+      inboundMessageType = "text";
+      inboundContent = effectiveBody;
+    }
+
     // Save incoming message. For interactive taps we store the encoded
     // [user_action:<id>] token in `content` (so the AI sees it consistently)
     // and the original tap details in `metadata` for the dashboard renderer.
-    const inboundMessage = await saveMessage(conversation.id, "customer", effectiveBody, {
+    // For media we store metadata.media[] with storage paths + Twilio URLs.
+    const inboundMessage = await saveMessage(conversation.id, "customer", inboundContent, {
       externalMessageSid: MessageSid,
-      deliveryStatus: "received",
-      messageType: tappedId ? "interactive_reply" : "text",
+      deliveryStatus:
+        mediaSlots.length > 0 && mediaSlots.every((m) => m.delivery_status === "too_large")
+          ? "too_large"
+          : "received",
+      messageType: inboundMessageType,
       metadata: tappedId
         ? {
             tap: {
@@ -372,6 +477,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
               raw_body: Body || null,
             },
           }
+        : mediaSlots.length > 0
+        ? { media: mediaSlots }
         : null,
     });
 
@@ -381,6 +488,49 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         .update({ customer_name: ProfileName })
         .eq("id", conversation.id);
     }
+
+    // Claim-first gate:
+    //   * bot        → AI auto-replies (existing flow)
+    //   * human      → silent, the claimed agent will reply manually
+    //   * unassigned → silent + broadcast push to on-shift agents
+    const handlerMode: string = (conversation.handler_mode as string) || "unassigned";
+
+    if (handlerMode === "human") {
+      logWebhookEvent(
+        "inbound_human_owned",
+        MessageSid,
+        restaurant.id,
+        { conversationId: conversation.id, assignedTo: conversation.assigned_to ?? null },
+        Date.now() - startTime
+      );
+      return new NextResponse(EMPTY_TWIML, {
+        status: 200,
+        headers: { "Content-Type": "application/xml" },
+      });
+    }
+
+    if (handlerMode === "unassigned") {
+      // Fire-and-forget push broadcast. Do not block Twilio's response.
+      const preview = {
+        customerName: ProfileName || conversation.customer_name || null,
+        customerPhone,
+        body: tappedId ? tappedTitle || Body || "رسالة جديدة" : inboundContent,
+      };
+      void notifyAgentsOfNewConversation(restaurant.id, conversation.id, preview);
+      logWebhookEvent(
+        "inbound_unassigned_broadcast",
+        MessageSid,
+        restaurant.id,
+        { conversationId: conversation.id },
+        Date.now() - startTime
+      );
+      return new NextResponse(EMPTY_TWIML, {
+        status: 200,
+        headers: { "Content-Type": "application/xml" },
+      });
+    }
+
+    // handlerMode === 'bot' (claimed + delegated to bot)
 
     // Get AI agent config
     const { data: aiAgent } = await adminSupabaseClient

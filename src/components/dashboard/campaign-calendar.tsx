@@ -24,13 +24,13 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  completed: "Completed",
-  scheduled: "Scheduled",
-  sending: "Sending",
-  processing: "Processing",
-  failed: "Failed",
-  draft: "Draft",
-  cancelled: "Cancelled",
+  completed: "مكتملة",
+  scheduled: "مجدولة",
+  sending: "جارٍ الإرسال",
+  processing: "قيد المعالجة",
+  failed: "فشلت",
+  draft: "مسودة",
+  cancelled: "ملغاة",
 };
 
 function getMonthDays(year: number, month: number) {
@@ -112,7 +112,7 @@ export function CampaignCalendar({ className }: CampaignCalendarProps) {
   const weekDays =
     locale === "ar"
       ? ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"]
-      : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      : ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 
   const goToday = useCallback(() => {
     setYear(today.getFullYear());
@@ -157,7 +157,7 @@ export function CampaignCalendar({ className }: CampaignCalendarProps) {
         </div>
         <Button variant="outline" onClick={goToday} className="gap-2">
           <CalendarIcon size={14} />
-          Today
+          اليوم
         </Button>
       </div>
 
@@ -245,7 +245,7 @@ export function CampaignCalendar({ className }: CampaignCalendarProps) {
         <Card>
           <CardContent className="p-5">
             <h3 className="text-sm font-semibold text-slate-950 mb-4">
-              Campaigns for{" "}
+              حملات يوم{" "}
               {new Intl.DateTimeFormat(locale === "ar" ? "ar" : "en", {
                 weekday: "long",
                 month: "long",
@@ -255,7 +255,7 @@ export function CampaignCalendar({ className }: CampaignCalendarProps) {
 
             {selectedCampaigns.length === 0 ? (
               <p className="text-sm text-slate-500">
-                No campaigns on this date.
+                لا توجد حملات في هذا التاريخ.
               </p>
             ) : (
               <div className="space-y-3">
@@ -276,7 +276,7 @@ export function CampaignCalendar({ className }: CampaignCalendarProps) {
                           {c.name}
                         </p>
                         <p className="text-xs text-slate-500">
-                          {c.total_recipients} recipients
+                          {c.total_recipients.toLocaleString("ar")} مستلم
                         </p>
                       </div>
                     </div>
@@ -307,7 +307,7 @@ export function CampaignCalendar({ className }: CampaignCalendarProps) {
 
       {loading && (
         <div className="text-center py-8">
-          <p className="text-sm text-slate-500">Loading campaigns...</p>
+          <p className="text-sm text-slate-500">جارٍ تحميل الحملات...</p>
         </div>
       )}
     </div>

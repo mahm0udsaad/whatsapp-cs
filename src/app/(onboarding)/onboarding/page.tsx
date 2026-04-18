@@ -39,14 +39,14 @@ interface OnboardingData {
 }
 
 const STEPS = [
-  { number: 1, title: "Restaurant Info" },
-  { number: 2, title: "AI Agent" },
-  { number: 3, title: "WhatsApp Profile" },
-  { number: 4, title: "Menu Source" },
+  { number: 1, title: "بيانات المطعم" },
+  { number: 2, title: "المساعد الذكي" },
+  { number: 3, title: "ملف واتساب" },
+  { number: 4, title: "مصدر القائمة" },
 ];
 
 const DEFAULT_AGENT_INSTRUCTIONS =
-  "You are the restaurant's WhatsApp assistant. Answer only restaurant-related questions, stay concise, and be friendly.";
+  "أنت مساعد واتساب الخاص بالمطعم. أجب فقط عن الأسئلة المتعلقة بالمطعم، واكتب بإيجاز وبأسلوب ودود.";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -63,7 +63,7 @@ export default function OnboardingPage() {
     country: "SA",
     currency: "SAR",
     websiteUrl: "",
-    agentName: "Restaurant Assistant",
+    agentName: "مساعد المطعم",
     personality: "friendly",
     language: "auto",
     agentInstructions: DEFAULT_AGENT_INSTRUCTIONS,
@@ -116,17 +116,17 @@ export default function OnboardingPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        setError(result.error || "Failed to finish onboarding.");
+        setError(result.error || "تعذر إنهاء الإعداد.");
         return;
       }
 
       if (result.assignedPhoneNumber) {
         setStatusMessage(
-          `Provisioning complete. Your WhatsApp number is ${result.assignedPhoneNumber}.`
+          `اكتمل الإعداد. رقم واتساب الخاص بك هو ${result.assignedPhoneNumber}.`
         );
       } else {
         setStatusMessage(
-          "Your restaurant and agent are ready. WhatsApp number assignment is pending inventory or sender registration."
+          "تم تجهيز المطعم والمساعد. تعيين رقم واتساب بانتظار توفر رقم أو اكتمال تسجيل المرسل."
         );
       }
 
@@ -135,7 +135,7 @@ export default function OnboardingPage() {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "Failed to finish onboarding."
+          : "تعذر إنهاء الإعداد."
       );
     } finally {
       setLoading(false);
@@ -153,7 +153,7 @@ export default function OnboardingPage() {
 
   const handleWebsiteImport = async () => {
     if (!data.websiteUrl.trim()) {
-      setError("Add the restaurant website URL first.");
+      setError("أضف رابط موقع المطعم أولاً.");
       return;
     }
 
@@ -179,12 +179,12 @@ export default function OnboardingPage() {
       if (!response.ok) {
         const crawlError =
           "error" in result ? result.error : undefined;
-        setError(crawlError || "Failed to crawl website.");
+        setError(crawlError || "تعذر قراءة الموقع.");
         return;
       }
 
       if (!("prefill" in result)) {
-        setError("Website crawl returned an invalid response.");
+        setError("أرجع فحص الموقع استجابة غير صالحة.");
         return;
       }
 
@@ -210,8 +210,8 @@ export default function OnboardingPage() {
               ? prefill.language
               : current.language,
           agentName:
-            current.agentName === "Restaurant Assistant" && nextRestaurantName
-              ? `${nextRestaurantName} Assistant`
+            current.agentName === "مساعد المطعم" && nextRestaurantName
+              ? `مساعد ${nextRestaurantName}`
               : current.agentName,
           agentInstructions:
             current.agentInstructions === DEFAULT_AGENT_INSTRUCTIONS &&
@@ -224,15 +224,15 @@ export default function OnboardingPage() {
       const importedCount = result.importedFields.length;
       setWebsiteImportMessage(
         importedCount > 0
-          ? `Imported ${importedCount} field${importedCount === 1 ? "" : "s"} from the website.`
-          : "We couldn't read much from this site — it may be JavaScript-rendered. Fields have been left for manual entry."
+          ? `تم استيراد ${importedCount} حقل من الموقع.`
+          : "لم نتمكن من قراءة بيانات كافية من هذا الموقع. يمكنك إدخال الحقول يدوياً."
       );
       setWebsiteImportSummary(result.summary);
     } catch (crawlError) {
       setError(
         crawlError instanceof Error
           ? crawlError.message
-          : "Failed to crawl website."
+          : "تعذر قراءة الموقع."
       );
     } finally {
       setWebsiteImporting(false);
@@ -244,18 +244,17 @@ export default function OnboardingPage() {
       <div className="mx-auto max-w-3xl">
         <div className="mb-8 space-y-6">
           <BrandLockup
-            className="items-start text-left"
+            className="items-start text-right"
             imageClassName="w-32 self-start"
             titleClassName="text-3xl"
-            subtitle="Carry the same visual identity from onboarding into the live assistant."
+            subtitle="انقل هوية مطعمك نفسها من الإعداد إلى المساعد المباشر."
           />
           <div>
             <h1 className="mb-2 text-3xl font-bold text-[#172554]">
-              Launch Your WhatsApp Assistant
+              إطلاق مساعد واتساب
             </h1>
             <p className="text-slate-600">
-              This setup creates your restaurant workspace, AI agent, and the
-              records needed to provision a WhatsApp sender.
+              يجهز هذا الإعداد مساحة عمل المطعم والمساعد الذكي والسجلات المطلوبة لتفعيل مرسل واتساب.
             </p>
           </div>
         </div>
@@ -314,10 +313,10 @@ export default function OnboardingPage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">
-                    Restaurant Name
+                    اسم المطعم
                   </label>
                   <Input
-                    placeholder="e.g., Test Restaurant"
+                    placeholder="مثال: مطعم الاختبار"
                     value={data.restaurantName}
                     onChange={(event) =>
                       setData({ ...data, restaurantName: event.target.value })
@@ -328,7 +327,7 @@ export default function OnboardingPage() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">
-                      Country
+                    الدولة
                     </label>
                     <Select
                       value={data.country}
@@ -340,17 +339,17 @@ export default function OnboardingPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="EG">Egypt</SelectItem>
-                        <SelectItem value="SA">Saudi Arabia</SelectItem>
-                        <SelectItem value="AE">UAE</SelectItem>
-                        <SelectItem value="KW">Kuwait</SelectItem>
+                      <SelectItem value="EG">مصر</SelectItem>
+                      <SelectItem value="SA">السعودية</SelectItem>
+                      <SelectItem value="AE">الإمارات</SelectItem>
+                      <SelectItem value="KW">الكويت</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">
-                      Currency
+                    العملة
                     </label>
                     <Select
                       value={data.currency}
@@ -373,7 +372,7 @@ export default function OnboardingPage() {
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">
-                    Website URL
+                    رابط الموقع
                   </label>
                   <div className="flex flex-col gap-3 md:flex-row">
                     <Input
@@ -395,11 +394,11 @@ export default function OnboardingPage() {
                         size={16}
                         className={websiteImporting ? "animate-spin" : ""}
                       />
-                      {websiteImporting ? "Crawling..." : "Import Website Info"}
+                      {websiteImporting ? "جارٍ قراءة الموقع..." : "استيراد بيانات الموقع"}
                     </Button>
                   </div>
                   <p className="text-xs text-slate-600">
-                    Pulls name, logo, menu URL, country, currency, contact phone, and hours from the public website. Any detected phone is saved as the restaurant&apos;s contact number — the bot&apos;s WhatsApp number is assigned separately.
+                    يستورد الاسم والشعار ورابط القائمة والدولة والعملة ورقم التواصل وساعات العمل من الموقع العام. أي رقم يتم اكتشافه يُحفظ كرقم تواصل للمطعم، بينما رقم واتساب الخاص بالمساعد يتم تعيينه بشكل منفصل.
                   </p>
                 </div>
 
@@ -410,7 +409,7 @@ export default function OnboardingPage() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={data.logoUrl}
-                          alt="Detected logo"
+                          alt="الشعار المكتشف"
                           className="h-10 w-10 shrink-0 rounded-md border border-[#bfdbfe] bg-white object-contain p-0.5"
                           onError={(e) => {
                             (e.currentTarget as HTMLImageElement).style.display = "none";
@@ -442,11 +441,10 @@ export default function OnboardingPage() {
 
                 <div className="rounded-lg border border-[#fcd34d] bg-[#fef9c3] p-4">
                   <h4 className="mb-2 text-sm font-semibold text-[#713f12]">
-                    Faster setup option
+                    خيار إعداد أسرع
                   </h4>
                   <p className="text-sm text-[#854d0e]">
-                    Manual entry still works. Website import just prefills the
-                    next steps so you can review and adjust before provisioning.
+                    الإدخال اليدوي متاح دائماً. استيراد الموقع يملأ الخطوات التالية مسبقاً لتراجعها وتعدلها قبل التفعيل.
                   </p>
                 </div>
               </div>
@@ -456,10 +454,10 @@ export default function OnboardingPage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">
-                    AI Agent Name
+                    اسم المساعد الذكي
                   </label>
                   <Input
-                    placeholder="e.g., Restaurant Assistant"
+                    placeholder="مثال: مساعد المطعم"
                     value={data.agentName}
                     onChange={(event) =>
                       setData({ ...data, agentName: event.target.value })
@@ -469,29 +467,29 @@ export default function OnboardingPage() {
 
                 <div className="space-y-3">
                   <label className="text-sm font-medium text-slate-700">
-                    Personality Style
+                    أسلوب الشخصية
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     {[
                       {
                         value: "friendly",
-                        label: "Friendly",
-                        desc: "Warm and welcoming",
+                        label: "ودود",
+                        desc: "دافئ ومرحب",
                       },
                       {
                         value: "professional",
-                        label: "Professional",
-                        desc: "Clear and precise",
+                        label: "احترافي",
+                        desc: "واضح ودقيق",
                       },
                       {
                         value: "creative",
-                        label: "Creative",
-                        desc: "More expressive replies",
+                        label: "إبداعي",
+                        desc: "ردود أكثر تعبيراً",
                       },
                       {
                         value: "strict",
-                        label: "Strict",
-                        desc: "Direct and efficient",
+                        label: "مباشر",
+                        desc: "مختصر وفعال",
                       },
                     ].map((option) => (
                       <button
@@ -501,7 +499,7 @@ export default function OnboardingPage() {
                           setData({ ...data, personality: option.value })
                         }
                         className={cn(
-                          "rounded-lg border-2 p-3 text-left transition-all",
+                          "rounded-lg border-2 p-3 text-right transition-all",
                           data.personality === option.value
                             ? "border-[#2563eb] bg-[#eff6ff]"
                             : "border-slate-200 hover:border-slate-300"
@@ -518,7 +516,7 @@ export default function OnboardingPage() {
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">
-                    Preferred Language
+                    اللغة المفضلة
                   </label>
                   <Select
                     value={data.language}
@@ -530,16 +528,16 @@ export default function OnboardingPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="auto">Auto-detect</SelectItem>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="ar">Arabic</SelectItem>
+                      <SelectItem value="auto">اكتشاف تلقائي</SelectItem>
+                      <SelectItem value="en">الإنجليزية</SelectItem>
+                      <SelectItem value="ar">العربية</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">
-                    Agent Instructions
+                    تعليمات المساعد
                   </label>
                   <Textarea
                     rows={6}
@@ -550,7 +548,7 @@ export default function OnboardingPage() {
                         agentInstructions: event.target.value,
                       })
                     }
-                    placeholder="Describe how the assistant should answer customers."
+                    placeholder="اكتب كيف يجب أن يرد المساعد على العملاء."
                   />
                 </div>
               </div>
@@ -560,10 +558,10 @@ export default function OnboardingPage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">
-                    WhatsApp Display Name
+                    اسم الظهور في واتساب
                   </label>
                   <Input
-                    placeholder="The business name customers see in WhatsApp"
+                    placeholder="اسم النشاط الذي يراه العملاء في واتساب"
                     value={data.displayName}
                     onChange={(event) =>
                       setData({ ...data, displayName: event.target.value })
@@ -573,7 +571,7 @@ export default function OnboardingPage() {
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">
-                    Bot Phone Number
+                    رقم هاتف المساعد
                   </label>
                   <Input
                     type="tel"
@@ -584,19 +582,19 @@ export default function OnboardingPage() {
                     }
                   />
                   <p className="text-xs text-slate-600">
-                    Enter the phone number in international format (e.g. +966542228723). This number will be registered in Twilio and configured to route messages to the bot.
+                    أدخل رقم الهاتف بالصيغة الدولية مثل +966542228723. سيتم تسجيل هذا الرقم في Twilio وتوجيه الرسائل منه إلى المساعد.
                   </p>
                 </div>
 
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-1">
                   <h4 className="text-sm font-semibold text-amber-900">
-                    Important — before you continue
+                    مهم قبل المتابعة
                   </h4>
                   <p className="text-sm text-amber-800">
-                    This phone number <span className="font-semibold">must not have an active WhatsApp account</span>. If there is a WhatsApp account associated with it, please remove it from that device before proceeding.
+                    يجب ألا يكون لهذا الرقم <span className="font-semibold">حساب واتساب نشط</span>. إذا كان الرقم مرتبطاً بحساب واتساب، احذفه من الجهاز قبل المتابعة.
                   </p>
                   <p className="text-sm text-amber-700">
-                    To remove WhatsApp from a number: open WhatsApp → Settings → Account → Delete my account, or simply uninstall the app and request account deletion via the WhatsApp website.
+                    لإزالة واتساب من الرقم: افتح واتساب ثم الإعدادات ثم الحساب ثم حذف حسابي، أو احذف التطبيق واطلب حذف الحساب عبر موقع واتساب.
                   </p>
                 </div>
               </div>
@@ -606,7 +604,7 @@ export default function OnboardingPage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">
-                    Digital Menu URL
+                    رابط القائمة الرقمية
                   </label>
                   <Input
                     type="url"
@@ -617,17 +615,16 @@ export default function OnboardingPage() {
                     }
                   />
                   <p className="text-xs text-slate-600">
-                    Optional. This is stored now and can be crawled later.
+                    اختياري. سنحفظه الآن ويمكن قراءته لاحقاً.
                   </p>
                 </div>
 
                 <div className="rounded-lg border border-[#bfdbfe] bg-[#eff6ff] p-4">
                   <h4 className="mb-2 text-sm font-semibold text-[#172554]">
-                    Ready to provision
+                    جاهز للتفعيل
                   </h4>
                   <p className="text-sm text-[#1e3a8a]">
-                    Finishing this step creates your tenant records, starter
-                    knowledge base, and active AI agent configuration.
+                    إنهاء هذه الخطوة ينشئ سجلات المطعم وقاعدة المعرفة الأولية وإعداد المساعد الذكي النشط.
                   </p>
                 </div>
               </div>
@@ -640,22 +637,22 @@ export default function OnboardingPage() {
                 disabled={currentStep === 1 || loading}
               >
                 <ChevronLeft size={18} />
-                Previous
+                السابق
               </Button>
 
               <div className="text-sm text-slate-600">
-                Step {currentStep} of {STEPS.length}
+                الخطوة {currentStep} من {STEPS.length}
               </div>
 
               <Button onClick={handleNext} disabled={!isStepValid() || loading}>
                 {currentStep === 4 ? (
                   <>
-                    {loading ? "Provisioning..." : "Finish Setup"}
+                    {loading ? "جارٍ التفعيل..." : "إنهاء الإعداد"}
                     <Check size={18} />
                   </>
                 ) : (
                   <>
-                    Next
+                    التالي
                     <ChevronRight size={18} />
                   </>
                 )}

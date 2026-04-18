@@ -118,6 +118,8 @@ export interface MenuItem {
   updated_at: string;
 }
 
+export type ConversationHandlerMode = "unassigned" | "human" | "bot";
+
 export interface Conversation {
   id: string;
   restaurant_id: string;
@@ -126,6 +128,11 @@ export interface Conversation {
   status: "active" | "archived" | "closed";
   started_at: string;
   last_message_at: string;
+  last_inbound_at?: string | null;
+  handler_mode?: ConversationHandlerMode;
+  assigned_to?: string | null;
+  assigned_at?: string | null;
+  assigned_by_user_id?: string | null;
   metadata?: Record<string, unknown> | null;
 }
 
