@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { supabase } from "../../lib/supabase";
 import { qk } from "../../lib/query-keys";
 import { useSessionStore } from "../../lib/session-store";
+import { asArray } from "../../lib/api";
 
 type Shift = {
   id: string;
@@ -43,7 +44,7 @@ export default function ShiftsScreen() {
     );
   }
 
-  const items = query.data ?? [];
+  const items = asArray<Shift>(query.data);
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50" edges={["bottom"]}>

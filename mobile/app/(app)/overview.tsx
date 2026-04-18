@@ -24,49 +24,11 @@ import {
 } from "../../lib/api";
 import { qk } from "../../lib/query-keys";
 import { useSessionStore } from "../../lib/session-store";
-
-function StatTile({
-  label,
-  value,
-  tone = "default",
-  onPress,
-}: {
-  label: string;
-  value: number | string;
-  tone?: "default" | "warning" | "success" | "info";
-  onPress?: () => void;
-}) {
-  const toneClasses =
-    tone === "warning"
-      ? "bg-amber-50 border-amber-200"
-      : tone === "success"
-      ? "bg-emerald-50 border-emerald-200"
-      : tone === "info"
-      ? "bg-indigo-50 border-indigo-200"
-      : "bg-white border-gray-100";
-  const valueTone =
-    tone === "warning"
-      ? "text-amber-900"
-      : tone === "success"
-      ? "text-emerald-900"
-      : tone === "info"
-      ? "text-indigo-900"
-      : "text-gray-950";
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={!onPress}
-      className={`flex-1 rounded-2xl border p-4 ${toneClasses}`}
-    >
-      <Text className="text-right text-xs font-medium text-gray-500">
-        {label}
-      </Text>
-      <Text className={`mt-1 text-right text-3xl font-bold ${valueTone}`}>
-        {value}
-      </Text>
-    </Pressable>
-  );
-}
+import {
+  ManagerCard,
+  ManagerMetric,
+  PriorityAction,
+} from "../../components/manager-ui";
 
 export default function OverviewScreen() {
   const member = useSessionStore((s) => s.activeMember);
@@ -139,12 +101,39 @@ export default function OverviewScreen() {
 
   const ai: AiStatus | undefined = aiQuery.data;
   const kpis: OverviewSummary | undefined = kpisQuery.data;
-  const approvals: PendingApproval[] = approvalsQuery.data ?? [];
+  // Defensive: /api/mobile/approvals *should* return a JSON array, but a
+  // non-JSON response (HTML error page, proxy text/plain, etc.) would make
+  // apiFetch fall back to res.text() and hand us a string. A string also has
+  // `.slice`, so `approvals.slice(0, 5).map` explodes with "map is not a
+  // function". Coerce to an array and log once so we notice server-side
+  // regressions without crashing the screen.
+  const approvalsRaw = approvalsQuery.data as unknown;
+  const approvals: PendingApproval[] = Array.isArray(approvalsRaw)
+    ? (approvalsRaw as PendingApproval[])
+    : [];
+  if (approvalsRaw !== undefined && !Array.isArray(approvalsRaw)) {
+    console.warn(
+      "[overview] /api/mobile/approvals returned non-array shape:",
+      typeof approvalsRaw,
+      typeof approvalsRaw === "string"
+        ? (approvalsRaw as string).slice(0, 80)
+        : approvalsRaw
+    );
+  }
 
   const hasAlerts = useMemo(() => {
     if (!kpis) return false;
-    return kpis.unassignedCount > 0 || kpis.expiredCount > 0;
-  }, [kpis]);
+    return (
+      kpis.unassignedCount > 0 ||
+      kpis.expiredCount > 0 ||
+      approvals.length > 0
+    );
+  }, [approvals.length, kpis]);
+
+  const needsAttentionCount =
+    (kpis?.unassignedCount ?? 0) +
+    (kpis?.expiredCount ?? 0) +
+    approvals.length;
 
   if (!restaurantId) {
     return (
@@ -163,12 +152,83 @@ export default function OverviewScreen() {
           <RefreshControl refreshing={isRefreshing} onRefresh={refetchAll} />
         }
       >
-        {/* Live status strip */}
-        <View className="mb-3 rounded-2xl border border-gray-100 bg-white p-4">
-          <Text className="text-right text-xs font-medium text-gray-500">
-            حالة المتجر الآن
-          </Text>
-          <View className="mt-2 flex-row-reverse items-center justify-between">
+        <ManagerCard
+          className={`mb-3 ${
+            hasAlerts ? "border-red-200 bg-red-50" : "border-emerald-200 bg-emerald-50"
+          }`}
+        >
+          <View className="flex-row-reverse items-start justify-between gap-3">
+            <View className="flex-1">
+              <Text
+                className={`text-right text-xl font-bold ${
+                  hasAlerts ? "text-red-950" : "text-emerald-950"
+                }`}
+              >
+                {hasAlerts ? "يحتاج متابعة الآن" : "كل شيء تحت السيطرة"}
+              </Text>
+              <Text className="mt-1 text-right text-sm leading-6 text-gray-700">
+                {hasAlerts
+                  ? "ابدئي بالحالات العاجلة قبل مراجعة باقي الأرقام."
+                  : "لا توجد محادثات عاجلة أو طلبات موافقة حالياً."}
+              </Text>
+            </View>
+            <Text
+              className={`text-4xl font-bold ${
+                hasAlerts ? "text-red-900" : "text-emerald-900"
+              }`}
+            >
+              {needsAttentionCount}
+            </Text>
+          </View>
+        </ManagerCard>
+
+        {hasAlerts && kpis ? (
+          <View className="mb-3 gap-2">
+            {kpis.unassignedCount > 0 ? (
+              <PriorityAction
+                title="محادثات غير مستلمة"
+                description="تحتاج موظف أو تحويل للبوت."
+                value={kpis.unassignedCount}
+                tone="danger"
+                icon="chatbubble-ellipses-outline"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(app)/inbox",
+                    params: { filter: "unassigned" },
+                  })
+                }
+              />
+            ) : null}
+            {kpis.expiredCount > 0 ? (
+              <PriorityAction
+                title="محادثات خارج نافذة الرد"
+                description="راجعي سياسة قوالب واتساب قبل الرد."
+                value={kpis.expiredCount}
+                tone="warning"
+                icon="time-outline"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(app)/inbox",
+                    params: { filter: "expired" },
+                  })
+                }
+              />
+            ) : null}
+            {approvals.length > 0 ? (
+              <PriorityAction
+                title="طلبات موافقة"
+                description="قرارات تصعيد تنتظر المدير."
+                value={approvals.length}
+                tone="info"
+                icon="shield-checkmark-outline"
+                onPress={() => router.push("/(app)/approvals")}
+              />
+            ) : null}
+          </View>
+        ) : null}
+
+        <ManagerCard className="mb-3">
+          <View className="flex-row-reverse items-center justify-between">
             <View className="flex-row-reverse items-center gap-2">
               <View
                 className={`h-2.5 w-2.5 rounded-full ${
@@ -183,89 +243,22 @@ export default function OverviewScreen() {
               {kpis?.agentsOnShiftCount ?? 0} في المناوبة
             </Text>
           </View>
-        </View>
-
-        {/* Alerts */}
-        {hasAlerts && kpis ? (
-          <View className="mb-3 rounded-2xl border border-red-200 bg-red-50 p-4">
-            <Text className="text-right text-sm font-bold text-red-900">
-              تنبيهات
-            </Text>
-            {kpis.unassignedCount > 0 ? (
-              <Pressable
-                onPress={() =>
-                  router.push({
-                    pathname: "/(app)/inbox",
-                    params: { filter: "unassigned" },
-                  })
-                }
-                className="mt-2 flex-row-reverse items-center justify-between"
-              >
-                <Text className="text-right text-sm text-red-800">
-                  {kpis.unassignedCount} محادثة غير مُعيّنة
-                </Text>
-                <Ionicons name="chevron-back" size={18} color="#991B1B" />
-              </Pressable>
-            ) : null}
-            {kpis.expiredCount > 0 ? (
-              <Pressable
-                onPress={() =>
-                  router.push({
-                    pathname: "/(app)/inbox",
-                    params: { filter: "expired" },
-                  })
-                }
-                className="mt-2 flex-row-reverse items-center justify-between"
-              >
-                <Text className="text-right text-sm text-red-800">
-                  {kpis.expiredCount} محادثة منتهية
-                </Text>
-                <Ionicons name="chevron-back" size={18} color="#991B1B" />
-              </Pressable>
-            ) : null}
+          <View className="mt-4 flex-row-reverse gap-2">
+            <ManagerMetric
+              label="مع موظف"
+              value={kpis?.humanActiveCount ?? 0}
+              tone="success"
+              compact
+            />
+            <ManagerMetric
+              label="مع المساعد"
+              value={kpis?.botActiveCount ?? 0}
+              tone="info"
+              compact
+            />
           </View>
-        ) : null}
+        </ManagerCard>
 
-        {/* KPI grid */}
-        <View className="mb-3 flex-row-reverse gap-2">
-          <StatTile
-            label="غير مُعيّنة"
-            value={kpis?.unassignedCount ?? 0}
-            tone={kpis && kpis.unassignedCount > 0 ? "warning" : "default"}
-            onPress={() =>
-              router.push({
-                pathname: "/(app)/inbox",
-                params: { filter: "unassigned" },
-              })
-            }
-          />
-          <StatTile
-            label="مع موظف"
-            value={kpis?.humanActiveCount ?? 0}
-            tone="success"
-            onPress={() => router.push("/(app)/inbox")}
-          />
-        </View>
-        <View className="mb-3 flex-row-reverse gap-2">
-          <StatTile
-            label="مع المساعد"
-            value={kpis?.botActiveCount ?? 0}
-            tone="info"
-          />
-          <StatTile
-            label="منتهية"
-            value={kpis?.expiredCount ?? 0}
-            tone={kpis && kpis.expiredCount > 0 ? "warning" : "default"}
-            onPress={() =>
-              router.push({
-                pathname: "/(app)/inbox",
-                params: { filter: "expired" },
-              })
-            }
-          />
-        </View>
-
-        {/* Quick actions */}
         <View className="mb-3 flex-row-reverse gap-2">
           <Pressable
             onPress={() => confirmToggleAi(!(ai?.enabled ?? true))}
@@ -293,11 +286,10 @@ export default function OverviewScreen() {
           </Pressable>
         </View>
 
-        {/* Approvals */}
-        <View className="mb-3 rounded-2xl border border-gray-100 bg-white p-4">
+        <ManagerCard className="mb-3">
           <View className="flex-row-reverse items-center justify-between">
             <Text className="text-right text-sm font-bold text-gray-950">
-              في انتظار الموافقة
+              آخر طلبات الموافقة
             </Text>
             {approvals.length > 0 ? (
               <Pressable onPress={() => router.push("/(app)/approvals")}>
@@ -330,7 +322,7 @@ export default function OverviewScreen() {
               </Pressable>
             ))
           )}
-        </View>
+        </ManagerCard>
 
         {/* Open web dashboard */}
         <Pressable

@@ -35,7 +35,10 @@ export default function ApprovalsScreen() {
     );
   }
 
-  const items = query.data ?? [];
+  // Defensive: see overview.tsx for why this is guarded. If the API ever
+  // returns a non-array (HTML error page, wrong content-type, etc.), a
+  // FlatList `data={string}` would crash rendering.
+  const items: PendingApproval[] = Array.isArray(query.data) ? query.data : [];
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50" edges={["top", "bottom"]}>

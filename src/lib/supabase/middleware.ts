@@ -8,6 +8,13 @@ const publicPrefixes = [
   "/api/internal/",
   "/api/auth/member-login",
   "/api/auth/member-logout",
+  // Mobile API uses Bearer-token auth on every route, which the middleware's
+  // cookie-only Supabase client cannot validate. The route handlers themselves
+  // call `createServerSupabaseClient` (which does read Bearer) and reject
+  // unauthenticated calls with 401, so we let them pass the middleware instead
+  // of 302-redirecting mobile requests to /login (which caused apiFetch to
+  // receive the login page HTML as a 200 response).
+  "/api/mobile/",
 ];
 
 export async function updateSession(request: NextRequest) {

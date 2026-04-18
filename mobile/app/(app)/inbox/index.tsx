@@ -20,6 +20,7 @@ import { supabase } from "../../../lib/supabase";
 import { useSessionStore } from "../../../lib/session-store";
 import { isManager } from "../../../lib/roles";
 import {
+  asArray,
   getTeamRoster,
   reassignConversation,
   type TeamMemberRosterRow,
@@ -371,12 +372,29 @@ export default function InboxScreen() {
                     {item.customer_phone}
                   </Text>
                 </View>
-                <Text className="text-xs text-gray-500" numberOfLines={1}>
-                  {formatDistanceToNow(new Date(item.last_message_at), {
-                    addSuffix: true,
-                    locale: ar,
-                  })}
-                </Text>
+                <View className="items-start gap-2">
+                  <Text className="text-xs text-gray-500" numberOfLines={1}>
+                    {formatDistanceToNow(new Date(item.last_message_at), {
+                      addSuffix: true,
+                      locale: ar,
+                    })}
+                  </Text>
+                  {manager ? (
+                    <Pressable
+                      onPress={(event) => {
+                        event.stopPropagation();
+                        setReassignTarget(item);
+                      }}
+                      hitSlop={8}
+                      className="flex-row-reverse items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1"
+                    >
+                      <Ionicons name="swap-horizontal" size={14} color="#374151" />
+                      <Text className="text-xs font-semibold text-gray-700">
+                        نقل
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
               </View>
               {!!item.preview && (
                 <Text
@@ -440,7 +458,7 @@ export default function InboxScreen() {
                 <ActivityIndicator />
               ) : (
                 <ScrollView style={{ maxHeight: 220 }}>
-                  {(rosterQuery.data ?? [])
+                  {asArray<TeamMemberRosterRow>(rosterQuery.data)
                     .filter((m) => m.is_active)
                     .map((m: TeamMemberRosterRow) => (
                       <Pressable

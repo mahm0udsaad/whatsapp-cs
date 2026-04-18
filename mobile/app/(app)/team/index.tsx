@@ -14,7 +14,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, addDays, startOfWeek } from "date-fns";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
 import {
   forceOffline,
   getTeamRoster,
@@ -24,6 +23,7 @@ import {
 } from "../../../lib/api";
 import { qk } from "../../../lib/query-keys";
 import { useSessionStore } from "../../../lib/session-store";
+import { ManagerCard, ManagerMetric } from "../../../components/manager-ui";
 
 type Segment = "people" | "schedule";
 
@@ -205,8 +205,31 @@ function PeopleSegment({
   query: ReturnType<typeof useQuery<TeamMemberRosterRow[]>>;
   onSelectMember: (m: TeamMemberRosterRow) => void;
 }) {
-  const rows = query.data ?? [];
+  // Defensive: coerce to array. If middleware/proxy ever serves an HTML page
+  // with 200 (e.g. the /login shell for an unauthenticated redirect), apiFetch
+  // will hand us a string whose .filter crashes the screen.
+  const rows = useMemo<TeamMemberRosterRow[]>(
+    () => (Array.isArray(query.data) ? query.data : []),
+    [query.data]
+  );
+  const rawData = query.data as unknown;
+  if (rawData !== undefined && !Array.isArray(rawData)) {
+    console.warn(
+      "[team] /api/mobile/team/roster returned non-array shape:",
+      typeof rawData,
+      typeof rawData === "string" ? (rawData as string).slice(0, 80) : rawData
+    );
+  }
   const isRefreshing = query.isFetching;
+  const summary = useMemo(
+    () => ({
+      available: rows.filter((m) => m.is_available).length,
+      onShift: rows.filter((m) => m.on_shift_now).length,
+      overloaded: rows.filter((m) => m.active_conversations >= 5).length,
+      missingPush: rows.filter((m) => !m.has_push_device).length,
+    }),
+    [rows]
+  );
 
   if (query.isLoading) {
     return (
@@ -228,6 +251,43 @@ function PeopleSegment({
         <View className="items-center py-20">
           <Text className="text-gray-500">لا يوجد أعضاء في الفريق</Text>
         </View>
+      }
+      ListHeaderComponent={
+        rows.length > 0 ? (
+          <ManagerCard className="mb-3">
+            <Text className="text-right text-sm font-bold text-gray-950">
+              حالة الفريق الآن
+            </Text>
+            <View className="mt-3 flex-row-reverse gap-2">
+              <ManagerMetric
+                label="متاح"
+                value={summary.available}
+                tone="success"
+                compact
+              />
+              <ManagerMetric
+                label="في المناوبة"
+                value={summary.onShift}
+                tone="info"
+                compact
+              />
+            </View>
+            <View className="mt-2 flex-row-reverse gap-2">
+              <ManagerMetric
+                label="ضغط عال"
+                value={summary.overloaded}
+                tone={summary.overloaded > 0 ? "warning" : "neutral"}
+                compact
+              />
+              <ManagerMetric
+                label="تنبيهات ناقصة"
+                value={summary.missingPush}
+                tone={summary.missingPush > 0 ? "danger" : "neutral"}
+                compact
+              />
+            </View>
+          </ManagerCard>
+        ) : null
       }
       renderItem={({ item }) => (
         <Pressable
@@ -285,7 +345,12 @@ function ScheduleSegment({
   weekStart: string;
   onChangeWeekStart: (s: string) => void;
 }) {
-  const shifts = query.data ?? [];
+  // Same defensive coercion as PeopleSegment — the schedule endpoint has the
+  // same failure mode if the backend ever returns HTML instead of JSON.
+  const shifts = useMemo<WeeklyShiftRow[]>(
+    () => (Array.isArray(query.data) ? query.data : []),
+    [query.data]
+  );
 
   const weekStartDate = useMemo(() => new Date(`${weekStart}T00:00:00`), [weekStart]);
   const days = useMemo(

@@ -8,7 +8,13 @@ const BASE = process.env.EXPO_PUBLIC_APP_BASE_URL ?? "";
  * with the cookie by default, but they also accept `Authorization: Bearer`
  * (Supabase SSR reads both in 2026 SDK) — this works for both web and native.
  */
-const DEFAULT_TIMEOUT_MS = 15_000;
+// Default timeout for GET reads. Generous enough to absorb a Vercel
+// cold-start on the hobby tier (up to ~25s in practice).
+const DEFAULT_TIMEOUT_MS = 30_000;
+// Mutations (claim, reassign, reply) block the UI with a spinner. Bias toward
+// a longer fuse so the first call after an idle period doesn't spuriously
+// fail on cold-start. Most mutations return in <2s once warm.
+const DEFAULT_MUTATION_TIMEOUT_MS = 45_000;
 
 export async function apiFetch(
   path: string,
@@ -28,13 +34,17 @@ export async function apiFetch(
 
   // fetch() on React Native has no default timeout — a flaky network or a
   // cold Vercel instance leaves the caller spinning forever. Abort after N ms
-  // so UI spinners always resolve.
+  // so UI spinners always resolve. Mutations get a longer default than reads.
   const { timeoutMs, ...fetchInit } = init;
+  const isMutation =
+    typeof fetchInit.method === "string" &&
+    fetchInit.method.toUpperCase() !== "GET";
+  const effectiveTimeout =
+    timeoutMs ??
+    (isMutation ? DEFAULT_MUTATION_TIMEOUT_MS : DEFAULT_TIMEOUT_MS);
   const controller = new AbortController();
-  const timer = setTimeout(
-    () => controller.abort(),
-    timeoutMs ?? DEFAULT_TIMEOUT_MS
-  );
+  const startedAt = Date.now();
+  const timer = setTimeout(() => controller.abort(), effectiveTimeout);
 
   let res: Response;
   try {
@@ -46,6 +56,10 @@ export async function apiFetch(
   } catch (e) {
     clearTimeout(timer);
     if ((e as { name?: string })?.name === "AbortError") {
+      const elapsed = Date.now() - startedAt;
+      console.warn(
+        `[api] ${fetchInit.method ?? "GET"} ${path} aborted after ${elapsed}ms (limit ${effectiveTimeout}ms)`
+      );
       throw new Error("انتهت مهلة الاتصال. حاولي مرة أخرى.");
     }
     throw e;
@@ -69,9 +83,49 @@ export async function apiFetch(
     throw err;
   }
 
+  // Every mobile endpoint returns JSON. If we get anything else back (HTML,
+  // plain text), that's always a deployment/middleware issue — a login-page
+  // redirect, a 404 page with a 200 status from an edge proxy, or similar.
+  // Returning the raw string to callers was how `foo.filter is not a function`
+  // crashes leaked into screens that assumed arrays. Throw a clear error here
+  // instead, so callers land in React Query's error state and the developer
+  // sees exactly what happened.
   const contentType = res.headers.get("content-type") ?? "";
-  if (contentType.includes("application/json")) return res.json();
-  return res.text();
+  const text = await res.text();
+  if (!text) return null;
+  if (contentType.includes("application/json") || /^\s*[\[{]/.test(text)) {
+    try {
+      return JSON.parse(text);
+    } catch (parseError) {
+      const err = new Error(
+        `Failed to parse JSON response from ${path}: ${
+          parseError instanceof Error ? parseError.message : "unknown"
+        }`
+      ) as Error & { status?: number; body?: unknown };
+      err.status = res.status;
+      err.body = text.slice(0, 200);
+      throw err;
+    }
+  }
+  // Non-JSON response with a 2xx status — treat as a server-side error
+  // (usually an auth redirect that followed through to an HTML page).
+  const err = new Error(
+    `Non-JSON response from ${path} (status ${res.status}). ` +
+      `First 80 chars: ${text.slice(0, 80)}`
+  ) as Error & { status?: number; body?: unknown };
+  err.status = res.status;
+  err.body = text.slice(0, 200);
+  throw err;
+}
+
+/**
+ * Defensive array coercion for React Query results. If the backend ever
+ * returns a non-array shape (should now be impossible thanks to the apiFetch
+ * hardening above, but future-proofing against proxy misbehavior), return an
+ * empty array instead of crashing `.filter`/`.map` on a string.
+ */
+export function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
 }
 
 export async function claimOrder(orderId: string) {

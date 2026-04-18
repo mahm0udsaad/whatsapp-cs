@@ -63,9 +63,9 @@ export default function AppLayout() {
         }}
       />
 
-      {/* Team — manager supervision surface */}
+      {/* Team — manager supervision surface (folder with team/index.tsx). */}
       <Tabs.Screen
-        name="team"
+        name="team/index"
         options={{
           title: "الفريق",
           tabBarLabel: "الفريق",

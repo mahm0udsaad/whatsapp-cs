@@ -18,7 +18,7 @@ export async function GET() {
   const { data, error } = await adminSupabaseClient
     .from("orders")
     .select(
-      "id, conversation_id, type, status, created_at, customer_phone, customer_name, summary"
+      "id, conversation_id, type, status, created_at, customer_phone, customer_name, details, escalation_reason, priority"
     )
     .eq("restaurant_id", restaurantId)
     .eq("type", "escalation")
@@ -29,5 +29,19 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data ?? []);
+  // Present a single `summary` field to the mobile client, preferring
+  // escalation_reason then details.
+  const rows = (data ?? []).map((o) => ({
+    id: o.id,
+    conversation_id: o.conversation_id,
+    type: o.type,
+    status: o.status,
+    created_at: o.created_at,
+    customer_name: o.customer_name,
+    customer_phone: o.customer_phone,
+    priority: o.priority,
+    summary: o.escalation_reason ?? o.details ?? null,
+  }));
+
+  return NextResponse.json(rows);
 }

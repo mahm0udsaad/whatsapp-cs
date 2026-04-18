@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import { Ionicons } from "@expo/vector-icons";
 import {
+  asArray,
   claimConversation,
   getTeamRoster,
   reassignConversation,
@@ -436,7 +437,7 @@ export default function ConversationDetail() {
                 <ActivityIndicator />
               ) : (
                 <ScrollView style={{ maxHeight: 220 }}>
-                  {(rosterQuery.data ?? [])
+                  {asArray<TeamMemberRosterRow>(rosterQuery.data)
                     .filter((m) => m.is_active)
                     .map((m: TeamMemberRosterRow) => (
                       <Pressable
