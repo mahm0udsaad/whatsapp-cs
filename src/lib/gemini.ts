@@ -196,7 +196,7 @@ function parseInteractiveReply(raw: string): ParsedReply {
   const aiUncertain = obj.ai_uncertain === true;
 
   if (type === "quick_reply") {
-    const body = typeof obj.body === "string" ? obj.body.trim() : "";
+    const rawBody = typeof obj.body === "string" ? obj.body.trim() : "";
     const rawOptions = Array.isArray(obj.options) ? obj.options : [];
     const options = rawOptions
       .map((o) => {
@@ -210,13 +210,15 @@ function parseInteractiveReply(raw: string): ParsedReply {
       .filter((o): o is { id: string; title: string } => o !== null)
       .slice(0, 3);
 
-    if (body && options.length >= 1) {
+    if (options.length >= 1) {
+      // Body is required by WhatsApp; synthesize a neutral one if the model omitted it.
+      const body = rawBody || "…";
       return { reply: { type: "quick_reply", body, options }, aiUncertain };
     }
   }
 
   if (type === "list") {
-    const body = typeof obj.body === "string" ? obj.body.trim() : "";
+    const rawBody = typeof obj.body === "string" ? obj.body.trim() : "";
     const button =
       typeof obj.button === "string" && obj.button.trim()
         ? obj.button.trim().slice(0, 20)
@@ -235,19 +237,23 @@ function parseInteractiveReply(raw: string): ParsedReply {
       .filter((i): i is { id: string; title: string; description?: string } => i !== null)
       .slice(0, 10);
 
-    if (body && items.length >= 1) {
+    if (items.length >= 1) {
+      // Body is required by WhatsApp; fall back to the button label (or a neutral
+      // placeholder) instead of dropping the whole list to a raw-JSON text reply.
+      const body = rawBody || button || "…";
       return { reply: { type: "list", body, button, items }, aiUncertain };
     }
   }
 
-  // Fall through to text — either type was "text" or any other variant
-  // failed validation. Use `content` if present, else `body`, else raw.
+  // Fall through to text — either type was "text", or a non-list/quick_reply
+  // variant, or list/quick_reply without any usable items/options. Use `content`
+  // if present, else `body`. Never echo the raw JSON to the customer.
   const content =
     typeof obj.content === "string" && obj.content.trim()
       ? obj.content
       : typeof obj.body === "string" && obj.body.trim()
         ? (obj.body as string)
-        : raw.trim() || "...";
+        : "...";
   return { reply: { type: "text", content }, aiUncertain };
 }
 
