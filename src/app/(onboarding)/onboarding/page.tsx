@@ -39,14 +39,14 @@ interface OnboardingData {
 }
 
 const STEPS = [
-  { number: 1, title: "بيانات المطعم" },
+  { number: 1, title: "بيانات المتجر" },
   { number: 2, title: "المساعد الذكي" },
   { number: 3, title: "ملف واتساب" },
   { number: 4, title: "مصدر القائمة" },
 ];
 
 const DEFAULT_AGENT_INSTRUCTIONS =
-  "أنت مساعد واتساب الخاص بالمطعم. أجب فقط عن الأسئلة المتعلقة بالمطعم، واكتب بإيجاز وبأسلوب ودود.";
+  "أنت مساعد واتساب الخاص بالمتجر. أجب فقط عن الأسئلة المتعلقة بالمتجر، واكتب بإيجاز وبأسلوب ودود.";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -63,7 +63,7 @@ export default function OnboardingPage() {
     country: "SA",
     currency: "SAR",
     websiteUrl: "",
-    agentName: "مساعد المطعم",
+    agentName: "مساعد المتجر",
     personality: "friendly",
     language: "auto",
     agentInstructions: DEFAULT_AGENT_INSTRUCTIONS,
@@ -126,7 +126,7 @@ export default function OnboardingPage() {
         );
       } else {
         setStatusMessage(
-          "تم تجهيز المطعم والمساعد. تعيين رقم واتساب بانتظار توفر رقم أو اكتمال تسجيل المرسل."
+          "تم تجهيز المتجر والمساعد. تعيين رقم واتساب بانتظار توفر رقم أو اكتمال تسجيل المرسل."
         );
       }
 
@@ -153,7 +153,7 @@ export default function OnboardingPage() {
 
   const handleWebsiteImport = async () => {
     if (!data.websiteUrl.trim()) {
-      setError("أضف رابط موقع المطعم أولاً.");
+      setError("أضف رابط موقع المتجر أولاً.");
       return;
     }
 
@@ -210,7 +210,7 @@ export default function OnboardingPage() {
               ? prefill.language
               : current.language,
           agentName:
-            current.agentName === "مساعد المطعم" && nextRestaurantName
+            current.agentName === "مساعد المتجر" && nextRestaurantName
               ? `مساعد ${nextRestaurantName}`
               : current.agentName,
           agentInstructions:
@@ -247,14 +247,14 @@ export default function OnboardingPage() {
             className="items-start text-right"
             imageClassName="w-32 self-start"
             titleClassName="text-3xl"
-            subtitle="انقل هوية مطعمك نفسها من الإعداد إلى المساعد المباشر."
+            subtitle="انقل هوية متجرك نفسها من الإعداد إلى المساعد المباشر."
           />
           <div>
             <h1 className="mb-2 text-3xl font-bold text-[#172554]">
               إطلاق مساعد واتساب
             </h1>
             <p className="text-slate-600">
-              يجهز هذا الإعداد مساحة عمل المطعم والمساعد الذكي والسجلات المطلوبة لتفعيل مرسل واتساب.
+              يجهز هذا الإعداد مساحة عمل المتجر والمساعد الذكي والسجلات المطلوبة لتفعيل مرسل واتساب.
             </p>
           </div>
         </div>
@@ -313,10 +313,10 @@ export default function OnboardingPage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">
-                    اسم المطعم
+                    اسم المتجر
                   </label>
                   <Input
-                    placeholder="مثال: مطعم الاختبار"
+                    placeholder="مثال: متجر الاختبار"
                     value={data.restaurantName}
                     onChange={(event) =>
                       setData({ ...data, restaurantName: event.target.value })
@@ -398,7 +398,7 @@ export default function OnboardingPage() {
                     </Button>
                   </div>
                   <p className="text-xs text-slate-600">
-                    يستورد الاسم والشعار ورابط القائمة والدولة والعملة ورقم التواصل وساعات العمل من الموقع العام. أي رقم يتم اكتشافه يُحفظ كرقم تواصل للمطعم، بينما رقم واتساب الخاص بالمساعد يتم تعيينه بشكل منفصل.
+                    يستورد الاسم والشعار ورابط القائمة والدولة والعملة ورقم التواصل وساعات العمل من الموقع العام. أي رقم يتم اكتشافه يُحفظ كرقم تواصل للمتجر، بينما رقم واتساب الخاص بالمساعد يتم تعيينه بشكل منفصل.
                   </p>
                 </div>
 
@@ -457,7 +457,7 @@ export default function OnboardingPage() {
                     اسم المساعد الذكي
                   </label>
                   <Input
-                    placeholder="مثال: مساعد المطعم"
+                    placeholder="مثال: مساعد المتجر"
                     value={data.agentName}
                     onChange={(event) =>
                       setData({ ...data, agentName: event.target.value })
@@ -624,7 +624,7 @@ export default function OnboardingPage() {
                     جاهز للتفعيل
                   </h4>
                   <p className="text-sm text-[#1e3a8a]">
-                    إنهاء هذه الخطوة ينشئ سجلات المطعم وقاعدة المعرفة الأولية وإعداد المساعد الذكي النشط.
+                    إنهاء هذه الخطوة ينشئ سجلات المتجر وقاعدة المعرفة الأولية وإعداد المساعد الذكي النشط.
                   </p>
                 </div>
               </div>

@@ -1,4 +1,11 @@
-import { GoogleGenerativeAI, SchemaType, type Schema } from "@google/generative-ai";
+import { createHash } from "node:crypto";
+import {
+  GoogleGenerativeAI,
+  SchemaType,
+  type CachedContent,
+  type Schema,
+} from "@google/generative-ai";
+import { GoogleAICacheManager } from "@google/generative-ai/server";
 import { buildCustomerServiceSystemPrompt } from "./customer-service";
 import type { GeminiResponse, InteractiveReply } from "./types";
 
@@ -9,6 +16,7 @@ if (!apiKey) {
 }
 
 const genAI = new GoogleGenerativeAI(apiKey);
+const cacheManager = new GoogleAICacheManager(apiKey);
 
 interface ConversationMessage {
   role: "user" | "assistant";
@@ -132,6 +140,11 @@ const REPLY_SCHEMA: Schema = {
         required: ["id", "title"],
       },
     },
+    ai_uncertain: {
+      type: SchemaType.BOOLEAN,
+      description:
+        "Set true ONLY if the Knowledge Base Context / Menu Context / Business Profile do not contain enough information to answer the customer confidently. Do not set true for greetings, confirmations, choices, or simple clarifications.",
+    },
   },
   required: ["type"],
 };
@@ -150,24 +163,37 @@ Whenever the customer's previous message starts with [user_action:<id>], that is
 
 Prefer interactive replies over text whenever you are asking the customer to make a choice. Do not list options inside text — use list/quick_reply instead.
 
-CRITICAL — answer from the knowledge you already have. The "Knowledge Base Context" / "Menu Context" / "Business Profile" sections in the system prompt are YOUR information: services, products, categories, prices, hours. When the customer asks about something covered there, answer directly. Do NOT say "I'll check with the team", "someone will get back to you", "سأتحقق", "سأتواصل معك", "سيتواصل معك فريقنا" — those phrases are reserved for cases where the knowledge truly does not contain the answer. When the customer asks "what types / what's available / what do you have / عندك ايه / ايه الانواع / عرفني الانواع" and the knowledge contains the relevant services, products, or categories, you MUST reply with type="list" enumerating them.
+CRITICAL — answer from the knowledge you already have. The "Knowledge Base Context" / "Menu Context" / "Business Profile" sections are YOUR information: services, products, categories, prices, hours. When the customer asks about something covered there, answer directly. Do NOT say "I'll check with the team", "someone will get back to you", "سأتحقق", "سأتواصل معك", "سيتواصل معك فريقنا" — those phrases are reserved for cases where the knowledge truly does not contain the answer. When the customer asks "what types / what's available / what do you have / عندك ايه / ايه الانواع / عرفني الانواع" and the knowledge contains the relevant services, products, or categories, you MUST reply with type="list" enumerating them.
+
+If — and only if — the provided knowledge genuinely does not contain the answer and you cannot answer confidently, set ai_uncertain=true in your JSON response. Leave ai_uncertain false (or unset) for every other case, including greetings, acknowledgements, and choices.
 `.trim();
 
+interface ParsedReply {
+  reply: InteractiveReply;
+  aiUncertain: boolean;
+}
+
 /** Defensive parser — Gemini occasionally drifts from the schema. Falls back to text. */
-function parseInteractiveReply(raw: string): InteractiveReply {
+function parseInteractiveReply(raw: string): ParsedReply {
+  const fallback = (content: string): ParsedReply => ({
+    reply: { type: "text", content },
+    aiUncertain: false,
+  });
+
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return { type: "text", content: raw.trim() || "..." };
+    return fallback(raw.trim() || "...");
   }
 
   if (!parsed || typeof parsed !== "object") {
-    return { type: "text", content: raw.trim() || "..." };
+    return fallback(raw.trim() || "...");
   }
 
   const obj = parsed as Record<string, unknown>;
   const type = obj.type;
+  const aiUncertain = obj.ai_uncertain === true;
 
   if (type === "quick_reply") {
     const body = typeof obj.body === "string" ? obj.body.trim() : "";
@@ -185,7 +211,7 @@ function parseInteractiveReply(raw: string): InteractiveReply {
       .slice(0, 3);
 
     if (body && options.length >= 1) {
-      return { type: "quick_reply", body, options };
+      return { reply: { type: "quick_reply", body, options }, aiUncertain };
     }
   }
 
@@ -210,7 +236,7 @@ function parseInteractiveReply(raw: string): InteractiveReply {
       .slice(0, 10);
 
     if (body && items.length >= 1) {
-      return { type: "list", body, button, items };
+      return { reply: { type: "list", body, button, items }, aiUncertain };
     }
   }
 
@@ -220,9 +246,9 @@ function parseInteractiveReply(raw: string): InteractiveReply {
     typeof obj.content === "string" && obj.content.trim()
       ? obj.content
       : typeof obj.body === "string" && obj.body.trim()
-        ? obj.body
+        ? (obj.body as string)
         : raw.trim() || "...";
-  return { type: "text", content };
+  return { reply: { type: "text", content }, aiUncertain };
 }
 
 /** Plain-text preview for storage / dashboard fallback. */
@@ -234,13 +260,21 @@ function previewOf(reply: InteractiveReply): string {
   return `${reply.body}\n\n[${reply.items.map((i) => i.title).join(" · ")}]`;
 }
 
-/**
- * Build the full system prompt for a turn: the customer-service base built
- * from structured tenant context, plus the interactive-reply rules and the
- * anti-deferral / list-picker directives. Kept as one place so the chat path
- * and the retry path stay in sync.
- */
-function buildSystemPrompt(
+// ---------------------------------------------------------------------------
+// System-prompt composition.
+//
+// Change 2 of the v2 optimization pass splits the prompt into two parts:
+//
+//   staticPrefix  — identity, rules, business profile, agent instructions,
+//                   INTERACTIVE_RULES. Stable per (tenant × agent × language),
+//                   so we can push it to Gemini's context cache once and
+//                   reuse for subsequent turns.
+//   dynamicBlock  — RAG chunks + menu context. These change every turn, so
+//                   they ride on the user message instead of the system
+//                   instruction.
+// ---------------------------------------------------------------------------
+
+function buildStaticPrefix(
   context: GeminiContext,
   responseLanguage: "ar" | "en"
 ): string {
@@ -252,8 +286,10 @@ function buildSystemPrompt(
     language: responseLanguage,
     baseInstructions: context.systemPrompt,
     businessContext: context.businessContext,
-    ragContext: context.ragContext,
-    menuContext: context.menuContext,
+    // Deliberately empty — RAG/menu ride on the user turn so the cached
+    // prefix stays stable across customer questions.
+    ragContext: "",
+    menuContext: "",
     agentInstructions: context.agentInstructions ?? null,
   });
 
@@ -265,74 +301,163 @@ function buildSystemPrompt(
   return `${base}\n\nReply Format Rules:\n${rules}`;
 }
 
-/**
- * Generate a response using Google Gemini
- */
+function buildDynamicBlock(
+  ragContext: string,
+  menuContext: string | undefined
+): string {
+  const parts: string[] = [];
+  if (ragContext && ragContext.trim().length > 0) {
+    parts.push(`Knowledge Base Context:\n${ragContext.trim()}`);
+  }
+  if (menuContext && menuContext.trim().length > 0) {
+    parts.push(`Menu Context:\n${menuContext.trim()}`);
+  }
+  return parts.join("\n\n");
+}
+
+// ---------------------------------------------------------------------------
+// Gemini context caching. Stores a { cached, expiresAt } by sha1(staticPrefix).
+// Falls through gracefully when the model doesn't support caching (e.g. the
+// flash-lite preview), or when the prefix is too short to be worth caching.
+// ---------------------------------------------------------------------------
+
+const PROMPT_CACHE_TTL_SECONDS = 300;
+const PROMPT_CACHE_MIN_PREFIX_CHARS = 4096;
+const promptCache = new Map<
+  string,
+  { cached: CachedContent; expiresAt: number }
+>();
+let promptCacheDisabled = false;
+
+function prefixCacheKey(prefix: string): string {
+  return createHash("sha1")
+    .update(`${MODEL_NAME}|${prefix}`)
+    .digest("hex");
+}
+
+async function getOrCreateCachedPrefix(
+  staticPrefix: string
+): Promise<CachedContent | null> {
+  if (promptCacheDisabled) return null;
+  if (staticPrefix.length < PROMPT_CACHE_MIN_PREFIX_CHARS) return null;
+
+  const key = prefixCacheKey(staticPrefix);
+  const hit = promptCache.get(key);
+  if (hit && hit.expiresAt > Date.now() + 15_000) {
+    return hit.cached;
+  }
+
+  try {
+    const cached = await cacheManager.create({
+      model: `models/${MODEL_NAME}`,
+      systemInstruction: {
+        role: "system",
+        parts: [{ text: staticPrefix }],
+      },
+      // Caching API requires at least one content entry; a minimal user turn
+      // keeps the request valid without biasing subsequent replies.
+      contents: [
+        { role: "user", parts: [{ text: "(initialize cache)" }] },
+      ],
+      ttlSeconds: PROMPT_CACHE_TTL_SECONDS,
+    });
+    promptCache.set(key, {
+      cached,
+      expiresAt: Date.now() + (PROMPT_CACHE_TTL_SECONDS - 15) * 1000,
+    });
+    return cached;
+  } catch (err) {
+    if (!promptCacheDisabled) {
+      promptCacheDisabled = true;
+      console.warn(
+        "[gemini] context caching disabled for this process:",
+        err instanceof Error ? err.message : err
+      );
+    }
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main entry point.
+// ---------------------------------------------------------------------------
+
 export async function generateGeminiResponse(
   context: GeminiContext
 ): Promise<GeminiResponse> {
-  // Detect user message language
   const userLanguage = detectLanguage(context.userMessage);
 
-  // Determine response language based on preference and user input
   let responseLanguage: "ar" | "en" = userLanguage;
   if (context.languagePreference !== "auto") {
     responseLanguage = context.languagePreference;
   }
 
-  // Only block clearly off-topic messages
   const offTopic = await isOffTopic(context.userMessage, context.ragContext);
-
   if (offTopic) {
     return {
       content: context.offTopicResponse,
       reply: { type: "text", content: context.offTopicResponse },
       language: responseLanguage,
+      aiUncertain: false,
     };
   }
 
-  const systemPrompt = buildSystemPrompt(context, responseLanguage);
+  const staticPrefix = buildStaticPrefix(context, responseLanguage);
+  const dynamicBlock = buildDynamicBlock(context.ragContext, context.menuContext);
+  const userMessageWithContext = dynamicBlock
+    ? `${dynamicBlock}\n\nCustomer: ${context.userMessage}`
+    : context.userMessage;
 
   const generationConfig = {
     responseMimeType: "application/json",
     responseSchema: REPLY_SCHEMA,
   };
 
+  // Convert conversation history to chat format. Gemini requires history to
+  // start with a 'user' message — drop leading agent messages.
+  const trimmedHistory = [...context.conversationHistory];
+  while (trimmedHistory.length > 0 && trimmedHistory[0].role !== "user") {
+    trimmedHistory.shift();
+  }
+  const chatHistory = trimmedHistory.map((msg) => ({
+    role: msg.role === "user" ? "user" : ("model" as const),
+    parts: [{ text: msg.content }],
+  }));
+
   try {
-    const model = genAI.getGenerativeModel({
-      model: MODEL_NAME,
-      generationConfig,
-    });
+    // Attempt cached-prefix path first. On any failure (model unsupported,
+    // API hiccup, preview model rejection) we fall through to the uncached
+    // path so the send pipeline never stalls on caching issues.
+    const cachedPrefix = await getOrCreateCachedPrefix(staticPrefix);
 
-    // Convert conversation history to chat format
-    // Gemini requires history to start with a 'user' message — drop leading agent messages
-    const trimmedHistory = [...context.conversationHistory];
-    while (trimmedHistory.length > 0 && trimmedHistory[0].role !== "user") {
-      trimmedHistory.shift();
-    }
-    const chatHistory = trimmedHistory.map((msg) => ({
-      role: msg.role === "user" ? "user" : ("model" as const),
-      parts: [{ text: msg.content }],
-    }));
+    const model = cachedPrefix
+      ? genAI.getGenerativeModelFromCachedContent(cachedPrefix, {
+          generationConfig,
+        })
+      : genAI.getGenerativeModel({
+          model: MODEL_NAME,
+          generationConfig,
+        });
 
-    // Start chat session
-    const chat = model.startChat({
-      history: chatHistory,
-      systemInstruction: {
-        role: "user",
-        parts: [{ text: systemPrompt }],
-      },
-    });
+    const chat = cachedPrefix
+      ? model.startChat({ history: chatHistory })
+      : model.startChat({
+          history: chatHistory,
+          systemInstruction: {
+            role: "user",
+            parts: [{ text: staticPrefix }],
+          },
+        });
 
-    // Send message and get response
-    const result = await chat.sendMessage(context.userMessage);
+    const result = await chat.sendMessage(userMessageWithContext);
     const responseText = result.response.text();
-    const reply = parseInteractiveReply(responseText);
+    const parsed = parseInteractiveReply(responseText);
 
     return {
-      content: previewOf(reply),
-      reply,
+      content: previewOf(parsed.reply),
+      reply: parsed.reply,
       language: responseLanguage,
+      aiUncertain: parsed.aiUncertain,
     };
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
@@ -341,7 +466,7 @@ export async function generateGeminiResponse(
     console.error("Stack:", errStack);
 
     // Retry once with a simpler approach if the chat-based call fails.
-    // Same JSON-mode schema so the contract stays consistent.
+    // Always uncached so we maximize the odds the retry lands.
     try {
       console.log("[gemini] Retrying with simple generateContent...");
       const model = genAI.getGenerativeModel({
@@ -351,14 +476,15 @@ export async function generateGeminiResponse(
       const historyText = context.conversationHistory
         .map((msg) => `${msg.role === "user" ? "Customer" : "Assistant"}: ${msg.content}`)
         .join("\n");
-      const simplePrompt = `${systemPrompt}\n\n${historyText ? `Conversation so far:\n${historyText}\n\n` : ""}Customer message: ${context.userMessage}`;
+      const simplePrompt = `${staticPrefix}\n\n${dynamicBlock ? `${dynamicBlock}\n\n` : ""}${historyText ? `Conversation so far:\n${historyText}\n\n` : ""}Customer message: ${context.userMessage}`;
       const result = await model.generateContent(simplePrompt);
       const responseText = result.response.text();
-      const reply = parseInteractiveReply(responseText);
+      const parsed = parseInteractiveReply(responseText);
       return {
-        content: previewOf(reply),
-        reply,
+        content: previewOf(parsed.reply),
+        reply: parsed.reply,
         language: responseLanguage,
+        aiUncertain: parsed.aiUncertain,
       };
     } catch (retryError: unknown) {
       const retryMsg = retryError instanceof Error ? retryError.message : String(retryError);
@@ -366,11 +492,4 @@ export async function generateGeminiResponse(
       throw retryError;
     }
   }
-}
-
-/**
- * Validate API key is configured
- */
-export function validateGeminiConfig(): boolean {
-  return !!apiKey;
 }

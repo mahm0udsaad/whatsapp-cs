@@ -17,7 +17,7 @@ const notoSansArabic = Noto_Sans_Arabic({
 
 export const metadata: Metadata = {
   title: "لوحة خدمة عملاء واتساب الذكية",
-  description: "إدارة مساعد خدمة العملاء الذكي على واتساب لمطعمك",
+  description: "إدارة مساعد خدمة العملاء الذكي على واتساب لمتجرك",
   icons: {
     icon: "/favicon.ico",
   },

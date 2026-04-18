@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   Switch,
   Text,
@@ -9,14 +10,21 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { signOut } from "../../lib/auth";
-import { setAvailability } from "../../lib/api";
+import { getAiStatus, setAvailability, toggleAi } from "../../lib/api";
 import { disablePushToken } from "../../lib/push";
 import {
   clearActiveTenant,
   getOrCreateDeviceId,
   useSessionStore,
 } from "../../lib/session-store";
+import { isManager } from "../../lib/roles";
+import { qk } from "../../lib/query-keys";
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 export default function ProfileScreen() {
   const member = useSessionStore((s) => s.activeMember);
@@ -25,68 +33,206 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
+  const manager = isManager(member);
+  const restaurantId = member?.restaurant_id ?? "";
+  const qc = useQueryClient();
+
+  const aiQuery = useQuery({
+    queryKey: qk.aiStatus(restaurantId),
+    enabled: manager && !!restaurantId,
+    queryFn: getAiStatus,
+  });
+
+  const toggleAiMutation = useMutation({
+    mutationFn: (enabled: boolean) => toggleAi(enabled),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.aiStatus(restaurantId) });
+    },
+    onError: (e: unknown) => {
+      Alert.alert("خطأ", getErrorMessage(e, "تعذر التحديث"));
+    },
+  });
+
+  function confirmToggleAi(target: boolean) {
+    if (target === false) {
+      Alert.alert(
+        "إيقاف المساعد الذكي",
+        "هل أنت متأكد؟ سيتوقف الرد التلقائي لجميع المحادثات.",
+        [
+          { text: "إلغاء", style: "cancel" },
+          {
+            text: "إيقاف",
+            style: "destructive",
+            onPress: () => toggleAiMutation.mutate(false),
+          },
+        ]
+      );
+    } else {
+      toggleAiMutation.mutate(true);
+    }
+  }
+
   async function onToggle(val: boolean) {
     setAvailableLocal(val);
     setSaving(true);
     try {
       await setAvailability(val);
       if (member) setActiveMember({ ...member, is_available: val });
-    } catch (e: any) {
+    } catch (e: unknown) {
       setAvailableLocal(!val);
-      Alert.alert("خطأ", e?.message ?? "تعذر التحديث");
+      Alert.alert("خطأ", getErrorMessage(e, "تعذر التحديث"));
     } finally {
       setSaving(false);
     }
   }
 
   async function onLogout() {
+    // Sign-out must never block on the network: best-effort teardown runs in
+    // the background, local state and navigation happen synchronously so the
+    // user always leaves the app even if the backend is unreachable.
     setLoggingOut(true);
+    const memberSnapshot = member;
+
+    // 1. Local state + navigation first — guaranteed to unblock the UI.
+    setActiveMember(null);
     try {
-      if (member) {
-        const deviceId = await getOrCreateDeviceId();
-        await disablePushToken(deviceId, member.restaurant_id);
-      }
-      await signOut();
       await clearActiveTenant();
-      setActiveMember(null);
-      router.replace("/(auth)/login");
-    } catch (e: any) {
-      Alert.alert("خطأ", e?.message ?? "تعذر تسجيل الخروج");
-    } finally {
-      setLoggingOut(false);
+    } catch {
+      // SecureStore errors are non-fatal for sign-out.
     }
+    router.replace("/(auth)/login");
+
+    // 2. Fire-and-forget: revoke the Supabase session and disable the push
+    //    token. Timeouts are enforced at the fetch layer (apiFetch) and on
+    //    signOut() by racing against a short deadline.
+    void (async () => {
+      try {
+        if (memberSnapshot) {
+          const deviceId = await getOrCreateDeviceId();
+          await disablePushToken(deviceId, memberSnapshot.restaurant_id);
+        }
+      } catch (e) {
+        console.warn("[logout] disablePushToken failed", e);
+      }
+      try {
+        await Promise.race([
+          signOut(),
+          new Promise<void>((_, reject) =>
+            setTimeout(
+              () => reject(new Error("signOut timeout")),
+              10_000
+            )
+          ),
+        ]);
+      } catch (e) {
+        console.warn("[logout] supabase signOut failed", e);
+      }
+    })();
   }
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50 p-4" edges={["bottom"]}>
-      <View className="bg-white rounded-2xl p-4 mb-3 border border-gray-100">
-        <Text className="text-xs text-gray-500 text-right">المطعم</Text>
-        <Text className="text-lg font-semibold text-right mt-1">
-          {member?.restaurant?.name ?? member?.restaurant_id ?? "—"}
-        </Text>
-        <Text className="text-sm text-gray-600 text-right mt-2">
-          {member?.full_name ?? ""} — {member?.role === "admin" ? "مدير" : "موظف"}
+      {manager ? (
+        <View
+          className={`mb-3 rounded-2xl border p-4 ${
+            aiQuery.data?.enabled
+              ? "border-indigo-100 bg-indigo-50"
+              : "border-red-200 bg-red-50"
+          }`}
+        >
+          <View className="flex-row-reverse items-center justify-between gap-3">
+            <View className="flex-1">
+              <Text className="text-right text-xs font-medium text-gray-500">
+                المساعد الذكي
+              </Text>
+              <Text
+                className={`mt-1 text-right text-xl font-bold ${
+                  aiQuery.data?.enabled ? "text-indigo-900" : "text-red-900"
+                }`}
+              >
+                {aiQuery.isLoading
+                  ? "..."
+                  : aiQuery.data?.enabled
+                  ? "مُفعّل"
+                  : "متوقف"}
+              </Text>
+            </View>
+            {toggleAiMutation.isPending ? (
+              <ActivityIndicator />
+            ) : (
+              <Switch
+                value={!!aiQuery.data?.enabled}
+                onValueChange={(v) => confirmToggleAi(v)}
+              />
+            )}
+          </View>
+          <Text className="mt-3 text-right text-sm leading-6 text-gray-600">
+            {aiQuery.data?.enabled
+              ? "يرد المساعد تلقائياً على الرسائل الجديدة عندما يكون في وضع البوت."
+              : "تم إيقاف الرد التلقائي لجميع المحادثات. الموظفون فقط يردون."}
+          </Text>
+        </View>
+      ) : null}
+
+      <View
+        className={`mb-3 rounded-2xl border p-4 ${
+          available
+            ? "border-emerald-100 bg-emerald-50"
+            : "border-gray-100 bg-white"
+        }`}
+      >
+        <View className="flex-row-reverse items-center justify-between gap-3">
+          <View className="flex-1">
+            <Text className="text-right text-xs font-medium text-gray-500">
+              حالتك الآن
+            </Text>
+            <Text
+              className={`mt-1 text-right text-xl font-bold ${
+                available ? "text-emerald-900" : "text-gray-950"
+              }`}
+            >
+              {available ? "متاح لاستلام المحادثات" : "غير متاح للاستلام"}
+            </Text>
+          </View>
+          {saving ? (
+            <ActivityIndicator />
+          ) : (
+            <Switch value={available} onValueChange={onToggle} />
+          )}
+        </View>
+        <Text className="mt-3 text-right text-sm leading-6 text-gray-600">
+          {available
+            ? "ستصلك إشعارات المحادثات الجديدة ويمكن توجيه العملاء إليك."
+            : "لن يتم توجيه محادثات جديدة إليك أثناء إيقاف الاستلام."}
         </Text>
       </View>
 
-      <View className="bg-white rounded-2xl p-4 mb-3 border border-gray-100 flex-row justify-between items-center">
-        <View className="flex-1">
-          <Text className="text-base font-semibold text-right">متاح للاستلام</Text>
-          <Text className="text-xs text-gray-500 text-right mt-1">
-            عند الإطفاء لن تصلك إشعارات الاستفسارات
-          </Text>
-        </View>
-        {saving ? (
-          <ActivityIndicator />
-        ) : (
-          <Switch value={available} onValueChange={onToggle} />
-        )}
+      <View className="mb-3 rounded-2xl border border-gray-100 bg-white p-4">
+        <Text className="text-right text-xs font-medium text-gray-500">المتجر</Text>
+        <Text className="mt-1 text-right text-lg font-semibold text-gray-950">
+          {member?.restaurant?.name ?? member?.restaurant_id ?? "—"}
+        </Text>
+        <Text className="mt-2 text-right text-sm text-gray-600">
+          {member?.full_name ?? ""} - {member?.role === "admin" ? "مدير" : "موظف"}
+        </Text>
       </View>
+
+      {manager ? (
+        <Pressable
+          onPress={() => {
+            const base = process.env.EXPO_PUBLIC_APP_BASE_URL ?? "";
+            if (base) Linking.openURL(`${base}/dashboard`);
+          }}
+          className="mb-3 items-center rounded-xl border border-gray-200 bg-white py-3"
+        >
+          <Text className="text-sm text-gray-700">فتح لوحة التحكم</Text>
+        </Pressable>
+      ) : null}
 
       <Pressable
         onPress={onLogout}
         disabled={loggingOut}
-        className="bg-red-600 rounded-xl py-4 items-center mt-4"
+        className="mt-4 items-center rounded-xl bg-red-600 py-4"
       >
         {loggingOut ? (
           <ActivityIndicator color="#fff" />

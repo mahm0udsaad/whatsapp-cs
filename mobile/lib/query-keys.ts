@@ -11,4 +11,18 @@ export const qk = {
     ["conversation", conversationId] as const,
 
   shifts: (teamMemberId: string) => ["shifts", teamMemberId] as const,
+
+  // ---- manager surface ----
+  aiStatus: (restaurantId: string) =>
+    ["manager", "ai-status", restaurantId] as const,
+  overviewSummary: (restaurantId: string) =>
+    ["manager", "overview", restaurantId] as const,
+  teamRoster: (restaurantId: string) =>
+    ["manager", "team-roster", restaurantId] as const,
+  weeklySchedule: (restaurantId: string, weekStart: string) =>
+    ["manager", "schedule", restaurantId, weekStart] as const,
+  kpisToday: (restaurantId: string) =>
+    ["manager", "kpis-today", restaurantId] as const,
+  approvals: (restaurantId: string) =>
+    ["manager", "approvals", restaurantId] as const,
 };

@@ -70,7 +70,7 @@ export default function LoginScreen() {
   if (memberships) {
     return (
       <SafeAreaView className="flex-1 bg-white p-6">
-        <Text className="text-2xl font-bold mb-4 text-right">اختر المطعم</Text>
+        <Text className="text-2xl font-bold mb-4 text-right">اختر المتجر</Text>
         {memberships.map((m) => (
           <Pressable
             key={m.id}

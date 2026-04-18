@@ -1,14 +1,14 @@
 {
   "nav.overview": "Overview",
   "nav.overview.desc": "Today at a glance",
-  "nav.restaurant": "Restaurant",
+  "nav.restaurant": "Store",
   "nav.restaurant.desc": "Brand and business settings",
   "nav.aiAgent": "AI Agent",
   "nav.aiAgent.desc": "Behavior and handoff logic",
   "nav.knowledgeBase": "Knowledge Base",
   "nav.knowledgeBase.desc": "FAQs and source material",
-  "nav.menu": "Menu",
-  "nav.menu.desc": "Items, pricing, and availability",
+  "nav.menu": "Products",
+  "nav.menu.desc": "Products, pricing, and availability",
   "nav.conversations": "Conversations",
   "nav.conversations.desc": "Live customer threads",
   "nav.marketing": "Marketing",
@@ -19,7 +19,7 @@
 
   "team.title": "Team members",
   "team.subtitle": "Create username + password accounts so your staff can sign in to this dashboard.",
-  "team.ownerOnly": "Only the restaurant owner can manage team members.",
+  "team.ownerOnly": "Only the store owner can manage team members.",
   "team.empty": "No team members yet. Create one below.",
   "team.createTitle": "Create a member",
   "team.createDesc": "Pick a unique username and password. Share them privately with your staff member.",
@@ -94,7 +94,7 @@
   "stats.responseRateNote": "Higher is better for consistent automation",
   "stats.knowledgeBase": "Knowledge Base",
   "stats.knowledgeBaseDesc": "Source items the bot can reference while replying.",
-  "stats.knowledgeBaseNoteFull": "Keep this current as the menu changes",
+  "stats.knowledgeBaseNoteFull": "Keep this current as the product list changes",
   "stats.knowledgeBaseNoteEmpty": "Seed content to improve accuracy",
 
   "dashboard.liveQueue": "Live queue",
@@ -116,9 +116,9 @@
   "dashboard.nextFocus": "Next focus",
   "dashboard.productionReady": "The setup looks production-ready",
   "dashboard.tightenWeakSpots": "Tighten the weak spots before traffic grows",
-  "dashboard.allGood": "Content, routing, and agent setup are all present. The next improvement is operational discipline: review conversation quality and keep the knowledge base current as the menu changes.",
+  "dashboard.allGood": "Content, routing, and agent setup are all present. The next improvement is operational discipline: review conversation quality and keep the knowledge base current as the product list changes.",
 
-  "readiness.restaurantSetup": "Restaurant setup",
+  "readiness.restaurantSetup": "Store setup",
   "readiness.restaurantSetupDone": "Base tenant configuration is in place.",
   "readiness.restaurantSetupPending": "Core onboarding still needs attention.",
   "readiness.aiAgent": "AI agent configured",
@@ -136,19 +136,19 @@
   "time.dAgo": "d ago",
 
   "conversations.title": "Conversations",
-  "conversations.subtitle": "Review live customer threads for your restaurant only.",
+  "conversations.subtitle": "Review live customer threads for your store only.",
 
-  "restaurant.title": "Restaurant Settings",
+  "restaurant.title": "Store Settings",
   "restaurant.subtitle": "Manage the business identity and source data used by your tenant.",
 
   "aiAgent.title": "AI Agent Configuration",
-  "aiAgent.subtitle": "Configure the live assistant that responds on your restaurant's WhatsApp number.",
+  "aiAgent.subtitle": "Configure the live assistant that responds on your store's WhatsApp number.",
 
   "knowledgeBase.title": "Knowledge Base",
   "knowledgeBase.subtitle": "Add policies, FAQs, and operational context that improves the live assistant.",
 
-  "menu.title": "Menu Management",
-  "menu.subtitle": "Manage menu items manually or import them from a public menu URL.",
+  "menu.title": "Product Management",
+  "menu.subtitle": "Manage products manually or import them from a public product list URL.",
 
   "common.save": "Save",
   "common.cancel": "Cancel",

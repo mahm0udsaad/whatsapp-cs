@@ -11,7 +11,13 @@
       "bundleIdentifier": "com.whatsappcs.agentconsole",
       "supportsTablet": false,
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification",
+          "remote-notification",
+          "remote-notification",
+          "remote-notification"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -42,7 +48,10 @@
             {
               "identifier": "escalations",
               "actions": [
-                { "identifier": "view", "buttonTitle": "عرض" }
+                {
+                  "identifier": "view",
+                  "buttonTitle": "عرض"
+                }
               ]
             }
           ]
@@ -54,15 +63,33 @@
               "name": "Escalations",
               "importance": "max",
               "sound": "default",
-              "vibrationPattern": [0, 250, 250, 250],
+              "vibrationPattern": [
+                0,
+                250,
+                250,
+                250
+              ],
               "lockscreenVisibility": "public"
             }
           ]
         }
+      },
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "a7b7daaf-c9db-427e-9e3b-fc032fb045ef"
       }
     },
     "experiments": {
       "typedRoutes": true
+    },
+    "owner": "mahm0udsaad",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a7b7daaf-c9db-427e-9e3b-fc032fb045ef"
     }
   }
 }

@@ -331,7 +331,7 @@ export function InboxShell({
         <TabsContent value="mine">
           {!currentMemberId ? (
             <EmptyState
-              title="أنت لست عضوًا في فريق هذا المطعم"
+              title="أنت لست عضوًا في فريق هذا المتجر"
               subtitle="لا يمكن استلام المحادثات دون حساب موظف نشط."
             />
           ) : mine.length === 0 ? (

@@ -40,6 +40,17 @@ export default function RootLayout() {
       };
       if (data?.type === "new_conversation" && data.conversationId) {
         router.push(`/inbox/${data.conversationId}`);
+      } else if (data?.type === "sla_breach") {
+        if (data.conversationId) {
+          router.push(`/inbox/${data.conversationId}`);
+        } else {
+          router.push({
+            pathname: "/(app)/inbox",
+            params: { filter: "unassigned" },
+          });
+        }
+      } else if (data?.type === "approval_needed") {
+        router.push("/(app)/approvals");
       } else if (data?.orderId) {
         router.push(`/inbox/${data.orderId}`);
       }

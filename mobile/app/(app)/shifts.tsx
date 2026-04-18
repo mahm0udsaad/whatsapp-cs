@@ -50,6 +50,7 @@ export default function ShiftsScreen() {
       <FlatList
         data={items}
         keyExtractor={(s) => s.id}
+        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: 12 }}
         ListEmptyComponent={
           <View className="items-center py-20">

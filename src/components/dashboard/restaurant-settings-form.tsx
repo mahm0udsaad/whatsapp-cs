@@ -59,7 +59,7 @@ export function RestaurantSettingsForm({
       const result = await response.json();
 
       if (!response.ok) {
-        setError(result.error || "تعذر حفظ إعدادات المطعم.");
+        setError(result.error || "تعذر حفظ إعدادات المتجر.");
         return;
       }
 
@@ -69,7 +69,7 @@ export function RestaurantSettingsForm({
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "تعذر حفظ إعدادات المطعم."
+          : "تعذر حفظ إعدادات المتجر."
       );
     } finally {
       setIsSaving(false);
@@ -128,7 +128,7 @@ export function RestaurantSettingsForm({
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">
-                  اسم المطعم
+                  اسم المتجر
                 </label>
                 <Input
                   value={formData.name}

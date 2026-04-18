@@ -330,6 +330,12 @@ export interface GeminiResponse {
   /** Structured reply that drives interactive vs plain text send. */
   reply: InteractiveReply;
   language: "ar" | "en";
+  /**
+   * Model self-reported uncertainty (Change 6 of the v2 optimization pass).
+   * True when the model signalled it could not confidently answer from the
+   * provided knowledge. Consumed by the escalation classifier.
+   */
+  aiUncertain?: boolean;
 }
 
 export interface MenuCrawlRequest {

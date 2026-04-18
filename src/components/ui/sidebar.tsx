@@ -15,9 +15,9 @@ import {
   Megaphone,
   Menu,
   MessageSquare,
+  Package,
   Store,
   Users,
-  UtensilsCrossed,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -40,7 +40,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({
-  restaurantName = "Restaurant",
+  restaurantName = "Store",
   restaurantLogo,
   userEmail,
   userName,
@@ -150,7 +150,7 @@ export function Sidebar({
       href: "/dashboard/menu",
       label: t("nav.menu"),
       description: t("nav.menu.desc"),
-      icon: UtensilsCrossed,
+      icon: Package,
     },
     {
       href: "/dashboard/orders",

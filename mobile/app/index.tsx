@@ -8,8 +8,9 @@ import {
   persistActiveTenant,
   useSessionStore,
 } from "../lib/session-store";
+import { isManager } from "../lib/roles";
 
-type Dest = "(auth)/login" | "(app)/inbox";
+type Dest = "(auth)/login" | "(app)/inbox" | "(app)/overview";
 
 export default function Index() {
   const [dest, setDest] = useState<Dest | null>(null);
@@ -33,7 +34,8 @@ export default function Index() {
         const match = memberships.find((m) => m.id === savedId) ?? memberships[0];
         setActiveMember(match);
         await persistActiveTenant(match.id);
-        setDest("(app)/inbox");
+        // Managers land on Overview; agents on Inbox.
+        setDest(isManager(match) ? "(app)/overview" : "(app)/inbox");
       } catch {
         setDest("(auth)/login");
       }

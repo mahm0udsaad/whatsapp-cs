@@ -261,7 +261,7 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
         <CardHeader>
           <CardTitle>قراءة القائمة</CardTitle>
           <CardDescription>
-            استورد عناصر القائمة من رابط القائمة العام للمطعم.
+            استورد عناصر القائمة من رابط القائمة العام للمتجر.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

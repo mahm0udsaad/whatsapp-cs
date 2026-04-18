@@ -4,7 +4,11 @@ import { generateGeminiResponse } from "@/lib/gemini";
 import { sendWhatsAppMessage } from "@/lib/twilio";
 import { sendInteractiveMessage } from "@/lib/twilio-content";
 import { isSessionWindowOpen } from "@/lib/session-window";
-import { retrieveKnowledgeChunks } from "@/lib/rag";
+import {
+  RAG_MATCH_THRESHOLD,
+  retrieveKnowledgeChunks,
+  type RetrievedChunk,
+} from "@/lib/rag";
 import { classifyIntent } from "@/lib/intent-classifier";
 import { createOrder } from "@/lib/order-manager";
 import { loadActiveAgentInstructions } from "@/lib/agent-instructions";
@@ -158,11 +162,20 @@ async function fallbackKeywordKB(restaurantId: string, expandedQuery: string) {
 interface KnowledgeBaseResult {
   context: string;
   /**
-   * Rough count of how many RAG hits grounded this turn. Drives the
-   * escalation classifier's "knowledge gap" rule — zero hits on a
-   * non-trivial question triggers handoff to a human.
+   * How many RAG chunks grounded this turn. Drives the escalation classifier's
+   * "knowledge gap" rule — zero hits on a non-trivial question triggers
+   * handoff to a human.
    */
   chunkCount: number;
+  /**
+   * Max cosine similarity across the returned chunks. `null` when we fell
+   * through to the keyword fallback (which has no similarity signal).
+   */
+  topScore: number | null;
+  /** How many chunks cleared the "strong hit" bar (≥ 0.65). */
+  strongHitCount: number;
+  /** Expanded query string actually sent to the embedder / RPC. */
+  expandedQuery: string;
 }
 
 async function queryKnowledgeBase(
@@ -183,22 +196,66 @@ async function queryKnowledgeBase(
 
   // Primary path: semantic RAG over the `knowledge_chunks` table populated
   // by `scripts/ingest-knowledge-base.ts`.
-  const ragResult = await retrieveKnowledgeChunks(restaurantId, expandedQuery, 5);
-  if (ragResult.trim().length > 0) {
-    // retrieveKnowledgeChunks returns chunks joined by \n\n — count gives us
-    // a cheap proxy for "how many hits".
-    const chunkCount = ragResult.split(/\n\n+/).filter((s) => s.trim()).length;
-    return { context: ragResult, chunkCount };
+  const { context, chunks } = await retrieveKnowledgeChunks(
+    restaurantId,
+    expandedQuery,
+    5
+  );
+  if (chunks.length > 0) {
+    return summarizeRagResult(context, chunks, expandedQuery);
   }
 
   // Fallback: legacy keyword search over the older `knowledge_base` table
   // (populated by the website crawler during onboarding). Ensures the agent
-  // still has grounding for tenants that haven't run chunk ingestion.
+  // still has grounding for tenants that haven't run chunk ingestion. No
+  // similarity signal here, so topScore stays null and the classifier's
+  // weak-hit rule is skipped for this path.
   const fallback = await fallbackKeywordKB(restaurantId, expandedQuery);
   const chunkCount = fallback.trim()
     ? fallback.split(/\n\n+/).filter((s) => s.trim()).length
     : 0;
-  return { context: fallback, chunkCount };
+  return {
+    context: fallback,
+    chunkCount,
+    topScore: null,
+    strongHitCount: 0,
+    expandedQuery,
+  };
+}
+
+function summarizeRagResult(
+  context: string,
+  chunks: RetrievedChunk[],
+  expandedQuery: string
+): KnowledgeBaseResult {
+  const topScore = chunks.reduce(
+    (max, c) => (c.similarity > max ? c.similarity : max),
+    0
+  );
+  const strongHitCount = chunks.filter((c) => c.similarity >= 0.65).length;
+  return {
+    context,
+    chunkCount: chunks.length,
+    topScore,
+    strongHitCount,
+    expandedQuery,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Menu intent gate (Change 4). Injecting the 200-row menu every turn is
+// wasteful for non-menu questions (greetings, location, hours, complaints).
+// When the query clearly doesn't need the menu we return an empty string and
+// shave 500–1500 tokens off the prompt.
+// ---------------------------------------------------------------------------
+
+const MENU_INTENT_PATTERNS = [
+  /\b(menu|price|prices|cost|costs|available|serves?|serving|offer|offers|item|items|order|dish|dishes|drink|drinks|how much)\b/i,
+  /قائمة|مينيو|منيو|سعر|أسعار|كام|متوفر|عندك|عندكم|عندكن|الأنواع|الانواع|أنواع|انواع|ألوان|الوان|اطلب|طلب|اشتري|يوجد/u,
+];
+
+function shouldIncludeMenu(expandedQuery: string): boolean {
+  return MENU_INTENT_PATTERNS.some((p) => p.test(expandedQuery));
 }
 
 async function getMenuContext(restaurantId: string) {
@@ -305,30 +362,67 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
         })
         .eq("id", job.id);
 
-      const { data: inboundMessage } = await adminSupabaseClient
-        .from("messages")
-        .select("*")
-        .eq("id", job.inbound_message_id)
-        .single();
+      // Stage A (Change 1): fire every independent tenant/conversation read
+      // in one batch. These used to serialize for ~800ms–1.5s before we even
+      // reached RAG.
+      const [
+        inboundMessageRes,
+        restaurantRes,
+        aiAgentRes,
+        conversation,
+        history,
+        agentInstructionsRaw,
+      ] = await Promise.all([
+        adminSupabaseClient
+          .from("messages")
+          .select("*")
+          .eq("id", job.inbound_message_id)
+          .single(),
+        adminSupabaseClient
+          .from("restaurants")
+          .select("*")
+          .eq("id", job.restaurant_id)
+          .single(),
+        adminSupabaseClient
+          .from("ai_agents")
+          .select("*")
+          .eq("restaurant_id", job.restaurant_id)
+          .eq("is_active", true)
+          .single(),
+        getConversationContext(job.conversation_id),
+        getConversationHistory(job.conversation_id, 12),
+        loadActiveAgentInstructions(job.restaurant_id),
+      ]);
 
-      const { data: restaurant } = await adminSupabaseClient
-        .from("restaurants")
-        .select("*")
-        .eq("id", job.restaurant_id)
-        .single();
-
-      const { data: aiAgent } = await adminSupabaseClient
-        .from("ai_agents")
-        .select("*")
-        .eq("restaurant_id", job.restaurant_id)
-        .eq("is_active", true)
-        .single();
-
+      const inboundMessage = inboundMessageRes.data;
+      const restaurant = restaurantRes.data;
+      const aiAgent = aiAgentRes.data;
       if (!inboundMessage || !restaurant || !aiAgent) {
         throw new Error("Missing inbound message, restaurant, or ai agent");
       }
+      const agentInstructions = agentInstructionsRaw.map((i) => ({
+        title: i.title,
+        body: i.body,
+      }));
 
-      const conversation = await getConversationContext(job.conversation_id);
+      // Restaurant-level kill switch: manager has paused AI globally via the
+      // mobile app Profile/Overview. Complete the job silently so it is not retried.
+      if (
+        (restaurant as { ai_enabled?: boolean } | null)?.ai_enabled === false
+      ) {
+        console.warn(
+          `[ai-reply] AI disabled for restaurant ${job.restaurant_id}. Skipping.`
+        );
+        await adminSupabaseClient
+          .from("ai_reply_jobs")
+          .update({
+            status: "completed",
+            processed_at: new Date().toISOString(),
+            last_error: "ai_disabled",
+          })
+          .eq("id", job.id);
+        continue;
+      }
 
       // Bot pause: owner has stopped the AI for this conversation via the mobile app.
       // Skip generating/sending a reply but mark the job completed so it isn't retried.
@@ -366,22 +460,49 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
         continue;
       }
 
-      const history = await getConversationHistory(job.conversation_id, 12);
-      const { context: ragContext, chunkCount: ragChunkCount } =
-        await queryKnowledgeBase(
-          job.restaurant_id,
-          inboundMessage.content,
-          history
-        );
-      const menuContext = await getMenuContext(job.restaurant_id);
+      // Stage B (Change 1 + Change 4): RAG and the intent-gated menu fetch
+      // run in parallel. RAG is the usual long pole (embed + vector search);
+      // menu is skipped entirely when the customer clearly isn't asking about
+      // it (Change 4), which typically saves 500–1500 prompt tokens and a DB
+      // round-trip.
+      const ragPromise = queryKnowledgeBase(
+        job.restaurant_id,
+        inboundMessage.content,
+        history
+      );
+      const menuPromise = (async () => {
+        const recentUserTurns = history
+          .filter((msg) => msg.role === "user")
+          .slice(-3)
+          .map((msg) => msg.content)
+          .join(" ");
+        const expandedQuery = `${inboundMessage.content} ${recentUserTurns}`.trim();
+        return shouldIncludeMenu(expandedQuery)
+          ? getMenuContext(job.restaurant_id)
+          : "";
+      })();
+
+      const [
+        {
+          context: ragContext,
+          chunkCount: ragChunkCount,
+          topScore: ragTopScore,
+          strongHitCount: ragStrongHitCount,
+        },
+        menuContext,
+      ] = await Promise.all([ragPromise, menuPromise]);
       const businessContext = buildBusinessSupportContext(restaurant);
-      const agentInstructions = (
-        await loadActiveAgentInstructions(job.restaurant_id)
-      ).map((i) => ({ title: i.title, body: i.body }));
+
+      console.log(
+        `[ai-reply] rag chunks=${ragChunkCount} topScore=${ragTopScore?.toFixed(
+          3
+        ) ?? "n/a"} strong=${ragStrongHitCount} threshold=${RAG_MATCH_THRESHOLD} menuInjected=${menuContext.length > 0}`
+      );
 
       const userLanguage = detectLanguage(inboundMessage.content);
       let responseText: string;
       let reply: InteractiveReply;
+      let aiUncertain = false;
 
       try {
         const result = await generateGeminiResponse({
@@ -409,6 +530,7 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
 
         responseText = result.content;
         reply = result.reply;
+        aiUncertain = result.aiUncertain === true;
       } catch {
         responseText =
           userLanguage === "ar"
@@ -429,7 +551,9 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
       const escalation = classifyEscalation({
         customerMessage: inboundMessage.content,
         aiReply: responseText,
-        ragChunkCount: ragChunkCount,
+        ragChunkCount,
+        ragTopScore,
+        aiUncertain,
       });
 
       if (escalation.shouldEscalate) {

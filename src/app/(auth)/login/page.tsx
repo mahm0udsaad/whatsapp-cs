@@ -82,12 +82,12 @@ export default function LoginPage() {
       <CardHeader className="space-y-5 text-center">
         <BrandLockup
           imageClassName="w-28"
-          subtitle="أتمتة خدمة العملاء بهوية مطعمك."
+          subtitle="أتمتة خدمة العملاء بهوية متجرك."
         />
         <div>
           <CardTitle className="text-2xl text-[#172554]">مرحباً بعودتك</CardTitle>
           <CardDescription className="mt-1">
-            سجّل الدخول إلى لوحة إدارة مطعمك
+            سجّل الدخول إلى لوحة إدارة متجرك
           </CardDescription>
         </div>
       </CardHeader>

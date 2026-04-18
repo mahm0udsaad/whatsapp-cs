@@ -95,7 +95,7 @@ export default function NewTemplatePage() {
   };
 
   // Use a fallback restaurant name - in production this would come from context
-  const restaurantName = "مطعمك";
+  const restaurantName = "متجرك";
 
   return (
     <div className="flex-1 p-4 sm:p-6 lg:p-8">

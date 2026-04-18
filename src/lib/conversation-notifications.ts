@@ -148,3 +148,69 @@ export async function notifyAgentsOfNewConversation(
     console.error("[conversation-notifications] unexpected error:", err);
   }
 }
+
+/**
+ * Push only to managers (team_members.role = 'admin' AND is_active).
+ * Used by the SLA-breach cron so alerts don't spam every agent.
+ */
+async function fetchManagerTeamMemberIds(
+  restaurantId: string
+): Promise<string[]> {
+  const { data, error } = await adminSupabaseClient
+    .from("team_members")
+    .select("id")
+    .eq("restaurant_id", restaurantId)
+    .eq("is_active", true)
+    .eq("role", "admin");
+  if (error) {
+    console.error(
+      "[conversation-notifications] manager lookup failed:",
+      error.message
+    );
+    return [];
+  }
+  return (data ?? []).map((r) => r.id as string);
+}
+
+export async function notifyManagersOfSlaBreach(
+  restaurantId: string,
+  conversationId: string,
+  preview: NewConversationPreview
+): Promise<void> {
+  try {
+    const memberIds = await fetchManagerTeamMemberIds(restaurantId);
+    if (memberIds.length === 0) return;
+
+    const tokens = await fetchPushTokens(memberIds);
+    if (tokens.length === 0) return;
+
+    const title = "محادثة بدون رد";
+    const body = truncate(
+      preview.customerName
+        ? `${preview.customerName} — ${truncate(preview.body, 80)}`
+        : truncate(preview.body, 120),
+      PREVIEW_MAX_LEN
+    );
+
+    const messages: ExpoPushMessage[] = tokens.map((t) => ({
+      to: t.expo_token,
+      title,
+      body,
+      data: {
+        type: "sla_breach",
+        conversationId,
+        restaurantId,
+      },
+      priority: "high",
+      channelId: PUSH_CHANNEL,
+      sound: "default",
+    }));
+
+    const result = await sendExpoPush(messages);
+    if (result.invalidTokens.length > 0) {
+      await disableInvalidTokens(result.invalidTokens);
+    }
+  } catch (err) {
+    console.error("[sla-breach] unexpected error:", err);
+  }
+}

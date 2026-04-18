@@ -104,7 +104,7 @@ export function AIAgentSettingsForm({
           <CardHeader>
             <CardTitle>بيانات المساعد</CardTitle>
             <CardDescription>
-              الهوية الأساسية ونبرة الرد لخدمة العملاء الخاصة بالمطعم.
+              الهوية الأساسية ونبرة الرد لخدمة العملاء الخاصة بالمتجر.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

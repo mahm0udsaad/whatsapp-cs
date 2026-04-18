@@ -1,14 +1,14 @@
 {
   "nav.overview": "نظرة عامة",
   "nav.overview.desc": "ملخص اليوم",
-  "nav.restaurant": "المطعم",
+  "nav.restaurant": "المتجر",
   "nav.restaurant.desc": "إعدادات العلامة التجارية والنشاط",
   "nav.aiAgent": "المساعد الذكي",
   "nav.aiAgent.desc": "السلوك وقواعد التحويل",
   "nav.knowledgeBase": "قاعدة المعرفة",
   "nav.knowledgeBase.desc": "الأسئلة الشائعة والمصادر",
-  "nav.menu": "قائمة الطعام",
-  "nav.menu.desc": "الأصناف والأسعار والتوفر",
+  "nav.menu": "قائمة المنتجات",
+  "nav.menu.desc": "المنتجات والأسعار والتوفر",
   "nav.conversations": "المحادثات",
   "nav.conversations.desc": "محادثات العملاء المباشرة",
   "nav.marketing": "التسويق",
@@ -19,7 +19,7 @@
 
   "team.title": "أعضاء الفريق",
   "team.subtitle": "أنشئ حسابات باسم مستخدم وكلمة مرور حتى يتمكن موظفوك من الدخول إلى لوحة التحكم.",
-  "team.ownerOnly": "مالك المطعم فقط هو من يستطيع إدارة أعضاء الفريق.",
+  "team.ownerOnly": "مالك المتجر فقط هو من يستطيع إدارة أعضاء الفريق.",
   "team.empty": "لا يوجد أعضاء حتى الآن. أنشئ عضوًا أدناه.",
   "team.createTitle": "إنشاء عضو",
   "team.createDesc": "اختر اسم مستخدم وكلمة مرور فريدتين وشاركهما بشكل خاص مع الموظف.",
@@ -49,7 +49,7 @@
   "dashboard.setup": "حالة الإعداد",
   "dashboard.overviewLabel": "ملخص لوحة التحكم",
   "dashboard.headline": "تابع جودة الخدمة قبل تراكم المشكلات.",
-  "dashboard.summaryPrefix": "ملخص العمليات لمطعم",
+  "dashboard.summaryPrefix": "ملخص العمليات لمتجر",
   "dashboard.summaryBody": "تابع حجم الطلب والتغطية التلقائية وجاهزية الإعداد من مكان واحد.",
   "dashboard.openInbox": "فتح صندوق الوارد",
   "dashboard.priorityPrefix": "الأولوية:",
@@ -94,7 +94,7 @@
   "stats.responseRateNote": "كلما ارتفع كلما كانت الأتمتة أفضل",
   "stats.knowledgeBase": "قاعدة المعرفة",
   "stats.knowledgeBaseDesc": "عناصر يمكن للمساعد الرجوع إليها عند الرد.",
-  "stats.knowledgeBaseNoteFull": "حدّث المحتوى عند تغيير قائمة الطعام",
+  "stats.knowledgeBaseNoteFull": "حدّث المحتوى عند تغيير قائمة المنتجات",
   "stats.knowledgeBaseNoteEmpty": "أضف محتوى لتحسين دقة الردود",
 
   "dashboard.liveQueue": "قائمة الانتظار",
@@ -116,9 +116,9 @@
   "dashboard.nextFocus": "التركيز القادم",
   "dashboard.productionReady": "الإعداد جاهز للتشغيل الفعلي",
   "dashboard.tightenWeakSpots": "عالج نقاط الضعف قبل زيادة حركة المرور",
-  "dashboard.allGood": "المحتوى والتوجيه وإعداد المساعد جاهزة. الخطوة التالية هي الانضباط التشغيلي: راجع جودة المحادثات وحدّث قاعدة المعرفة مع تغيير قائمة الطعام.",
+  "dashboard.allGood": "المحتوى والتوجيه وإعداد المساعد جاهزة. الخطوة التالية هي الانضباط التشغيلي: راجع جودة المحادثات وحدّث قاعدة المعرفة مع تغيير قائمة المنتجات.",
 
-  "readiness.restaurantSetup": "إعداد المطعم",
+  "readiness.restaurantSetup": "إعداد المتجر",
   "readiness.restaurantSetupDone": "الإعداد الأساسي مكتمل.",
   "readiness.restaurantSetupPending": "الإعداد الأولي يحتاج اهتماماً.",
   "readiness.aiAgent": "إعداد المساعد الذكي",
@@ -136,19 +136,19 @@
   "time.dAgo": "ي",
 
   "conversations.title": "المحادثات",
-  "conversations.subtitle": "مراجعة محادثات العملاء المباشرة لمطعمك فقط.",
+  "conversations.subtitle": "مراجعة محادثات العملاء المباشرة لمتجرك فقط.",
 
-  "restaurant.title": "إعدادات المطعم",
+  "restaurant.title": "إعدادات المتجر",
   "restaurant.subtitle": "إدارة هوية النشاط التجاري والبيانات المصدرية.",
 
   "aiAgent.title": "إعداد المساعد الذكي",
-  "aiAgent.subtitle": "ضبط المساعد الذي يرد على رقم واتساب الخاص بمطعمك.",
+  "aiAgent.subtitle": "ضبط المساعد الذي يرد على رقم واتساب الخاص بمتجرك.",
 
   "knowledgeBase.title": "قاعدة المعرفة",
   "knowledgeBase.subtitle": "أضف سياسات وأسئلة شائعة لتحسين أداء المساعد.",
 
-  "menu.title": "إدارة قائمة الطعام",
-  "menu.subtitle": "إدارة الأصناف يدوياً أو استيرادها من رابط قائمة طعام.",
+  "menu.title": "إدارة قائمة المنتجات",
+  "menu.subtitle": "إدارة المنتجات يدوياً أو استيرادها من رابط قائمة منتجات.",
 
   "common.save": "حفظ",
   "common.cancel": "إلغاء",

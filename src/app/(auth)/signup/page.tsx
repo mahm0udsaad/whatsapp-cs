@@ -94,7 +94,7 @@ export default function SignupPage() {
         <div>
           <CardTitle className="text-2xl text-[#172554]">ابدأ الآن</CardTitle>
           <CardDescription className="mt-1">
-            أنشئ حساب لوحة الذكاء الاصطناعي لمطعمك
+            أنشئ حساب لوحة الذكاء الاصطناعي لمتجرك
           </CardDescription>
         </div>
       </CardHeader>
