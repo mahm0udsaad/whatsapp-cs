@@ -117,7 +117,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. On-duty agents
+    // 2. Recipients: on-duty agents first; if nobody is on shift we fall
+    // back to all active admins (managers/owners). Escalations are a
+    // manager-decision signal, so silently dropping the alert because nobody
+    // is clocked in would leave a single-owner business without an alert.
     const { data: onDuty, error: onDutyErr } = await adminSupabaseClient.rpc(
       "current_on_duty_agents",
       { p_restaurant_id: order.restaurant_id }
@@ -128,20 +131,57 @@ export async function POST(request: NextRequest) {
 
     const agents: OnDutyAgent[] = (onDuty || []) as OnDutyAgent[];
     const available = agents.filter((a) => a.is_available !== false);
-    const onDutyCount = available.length;
+    let memberIds = available.map((a) => a.team_member_id);
+    let onDutyCount = memberIds.length;
+    let usedManagerFallback = false;
 
-    if (onDutyCount === 0) {
+    if (memberIds.length === 0) {
+      // No on-duty agents → notify every active admin for the tenant.
+      const { data: managers, error: managersErr } = await adminSupabaseClient
+        .from("team_members")
+        .select("id")
+        .eq("restaurant_id", order.restaurant_id)
+        .eq("role", "admin")
+        .eq("is_active", true);
+      if (managersErr) {
+        return NextResponse.json(
+          { error: managersErr.message },
+          { status: 500 }
+        );
+      }
+      memberIds = (managers ?? []).map((m) => m.id as string);
+      usedManagerFallback = true;
+    } else {
+      // On-duty agents exist, but we ALSO push to admins so owners never
+      // miss an escalation even when their staff are handling the line.
+      const { data: managers } = await adminSupabaseClient
+        .from("team_members")
+        .select("id")
+        .eq("restaurant_id", order.restaurant_id)
+        .eq("role", "admin")
+        .eq("is_active", true);
+      const managerIds = (managers ?? []).map((m) => m.id as string);
+      const merged = new Set<string>([...memberIds, ...managerIds]);
+      memberIds = Array.from(merged);
+    }
+
+    if (memberIds.length === 0) {
       console.log(
-        `[broadcast] order=${orderId} sent=0 skipped=0 invalid=0 (no on-duty agents)`
+        `[broadcast] order=${orderId} sent=0 skipped=0 invalid=0 (no recipients; fallback=${usedManagerFallback})`
       );
       return NextResponse.json(
-        { sent: 0, skipped: 0, invalid: 0, onDutyCount: 0 },
+        {
+          sent: 0,
+          skipped: 0,
+          invalid: 0,
+          onDutyCount: 0,
+          managerFallback: usedManagerFallback,
+        },
         { status: 200 }
       );
     }
 
-    // 3. Push tokens for those agents
-    const memberIds = available.map((a) => a.team_member_id);
+    // 3. Push tokens for those recipients
     const { data: tokens, error: tokensErr } = await adminSupabaseClient
       .from("user_push_tokens")
       .select("id, expo_token, team_member_id")
@@ -156,10 +196,17 @@ export async function POST(request: NextRequest) {
 
     if (tokenRows.length === 0) {
       console.log(
-        `[broadcast] order=${orderId} sent=0 skipped=0 invalid=0 onDuty=${onDutyCount} (no tokens)`
+        `[broadcast] order=${orderId} sent=0 skipped=0 invalid=0 recipients=${memberIds.length} fallback=${usedManagerFallback} (no tokens)`
       );
       return NextResponse.json(
-        { sent: 0, skipped: 0, invalid: 0, onDutyCount },
+        {
+          sent: 0,
+          skipped: 0,
+          invalid: 0,
+          onDutyCount,
+          recipientCount: memberIds.length,
+          managerFallback: usedManagerFallback,
+        },
         { status: 200 }
       );
     }
@@ -167,17 +214,22 @@ export async function POST(request: NextRequest) {
     // 4. Build push messages
     const maskedPhone = maskPhone(order.customer_phone);
     const detailsSnippet = truncate(order.details, 60);
+    // Body: category badge + customer message. Gives the owner enough context
+    // to decide whether to open immediately.
     const bodyText = `${maskedPhone} — ${detailsSnippet}`.trim();
 
     const messages: ExpoPushMessage[] = tokenRows.map((row) => ({
       to: row.expo_token,
-      title: "محادثة جديدة تحتاج تدخّل",
+      title: "طلب تصعيد بانتظار قرارك",
       body: bodyText,
       data: {
         orderId: order.id,
         restaurantId: order.restaurant_id,
         conversationId: order.conversation_id,
-        type: "escalation",
+        // Use the existing 'new_conversation' deep-link type so tap opens the
+        // conversation directly — the owner lands on the escalation banner in
+        // the chat header and can decide in-context.
+        type: "new_conversation",
       },
       priority: "high",
       channelId: "escalations",
@@ -202,7 +254,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(
-      `[broadcast] order=${orderId} sent=${result.sent} skipped=${result.skipped} invalid=${result.invalidTokens.length} onDuty=${onDutyCount}`
+      `[broadcast] order=${orderId} sent=${result.sent} skipped=${result.skipped} invalid=${result.invalidTokens.length} onDuty=${onDutyCount} recipients=${memberIds.length} fallback=${usedManagerFallback}`
     );
 
     return NextResponse.json(
@@ -211,6 +263,8 @@ export async function POST(request: NextRequest) {
         skipped: result.skipped,
         invalid: result.invalidTokens.length,
         onDutyCount,
+        recipientCount: memberIds.length,
+        managerFallback: usedManagerFallback,
       },
       { status: 200 }
     );

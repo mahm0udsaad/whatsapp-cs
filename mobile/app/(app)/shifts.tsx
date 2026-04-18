@@ -39,7 +39,7 @@ export default function ShiftsScreen() {
 
   if (query.isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-[#F6F8F7]" edges={["bottom"]}>
+      <SafeAreaView className="flex-1 bg-[#F4F3EF]" edges={["bottom"]}>
         <ListSkeleton count={5} />
       </SafeAreaView>
     );
@@ -48,7 +48,7 @@ export default function ShiftsScreen() {
   const items = asArray<Shift>(query.data);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F8F7]" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-[#F4F3EF]" edges={["bottom"]}>
       <FlatList
         data={items}
         keyExtractor={(s) => s.id}
@@ -60,7 +60,7 @@ export default function ShiftsScreen() {
           </View>
         }
         renderItem={({ item }) => (
-          <View className="mb-2 rounded-lg border border-gray-200 bg-white p-4">
+          <View className="mb-2 rounded-lg border border-stone-200 bg-[#FFFDF8] p-4">
             <Text className="text-base font-semibold text-right">
               {format(new Date(item.starts_at), "EEEE d MMM")}
             </Text>

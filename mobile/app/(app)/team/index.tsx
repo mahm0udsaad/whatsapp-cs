@@ -81,7 +81,7 @@ export default function TeamScreen() {
 
   if (!restaurantId) {
     return (
-      <SafeAreaView className="flex-1 bg-[#F6F8F7]" edges={["bottom"]}>
+      <SafeAreaView className="flex-1 bg-[#F4F3EF]" edges={["bottom"]}>
         <View className="flex-row-reverse gap-2 px-3 pt-3 pb-2">
           <CardSkeleton rows={1} className="flex-1" />
           <CardSkeleton rows={1} className="flex-1" />
@@ -92,7 +92,7 @@ export default function TeamScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F8F7]" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-[#F4F3EF]" edges={["bottom"]}>
       {/* Segmented control */}
       <View className="flex-row-reverse gap-2 px-3 pt-3 pb-2">
         <SegButton

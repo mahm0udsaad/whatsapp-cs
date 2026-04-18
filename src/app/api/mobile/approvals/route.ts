@@ -29,8 +29,16 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Present a single `summary` field to the mobile client, preferring
-  // escalation_reason then details.
+  // Two distinct fields for the mobile card:
+  //   message    → the actual customer message that triggered the escalation
+  //                (orders.details), so the owner sees WHAT the customer said
+  //                and can decide at a glance.
+  //   reasonCode → the machine category (orders.escalation_reason), rendered
+  //                by the client as a colored tag ("فجوة معرفية", "تأخر الرد",
+  //                etc.). Kept separate so the UI stays readable.
+  //
+  // `summary` is kept for backwards-compat with older builds — same value as
+  // `message` so the card never shows an empty body.
   const rows = (data ?? []).map((o) => ({
     id: o.id,
     conversation_id: o.conversation_id,
@@ -40,7 +48,9 @@ export async function GET() {
     customer_name: o.customer_name,
     customer_phone: o.customer_phone,
     priority: o.priority,
-    summary: o.escalation_reason ?? o.details ?? null,
+    message: o.details ?? null,
+    reasonCode: o.escalation_reason ?? null,
+    summary: o.details ?? o.escalation_reason ?? null,
   }));
 
   return NextResponse.json(rows);

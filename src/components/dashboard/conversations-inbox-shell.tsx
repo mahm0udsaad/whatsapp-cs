@@ -216,6 +216,26 @@ export function ConversationsInboxShell({
             ? "تم الاستلام — يمكنك الرد الآن"
             : "تم التوكيل للبوت"
         );
+        // Optimistic update so the right pane reflects the new handler_mode
+        // immediately — no waiting for the refetch round trip.
+        const claimedId = selected.id;
+        setRows((prev) =>
+          prev.map((r) =>
+            r.id === claimedId
+              ? {
+                  ...r,
+                  handler_mode: mode,
+                  assigned_to: currentMemberId ?? r.assigned_to,
+                }
+              : r
+          )
+        );
+        // Switch to a tab where the claimed conversation will stay visible,
+        // so the user sees clear confirmation instead of the row vanishing
+        // from the `unassigned` list.
+        if (filter === "unassigned") {
+          setFilter(mode === "human" ? "mine" : "open");
+        }
         await load();
       } catch (err) {
         setToast(err instanceof Error ? err.message : "تعذّر الاستلام");
@@ -223,7 +243,7 @@ export function ConversationsInboxShell({
         setClaiming(null);
       }
     },
-    [selected, load]
+    [selected, load, filter, currentMemberId]
   );
 
   return (

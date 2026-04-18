@@ -15,7 +15,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -39,6 +39,19 @@ import {
   managerColors,
   premiumShadow,
 } from "../../../components/manager-ui";
+import {
+  escalationReasonLabel,
+  escalationReasonTone,
+} from "../../../lib/escalation-labels";
+
+type TwilioStatus =
+  | "queued"
+  | "sending"
+  | "sent"
+  | "delivered"
+  | "read"
+  | "failed"
+  | null;
 
 type Msg = {
   id: string;
@@ -46,6 +59,7 @@ type Msg = {
   content: string;
   message_type: string;
   created_at: string;
+  twilio_status: TwilioStatus;
 };
 
 type ConvRow = {
@@ -55,11 +69,20 @@ type ConvRow = {
   last_inbound_at: string | null;
   handler_mode: "unassigned" | "human" | "bot";
   assigned_to: string | null;
+  unread_count: number;
+};
+
+type PendingEscalation = {
+  id: string;
+  created_at: string;
+  reason_code: string | null;
+  message: string | null;
 };
 
 type ConvPayload = {
   conversation: ConvRow & { assignee_name: string | null; is_mine: boolean };
   messages: Msg[];
+  pendingEscalation: PendingEscalation | null;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -131,6 +154,7 @@ export default function ConversationDetail() {
   const manager = isManager(member);
   const restaurantId = member?.restaurant_id ?? "";
   const listRef = useRef<FlatList<Msg>>(null);
+  const atBottomRef = useRef(true);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [claiming, setClaiming] = useState<"human" | "bot" | null>(null);
@@ -174,17 +198,17 @@ export default function ConversationDetail() {
       const { data: conv, error: convErr } = await supabase
         .from("conversations")
         .select(
-          "id, customer_name, customer_phone, last_inbound_at, handler_mode, assigned_to"
+          "id, customer_name, customer_phone, last_inbound_at, handler_mode, assigned_to, unread_count"
         )
         .eq("id", id!)
         .maybeSingle();
       if (convErr) throw convErr;
       if (!conv) throw new Error("Conversation not found");
 
-      const [msgsRes, assigneeRes] = await Promise.all([
+      const [msgsRes, assigneeRes, escalationRes] = await Promise.all([
         supabase
           .from("messages")
-          .select("id, role, content, message_type, created_at")
+          .select("id, role, content, message_type, created_at, twilio_status")
           .eq("conversation_id", id!)
           .order("created_at", { ascending: true })
           .limit(200),
@@ -195,8 +219,26 @@ export default function ConversationDetail() {
               .eq("id", conv.assigned_to)
               .maybeSingle()
           : Promise.resolve({ data: null as { full_name: string | null } | null, error: null }),
+        // Any pending escalation approval for this conversation drives the
+        // red "needs manager decision" banner in the chat header.
+        supabase
+          .from("orders")
+          .select("id, created_at, escalation_reason, details")
+          .eq("conversation_id", id!)
+          .eq("type", "escalation")
+          .eq("status", "pending")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
       ]);
       if (msgsRes.error) throw msgsRes.error;
+
+      const esc = (escalationRes.data ?? null) as {
+        id: string;
+        created_at: string;
+        escalation_reason: string | null;
+        details: string | null;
+      } | null;
 
       return {
         conversation: {
@@ -205,13 +247,24 @@ export default function ConversationDetail() {
           is_mine: conv.assigned_to === teamMemberId,
         },
         messages: (msgsRes.data ?? []) as Msg[],
+        pendingEscalation: esc
+          ? {
+              id: esc.id,
+              created_at: esc.created_at,
+              reason_code: esc.escalation_reason,
+              message: esc.details,
+            }
+          : null,
       };
     },
   });
 
   const conv = query.data?.conversation;
   const messages = query.data?.messages ?? [];
+  const pendingEscalation = query.data?.pendingEscalation ?? null;
 
+  // Realtime: append new messages and apply twilio_status transitions
+  // directly to the cache so read-receipt ticks update without a refetch.
   useEffect(() => {
     if (!id) return;
     const ch = supabase
@@ -224,8 +277,33 @@ export default function ConversationDetail() {
           table: "messages",
           filter: `conversation_id=eq.${id}`,
         },
-        () => {
-          qc.invalidateQueries({ queryKey });
+        (payload) => {
+          const msg = payload.new as Msg;
+          qc.setQueryData<ConvPayload>(queryKey, (prev) => {
+            if (!prev) return prev;
+            if (prev.messages.some((m) => m.id === msg.id)) return prev;
+            return { ...prev, messages: [...prev.messages, msg] };
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${id}`,
+        },
+        (payload) => {
+          const msg = payload.new as Msg;
+          qc.setQueryData<ConvPayload>(queryKey, (prev) => {
+            if (!prev) return prev;
+            const idx = prev.messages.findIndex((m) => m.id === msg.id);
+            if (idx === -1) return prev;
+            const next = prev.messages.slice();
+            next[idx] = { ...next[idx], ...msg };
+            return { ...prev, messages: next };
+          });
         }
       )
       .on(
@@ -236,21 +314,155 @@ export default function ConversationDetail() {
           table: "conversations",
           filter: `id=eq.${id}`,
         },
-        () => {
-          qc.invalidateQueries({ queryKey });
+        (payload) => {
+          const row = payload.new as ConvRow;
+          qc.setQueryData<ConvPayload>(queryKey, (prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              conversation: {
+                ...prev.conversation,
+                ...row,
+                is_mine: row.assigned_to === teamMemberId,
+              },
+            };
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+          filter: `conversation_id=eq.${id}`,
+        },
+        (payload) => {
+          // New escalation inserted, or status flipped to approved/resolved.
+          // Patch the banner without a full refetch.
+          qc.setQueryData<ConvPayload>(queryKey, (prev) => {
+            if (!prev) return prev;
+            const row = payload.new as {
+              id?: string;
+              type?: string;
+              status?: string;
+              created_at?: string;
+              escalation_reason?: string | null;
+              details?: string | null;
+            } | null;
+            const isPendingEscalation =
+              row?.type === "escalation" && row?.status === "pending";
+            if (isPendingEscalation && row?.id && row.created_at) {
+              return {
+                ...prev,
+                pendingEscalation: {
+                  id: row.id,
+                  created_at: row.created_at,
+                  reason_code: row.escalation_reason ?? null,
+                  message: row.details ?? null,
+                },
+              };
+            }
+            // Any other transition (resolved, dismissed, replied) clears the
+            // banner if it referred to this order.
+            if (
+              prev.pendingEscalation &&
+              (payload.old as { id?: string } | null)?.id ===
+                prev.pendingEscalation.id
+            ) {
+              return { ...prev, pendingEscalation: null };
+            }
+            return prev;
+          });
         }
       )
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [id, qc, queryKey]);
+  }, [id, qc, queryKey, teamMemberId]);
 
+  // Initial jump-to-bottom on first load. For subsequent messages we rely on
+  // FlatList's onContentSizeChange, which only re-pins when the user is
+  // already at the bottom (so history-scrollers aren't yanked around).
+  const didInitialScrollRef = useRef(false);
   useEffect(() => {
-    if (messages.length > 0) {
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
+    if (!didInitialScrollRef.current && messages.length > 0) {
+      didInitialScrollRef.current = true;
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 50);
     }
   }, [messages.length]);
+
+  // --- Mark-as-read on scroll-to-bottom -----------------------------------
+  // We clear unread_count + bump last_read_at only when the user actually
+  // sees the bottom of the chat. The webhook keeps incrementing as new
+  // customer messages arrive; if another one lands while the user is still
+  // at the bottom, the next onMomentumScrollEnd / onContentSizeChange fires
+  // and we clear again.
+  //
+  // We guard against echoing a zero back to our own cache patcher (which
+  // would fight the realtime increment) by only writing when the cached
+  // value is > 0.
+  const markReadIfAtBottom = useCallback(
+    async (atBottom: boolean) => {
+      if (!id || !atBottom) return;
+      const cached = qc.getQueryData<ConvPayload>(queryKey);
+      const currentUnread = cached?.conversation.unread_count ?? 0;
+      if (currentUnread === 0) return;
+
+      // Optimistic local clear so the badge disappears immediately.
+      qc.setQueryData<ConvPayload>(queryKey, (prev) =>
+        prev
+          ? {
+              ...prev,
+              conversation: {
+                ...prev.conversation,
+                unread_count: 0,
+                last_read_at: new Date().toISOString(),
+              },
+            }
+          : prev
+      );
+      if (restaurantId) {
+        qc.setQueryData<
+          Array<{ id: string; unread_count: number } & Record<string, unknown>>
+        >(
+          ["inbox", restaurantId, teamMemberId],
+          (prev) =>
+            prev?.map((c) =>
+              c.id === id ? { ...c, unread_count: 0 } : c
+            ) as typeof prev
+        );
+      }
+
+      try {
+        await supabase
+          .from("conversations")
+          .update({
+            unread_count: 0,
+            last_read_at: new Date().toISOString(),
+          })
+          .eq("id", id);
+      } catch (err) {
+        console.warn("[chat] mark-read failed:", err);
+        // If the server call fails we just wait — the next scroll-to-bottom
+        // will retry, and the realtime stream will reconcile if another
+        // device/window owns this conversation.
+      }
+    },
+    [id, qc, queryKey, restaurantId, teamMemberId]
+  );
+
+  // Clear on mount once the cached conversation loads.
+  useEffect(() => {
+    if (!conv) return;
+    if (conv.unread_count > 0) {
+      // Defer until after initial scrollToEnd finishes.
+      const t = setTimeout(() => markReadIfAtBottom(true), 250);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [conv, markReadIfAtBottom]);
 
   const onClaim = useCallback(
     async (mode: "human" | "bot") => {
@@ -463,6 +675,7 @@ export default function ConversationDetail() {
             </View>
           </View>
         </View>
+        <EscalationBanner escalation={pendingEscalation} />
       </View>
 
       <KeyboardAvoidingView
@@ -475,6 +688,26 @@ export default function ConversationDetail() {
           keyExtractor={(m) => m.id}
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
+          onScroll={({ nativeEvent }) => {
+            const { contentOffset, contentSize, layoutMeasurement } =
+              nativeEvent;
+            const distanceFromBottom =
+              contentSize.height - layoutMeasurement.height - contentOffset.y;
+            const atBottom = distanceFromBottom <= 40;
+            atBottomRef.current = atBottom;
+            if (atBottom) void markReadIfAtBottom(true);
+          }}
+          scrollEventThrottle={200}
+          onContentSizeChange={() => {
+            // A new message pushed content height. If we were already at the
+            // bottom, re-pin + clear the freshly incremented unread counter.
+            // If the user is scrolled up reading older messages, leave them
+            // alone — the badge stays so they know a new message arrived.
+            if (atBottomRef.current) {
+              listRef.current?.scrollToEnd({ animated: true });
+              void markReadIfAtBottom(true);
+            }
+          }}
           renderItem={({ item, index }) => {
             const prev = messages[index - 1];
             const showDate =
@@ -749,16 +982,106 @@ function MessageBubble({ message }: { message: Msg }) {
         >
           {message.content}
         </Text>
-        <Text
-          className={`mt-1 text-left text-[11px] ${
-            isCustomer ? "text-stone-400" : "text-emerald-50"
-          }`}
-        >
-          {format(new Date(message.created_at), "HH:mm")}
-        </Text>
+        <View className="mt-1 flex-row-reverse items-center gap-1.5">
+          <Text
+            className={`text-[11px] ${
+              isCustomer ? "text-stone-400" : "text-emerald-50"
+            }`}
+          >
+            {format(new Date(message.created_at), "HH:mm")}
+          </Text>
+          {!isCustomer ? <DeliveryTicks status={message.twilio_status} /> : null}
+        </View>
       </View>
     </View>
   );
+}
+
+// Red banner in the chat header when a pending escalation/approval exists for
+// this conversation. Lets the owner see at a glance that their intervention is
+// required — the approvals tab is still the place to act, but the signal here
+// means owners don't have to cross-reference screens.
+function EscalationBanner({
+  escalation,
+}: {
+  escalation: PendingEscalation | null;
+}) {
+  if (!escalation) return null;
+  const reasonLabel = escalationReasonLabel(escalation.reason_code);
+  const tone = escalationReasonTone(escalation.reason_code);
+  const toneBg =
+    tone === "danger" ? "bg-red-50" : tone === "warn" ? "bg-amber-50" : "bg-indigo-50";
+  const toneBorder =
+    tone === "danger"
+      ? "border-red-200"
+      : tone === "warn"
+      ? "border-amber-200"
+      : "border-indigo-200";
+  const toneFg =
+    tone === "danger"
+      ? "text-red-900"
+      : tone === "warn"
+      ? "text-amber-900"
+      : "text-indigo-900";
+  const toneIcon =
+    tone === "danger" ? "#991B1B" : tone === "warn" ? "#B45309" : "#3730A3";
+  const ageLabel = formatDistanceToNowLocal(escalation.created_at);
+  return (
+    <View className={`mt-2 rounded-lg border px-3 py-2 ${toneBg} ${toneBorder}`}>
+      <View className="flex-row-reverse items-start gap-2">
+        <Ionicons name="shield-checkmark" size={18} color={toneIcon} />
+        <View className="flex-1">
+          <View className="flex-row-reverse flex-wrap items-center gap-2">
+            <Text className={`text-right text-sm font-semibold ${toneFg}`}>
+              طلب تصعيد بانتظار قرارك
+            </Text>
+            <Text
+              className={`rounded-lg px-2 py-0.5 text-[11px] font-semibold ${toneBg} ${toneFg}`}
+            >
+              {reasonLabel}
+            </Text>
+            <Text className="text-[11px] text-stone-500">{ageLabel}</Text>
+          </View>
+          {escalation.message ? (
+            <Text
+              numberOfLines={2}
+              className="mt-1 text-right text-xs leading-5 text-stone-700"
+              selectable
+            >
+              {escalation.message}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function formatDistanceToNowLocal(iso: string): string {
+  return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: ar });
+}
+
+// WhatsApp-style delivery ticks for agent-sent messages.
+//   queued/sending → clock icon
+//   sent           → single ✓
+//   delivered      → double ✓✓ (light)
+//   read           → double ✓✓ (sky blue, matches WA)
+//   failed         → red warning triangle
+function DeliveryTicks({ status }: { status: TwilioStatus }) {
+  if (status === "failed") {
+    return <Ionicons name="alert-circle" size={13} color="#FCA5A5" />;
+  }
+  if (status === "read") {
+    return <Ionicons name="checkmark-done" size={14} color="#7DD3FC" />;
+  }
+  if (status === "delivered") {
+    return <Ionicons name="checkmark-done" size={14} color="#D1FAE5" />;
+  }
+  if (status === "sent") {
+    return <Ionicons name="checkmark" size={13} color="#D1FAE5" />;
+  }
+  // queued, sending, null → pending
+  return <Ionicons name="time-outline" size={12} color="#A7F3D0" />;
 }
 
 function Footer({
@@ -799,16 +1122,16 @@ function Footer({
 }) {
   if (mode === "unassigned") {
     return (
-      <View className="border-t border-gray-200 bg-white px-3 pb-4 pt-3">
+      <View className="border-t border-stone-200 bg-[#FFFDF8] px-3 pb-4 pt-3">
         <View className="mb-3 flex-row-reverse items-center gap-2">
           <View className="h-9 w-9 items-center justify-center rounded-lg bg-red-50">
-            <Ionicons name="hand-left-outline" size={18} color="#B91C1C" />
+            <Ionicons name="hand-left-outline" size={18} color={managerColors.danger} />
           </View>
           <View className="flex-1">
-            <Text className="text-right text-sm font-bold text-gray-950">
+            <Text className="text-right text-sm font-bold text-[#151515]">
               المحادثة غير مستلمة
             </Text>
-            <Text className="mt-0.5 text-right text-xs text-gray-500">
+            <Text className="mt-0.5 text-right text-xs text-stone-500">
               اختاري جهة الاستلام قبل الرد على العميل.
             </Text>
           </View>
@@ -817,7 +1140,8 @@ function Footer({
           <Pressable
             onPress={() => onClaim("human")}
             disabled={claiming !== null}
-            className="flex-1 items-center rounded-lg bg-emerald-600 py-3.5"
+            className="flex-1 items-center rounded-lg bg-[#128C5B] py-3.5"
+            style={premiumShadow}
           >
             {claiming === "human" ? (
               <ActivityIndicator color="#fff" />
@@ -845,24 +1169,24 @@ function Footer({
     const canSend = !!pendingFile || text.trim().length > 0;
     const isImage = pendingFile?.type.startsWith("image/");
     return (
-      <View className="border-t border-gray-200 bg-white px-3 pb-4 pt-3">
+      <View className="border-t border-stone-200 bg-[#FFFDF8] px-3 pb-4 pt-3">
         {expired && (
           <View className="mb-2 flex-row-reverse items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-            <Ionicons name="warning-outline" size={17} color="#B45309" />
+            <Ionicons name="warning-outline" size={17} color={managerColors.warning} />
             <Text className="flex-1 text-right text-xs leading-5 text-amber-800">
               انتهت نافذة الرد المجاني. تأكدي من سياسة قوالب واتساب قبل الإرسال.
             </Text>
           </View>
         )}
         {pendingFile && (
-          <View className="mb-2 flex-row-reverse items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+          <View className="mb-2 flex-row-reverse items-center gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
             <Ionicons
               name={isImage ? "image-outline" : "document-outline"}
               size={18}
-              color="#374151"
+              color={managerColors.muted}
             />
             <Text
-              className="flex-1 text-right text-xs text-gray-700"
+              className="flex-1 text-right text-xs text-stone-700"
               numberOfLines={1}
             >
               {pendingFile.name}
@@ -872,7 +1196,7 @@ function Footer({
               disabled={sending}
               hitSlop={8}
             >
-              <Ionicons name="close-circle" size={18} color="#6B7280" />
+              <Ionicons name="close-circle" size={18} color={managerColors.muted} />
             </Pressable>
           </View>
         )}
@@ -881,39 +1205,41 @@ function Footer({
             onPress={onPickImage}
             disabled={sending || !!pendingFile}
             hitSlop={6}
-            className="h-11 w-11 items-center justify-center rounded-lg bg-gray-100"
+            className="h-11 w-11 items-center justify-center rounded-lg bg-stone-100"
           >
             <Ionicons
               name="image-outline"
               size={20}
-              color={sending || !!pendingFile ? "#9CA3AF" : "#374151"}
+              color={sending || !!pendingFile ? "#A8A29E" : managerColors.muted}
             />
           </Pressable>
           <Pressable
             onPress={onPickDocument}
             disabled={sending || !!pendingFile}
             hitSlop={6}
-            className="h-11 w-11 items-center justify-center rounded-lg bg-gray-100"
+            className="h-11 w-11 items-center justify-center rounded-lg bg-stone-100"
           >
             <Ionicons
               name="attach-outline"
               size={20}
-              color={sending || !!pendingFile ? "#9CA3AF" : "#374151"}
+              color={sending || !!pendingFile ? "#A8A29E" : managerColors.muted}
             />
           </Pressable>
           <TextInput
             value={text}
             onChangeText={setText}
             placeholder={pendingFile ? "أضيفي تعليقًا (اختياري)..." : "اكتبي ردك..."}
-            className="min-h-11 max-h-28 flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-right text-gray-950"
+            placeholderTextColor="#8A877F"
+            className="min-h-11 max-h-28 flex-1 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-right text-[#151515]"
             multiline
           />
           <Pressable
             onPress={onSend}
             disabled={sending || !canSend}
             className={`h-11 min-w-16 items-center justify-center rounded-lg px-4 ${
-              sending || !canSend ? "bg-gray-300" : "bg-emerald-600"
+              sending || !canSend ? "bg-stone-300" : "bg-[#128C5B]"
             }`}
+            style={!sending && canSend ? premiumShadow : undefined}
           >
             {sending ? (
               <ActivityIndicator color="#fff" />
@@ -930,16 +1256,16 @@ function Footer({
 
   if (mode === "bot") {
     return (
-      <View className="border-t border-gray-200 bg-white px-3 pb-4 pt-3">
+      <View className="border-t border-stone-200 bg-[#FFFDF8] px-3 pb-4 pt-3">
         <View className="mb-3 flex-row-reverse items-center gap-2">
           <View className="h-9 w-9 items-center justify-center rounded-lg bg-indigo-50">
-            <Ionicons name="hardware-chip-outline" size={18} color="#3730A3" />
+            <Ionicons name="hardware-chip-outline" size={18} color={managerColors.bot} />
           </View>
           <View className="flex-1">
-            <Text className="text-right text-sm font-bold text-gray-950">
+            <Text className="text-right text-sm font-bold text-[#151515]">
               البوت يدير المحادثة
             </Text>
-            <Text className="mt-0.5 text-right text-xs text-gray-500">
+            <Text className="mt-0.5 text-right text-xs text-stone-500">
               استلميها يدويًا إذا احتاج العميل متابعة بشرية.
             </Text>
           </View>
@@ -947,7 +1273,8 @@ function Footer({
         <Pressable
           onPress={() => onClaim("human")}
           disabled={claiming !== null}
-          className="items-center rounded-lg bg-emerald-600 py-3.5"
+          className="items-center rounded-lg bg-[#128C5B] py-3.5"
+          style={premiumShadow}
         >
           {claiming === "human" ? (
             <ActivityIndicator color="#fff" />
@@ -960,10 +1287,10 @@ function Footer({
   }
 
   return (
-    <View className="border-t border-gray-200 bg-white px-3 pb-4 pt-3">
-      <View className="flex-row-reverse items-center gap-2 rounded-lg bg-gray-50 px-3 py-3">
-        <Ionicons name="lock-closed-outline" size={18} color="#6B7280" />
-        <Text className="flex-1 text-right text-xs leading-5 text-gray-500">
+    <View className="border-t border-stone-200 bg-[#FFFDF8] px-3 pb-4 pt-3">
+      <View className="flex-row-reverse items-center gap-2 rounded-lg bg-stone-50 px-3 py-3">
+        <Ionicons name="lock-closed-outline" size={18} color={managerColors.muted} />
+        <Text className="flex-1 text-right text-xs leading-5 text-stone-500">
           هذه المحادثة مستلمة من موظف آخر. يمكنك المتابعة للقراءة فقط.
         </Text>
       </View>

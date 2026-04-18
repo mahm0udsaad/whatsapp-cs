@@ -295,6 +295,24 @@ export async function toggleAi(
   });
 }
 
+export interface WhatsAppHealth {
+  primary: {
+    phoneNumber: string | null;
+    provider: string;
+    assignmentStatus: string;
+    onboardingStatus: string;
+    lastError: string | null;
+    isHealthy: boolean;
+    label: string;
+    severity: "ok" | "warn" | "error";
+  } | null;
+  hasNumbers: boolean;
+}
+
+export async function getWhatsAppHealth(): Promise<WhatsAppHealth> {
+  return apiFetch(`/api/mobile/whatsapp/health`);
+}
+
 export interface OverviewSummary {
   unassignedCount: number;
   humanActiveCount: number;
@@ -367,7 +385,13 @@ export interface PendingApproval {
   type: string;
   status: string;
   created_at: string;
+  /** Actual customer message that triggered the escalation. */
+  message: string | null;
+  /** Machine category (e.g. "knowledge_gap"). Null for older rows. */
+  reasonCode: string | null;
+  /** Back-compat alias. Prefer `message`. */
   summary: string | null;
+  priority?: string | null;
 }
 
 export async function getApprovals(): Promise<PendingApproval[]> {

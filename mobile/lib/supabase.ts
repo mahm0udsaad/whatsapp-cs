@@ -43,6 +43,34 @@ export const supabase = createClient(url ?? "", anonKey ?? "", {
   },
 });
 
+// ---------------------------------------------------------------------------
+// Realtime JWT wiring
+//
+// On a cold launch, the Realtime websocket can hand-shake with the anon key
+// before the persisted session finishes hydrating. Every `postgres_changes`
+// event then silently fails RLS and the UI looks broken ("needs pull to
+// refresh"). We push the access token into the realtime socket as soon as we
+// have one — at boot, and on every auth state change (TOKEN_REFRESHED,
+// SIGNED_IN, SIGNED_OUT).
+// ---------------------------------------------------------------------------
+
+supabase.auth
+  .getSession()
+  .then(({ data }) => {
+    const token = data.session?.access_token ?? null;
+    if (token) supabase.realtime.setAuth(token);
+  })
+  .catch(() => {
+    // Ignore — surface is handled by the auth screen.
+  });
+
+supabase.auth.onAuthStateChange((_event, session) => {
+  const token = session?.access_token ?? null;
+  if (token) {
+    supabase.realtime.setAuth(token);
+  }
+});
+
 export type TeamMemberRow = {
   id: string;
   restaurant_id: string;

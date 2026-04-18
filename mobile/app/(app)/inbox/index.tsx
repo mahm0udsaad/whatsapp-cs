@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
@@ -33,6 +34,31 @@ import {
 } from "../../../components/manager-ui";
 
 type Filter = "all" | "unassigned" | "mine" | "bot" | "expired";
+type DateRange = "any" | "today" | "week" | "month";
+
+const DATE_RANGES: { key: DateRange; label: string }[] = [
+  { key: "any", label: "كل الفترات" },
+  { key: "today", label: "اليوم" },
+  { key: "week", label: "آخر 7 أيام" },
+  { key: "month", label: "آخر 30 يوم" },
+];
+
+function rangeStartMs(range: DateRange): number {
+  if (range === "any") return 0;
+  const now = Date.now();
+  if (range === "today") {
+    const d = new Date(now);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }
+  if (range === "week") return now - 7 * 24 * 60 * 60 * 1000;
+  // month
+  return now - 30 * 24 * 60 * 60 * 1000;
+}
+
+function normalizeSearch(v: string) {
+  return v.trim().toLowerCase();
+}
 
 type ConversationRow = {
   id: string;
@@ -43,6 +69,7 @@ type ConversationRow = {
   last_inbound_at: string | null;
   handler_mode: "unassigned" | "human" | "bot";
   assigned_to: string | null;
+  unread_count: number;
 };
 
 type ListItem = ConversationRow & {
@@ -103,6 +130,8 @@ export default function InboxScreen() {
     return "all";
   }, [searchParams.filter]);
   const [filter, setFilter] = useState<Filter>(initialFilter);
+  const [dateRange, setDateRange] = useState<DateRange>("any");
+  const [search, setSearch] = useState("");
   useEffect(() => {
     setFilter(initialFilter);
   }, [initialFilter]);
@@ -141,7 +170,7 @@ export default function InboxScreen() {
       const { data, error } = await supabase
         .from("conversations")
         .select(
-          "id, customer_name, customer_phone, status, last_message_at, last_inbound_at, handler_mode, assigned_to"
+          "id, customer_name, customer_phone, status, last_message_at, last_inbound_at, handler_mode, assigned_to, unread_count"
         )
         .eq("restaurant_id", restaurantId)
         .order("last_message_at", { ascending: false })
@@ -212,27 +241,118 @@ export default function InboxScreen() {
     },
   });
 
+  // Realtime: patch the inbox cache in place instead of refetching the whole
+  // list. On INSERT we prepend; on UPDATE we replace + resort by
+  // last_message_at so a new-inbound row jumps to the top instantly. Falls
+  // back to the 20s refetchInterval if the socket drops.
   useEffect(() => {
     if (!restaurantId) return;
+    const inboxKey = ["inbox", restaurantId, teamMemberId];
     const ch = supabase
       .channel(`inbox-conv:${restaurantId}`)
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "conversations",
           filter: `restaurant_id=eq.${restaurantId}`,
         },
-        () => {
-          qc.invalidateQueries({ queryKey: ["inbox", restaurantId] });
+        (payload) => {
+          const row = payload.new as ConversationRow;
+          qc.setQueryData<ListItem[]>(inboxKey, (prev) => {
+            if (!prev) return prev;
+            if (prev.some((c) => c.id === row.id)) return prev;
+            const next: ListItem = {
+              ...row,
+              preview: null,
+              assignee_name: null,
+              is_expired: isExpired(row.last_inbound_at),
+              is_mine: row.assigned_to === teamMemberId,
+            };
+            return [next, ...prev];
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "conversations",
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        (payload) => {
+          const row = payload.new as ConversationRow;
+          qc.setQueryData<ListItem[]>(inboxKey, (prev) => {
+            if (!prev) return prev;
+            const idx = prev.findIndex((c) => c.id === row.id);
+            if (idx === -1) {
+              // Unknown row — fall back to a gentle refetch so we pick up
+              // anything the INSERT handler missed (e.g. subscription replay).
+              qc.invalidateQueries({ queryKey: inboxKey });
+              return prev;
+            }
+            const merged: ListItem = {
+              ...prev[idx],
+              ...row,
+              is_expired: isExpired(row.last_inbound_at),
+              is_mine: row.assigned_to === teamMemberId,
+            };
+            const rest = prev.filter((_, i) => i !== idx);
+            const next = [merged, ...rest].sort(
+              (a, b) =>
+                new Date(b.last_message_at).getTime() -
+                new Date(a.last_message_at).getTime()
+            );
+            return next;
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          // We can't filter by restaurant_id on the messages table directly
+          // (conversation_id is the tenant key), so the channel sees every
+          // insert in the project. That's OK for a small-to-mid tenant — we
+          // guard the cache write below by checking the conversation is in
+          // this user's inbox.
+          filter: `role=eq.customer`,
+        },
+        (payload) => {
+          const msg = payload.new as {
+            conversation_id: string;
+            content: string | null;
+            created_at: string;
+          };
+          qc.setQueryData<ListItem[]>(inboxKey, (prev) => {
+            if (!prev) return prev;
+            const idx = prev.findIndex((c) => c.id === msg.conversation_id);
+            if (idx === -1) return prev;
+            const merged: ListItem = {
+              ...prev[idx],
+              preview: msg.content ?? prev[idx].preview,
+              last_message_at: msg.created_at,
+              last_inbound_at: msg.created_at,
+              is_expired: false,
+              // Optimistically bump — the DB trigger does the same on the
+              // server. If the conversation is currently open, the chat
+              // screen's mark-read will zero it out on scroll-to-bottom.
+              unread_count: (prev[idx].unread_count ?? 0) + 1,
+            };
+            const rest = prev.filter((_, i) => i !== idx);
+            return [merged, ...rest];
+          });
         }
       )
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [restaurantId, qc]);
+  }, [restaurantId, teamMemberId, qc]);
 
   const allItems = query.data ?? EMPTY_ITEMS;
 
@@ -253,16 +373,30 @@ export default function InboxScreen() {
     stats.unassigned > 0 ? "unassigned" : stats.expired > 0 ? "expired" : "mine";
 
   const items = useMemo(() => {
-    if (filter === "unassigned") {
-      return allItems.filter((item) => item.handler_mode === "unassigned");
-    }
-    if (filter === "mine") return allItems.filter((item) => item.is_mine);
-    if (filter === "bot") {
-      return allItems.filter((item) => item.handler_mode === "bot");
-    }
-    if (filter === "expired") return allItems.filter((item) => item.is_expired);
-    return allItems;
-  }, [allItems, filter]);
+    const minTs = rangeStartMs(dateRange);
+    const q = normalizeSearch(search);
+    return allItems.filter((item) => {
+      // Primary bucket filter
+      if (filter === "unassigned" && item.handler_mode !== "unassigned")
+        return false;
+      if (filter === "mine" && !item.is_mine) return false;
+      if (filter === "bot" && item.handler_mode !== "bot") return false;
+      if (filter === "expired" && !item.is_expired) return false;
+      // Date range — apply only when not 'any'.
+      if (minTs > 0) {
+        const ts = new Date(item.last_message_at).getTime();
+        if (ts < minTs) return false;
+      }
+      // Free-text search across name + phone + last preview.
+      if (q.length > 0) {
+        const hay = `${item.customer_name ?? ""} ${item.customer_phone} ${
+          item.preview ?? ""
+        }`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [allItems, filter, dateRange, search]);
 
   const header = useMemo(
     () => (
@@ -315,7 +449,7 @@ export default function InboxScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          className="pb-3"
+          className="pb-2"
           contentContainerStyle={{
             flexDirection: "row-reverse",
             gap: 8,
@@ -355,9 +489,69 @@ export default function InboxScreen() {
             );
           })}
         </ScrollView>
+
+        {/* Date range chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="pb-2"
+          contentContainerStyle={{
+            flexDirection: "row-reverse",
+            gap: 8,
+            paddingHorizontal: 12,
+          }}
+        >
+          {DATE_RANGES.map((r) => {
+            const active = dateRange === r.key;
+            return (
+              <Pressable
+                key={r.key}
+                onPress={() => setDateRange(r.key)}
+                className={`flex-row-reverse items-center gap-1.5 rounded-lg border px-3 py-2 ${
+                  active
+                    ? "border-emerald-700 bg-emerald-50"
+                    : "border-gray-200 bg-white"
+                }`}
+              >
+                <Ionicons
+                  name="calendar-outline"
+                  size={12}
+                  color={active ? "#065F46" : "#6B7280"}
+                />
+                <Text
+                  className={`text-xs font-semibold ${
+                    active ? "text-emerald-900" : "text-gray-700"
+                  }`}
+                >
+                  {r.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        {/* Search */}
+        <View className="px-4 pb-3">
+          <View className="flex-row-reverse items-center gap-2 rounded-lg border border-stone-200 bg-white px-3">
+            <Ionicons name="search" size={16} color="#6B7280" />
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="بحث بالاسم أو الرقم أو نص الرسالة..."
+              placeholderTextColor="#9CA3AF"
+              className="flex-1 py-2.5 text-right text-sm text-[#151515]"
+              returnKeyType="search"
+            />
+            {search.length > 0 ? (
+              <Pressable onPress={() => setSearch("")} hitSlop={8}>
+                <Ionicons name="close-circle" size={16} color="#9CA3AF" />
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
       </View>
     ),
-    [attentionCount, filter, leadFilter, stats]
+    [attentionCount, filter, leadFilter, stats, dateRange, search]
   );
 
   const openConversation = useCallback((id: string) => {
@@ -385,11 +579,15 @@ export default function InboxScreen() {
               <Text className="text-center text-base font-semibold text-gray-700">
                 {query.isError
                   ? "تعذّر تحميل المحادثات"
+                  : search.length > 0 || dateRange !== "any"
+                  ? "لا توجد نتائج لهذا البحث"
                   : "لا توجد محادثات هنا"}
               </Text>
               <Text className="mt-2 text-center text-sm text-gray-500">
                 {query.isError
                   ? "تحققي من الاتصال ثم اسحبي للتحديث."
+                  : search.length > 0 || dateRange !== "any"
+                  ? "جرّبي كلمة بحث مختلفة أو وسّعي الفترة الزمنية."
                   : "سيظهر أي طلب يحتاج متابعة في هذه القائمة."}
               </Text>
             </View>
@@ -434,12 +632,21 @@ export default function InboxScreen() {
                   </Text>
                 </View>
                 <View className="items-start gap-2">
-                  <Text className="text-xs text-stone-500" numberOfLines={1}>
-                    {formatDistanceToNow(new Date(item.last_message_at), {
-                      addSuffix: true,
-                      locale: ar,
-                    })}
-                  </Text>
+                  <View className="flex-row-reverse items-center gap-2">
+                    <Text className="text-xs text-stone-500" numberOfLines={1}>
+                      {formatDistanceToNow(new Date(item.last_message_at), {
+                        addSuffix: true,
+                        locale: ar,
+                      })}
+                    </Text>
+                    {item.unread_count > 0 ? (
+                      <View className="min-w-5 items-center justify-center rounded-full bg-[#128C5B] px-1.5 py-0.5">
+                        <Text className="text-[11px] font-bold text-white">
+                          {item.unread_count > 99 ? "99+" : item.unread_count}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
                   {manager ? (
                     <Pressable
                       onPress={(event) => {

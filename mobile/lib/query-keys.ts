@@ -25,4 +25,6 @@ export const qk = {
     ["manager", "kpis-today", restaurantId] as const,
   approvals: (restaurantId: string) =>
     ["manager", "approvals", restaurantId] as const,
+  whatsappHealth: (restaurantId: string) =>
+    ["manager", "whatsapp-health", restaurantId] as const,
 };
