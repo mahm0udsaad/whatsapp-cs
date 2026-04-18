@@ -295,6 +295,67 @@ export async function toggleAi(
   });
 }
 
+// ---- Labels & archive ------------------------------------------------------
+
+export type LabelColor =
+  | "slate"
+  | "red"
+  | "amber"
+  | "emerald"
+  | "blue"
+  | "indigo"
+  | "fuchsia"
+  | "rose";
+
+export interface ConversationLabel {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  color: LabelColor;
+  created_at: string;
+}
+
+export async function listLabels(): Promise<ConversationLabel[]> {
+  return apiFetch(`/api/mobile/labels`);
+}
+
+export async function createLabel(input: {
+  restaurantId: string;
+  name: string;
+  color?: LabelColor;
+}): Promise<ConversationLabel> {
+  return apiFetch(`/api/mobile/labels`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function setConversationLabels(
+  conversationId: string,
+  labelIds: string[]
+): Promise<{ labelIds: string[] }> {
+  return apiFetch(
+    `/api/mobile/inbox/conversations/${conversationId}/labels`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ labelIds }),
+    }
+  );
+}
+
+export async function setConversationArchived(
+  conversationId: string,
+  archived: boolean
+): Promise<{ id: string; archived_at: string | null }> {
+  return apiFetch(
+    `/api/mobile/inbox/conversations/${conversationId}/archive`,
+    {
+      method: "POST",
+      body: JSON.stringify({ archived }),
+    }
+  );
+}
+
 export interface WhatsAppHealth {
   primary: {
     phoneNumber: string | null;

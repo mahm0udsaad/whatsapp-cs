@@ -155,7 +155,7 @@ export default function OverviewScreen() {
 
   if (!restaurantId) {
     return (
-      <SafeAreaView className="flex-1 bg-[#F4F3EF]" edges={["bottom"]}>
+      <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["bottom"]}>
         <DashboardSkeleton />
       </SafeAreaView>
     );
@@ -163,14 +163,14 @@ export default function OverviewScreen() {
 
   if (kpisQuery.isLoading && !kpis) {
     return (
-      <SafeAreaView className="flex-1 bg-[#F4F3EF]" edges={["bottom"]}>
+      <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["bottom"]}>
         <DashboardSkeleton />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F4F3EF]" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["bottom"]}>
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 12 }}
@@ -178,7 +178,7 @@ export default function OverviewScreen() {
           <RefreshControl refreshing={isRefreshing} onRefresh={refetchAll} />
         }
       >
-        <View className="rounded-lg bg-[#123D2E] p-5">
+        <View className="rounded-lg bg-[#052E26] p-5">
           <View className="flex-row-reverse items-start justify-between gap-4">
             <View className="flex-1">
               <Text className="text-right text-xs font-semibold text-emerald-300">
@@ -361,9 +361,9 @@ export default function OverviewScreen() {
               process.env.EXPO_PUBLIC_APP_BASE_URL ?? "";
             if (webUrl) Linking.openURL(`${webUrl}/dashboard`);
           }}
-          className="items-center rounded-lg border border-stone-200 bg-[#FFFDF8] py-3"
+          className="items-center rounded-lg border border-[#E6E8EC] bg-white py-3"
         >
-          <Text className="text-sm text-stone-700">فتح لوحة التحكم</Text>
+          <Text className="text-sm text-[#344054]">فتح لوحة التحكم</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -393,7 +393,7 @@ function WhatsAppHealthCard({
     return (
       <ManagerCard>
         <SectionHeader title="رقم واتساب" />
-        <View className="h-5 w-2/3 rounded-lg bg-stone-100" />
+        <View className="h-5 w-2/3 rounded-lg bg-[#F2F4F7]" />
       </ManagerCard>
     );
   }
@@ -414,7 +414,7 @@ function WhatsAppHealthCard({
           </View>
           <Ionicons name="chevron-back" size={18} color="#B45309" />
         </Pressable>
-        <Text className="mt-2 text-right text-xs text-stone-500">
+        <Text className="mt-2 text-right text-xs text-[#667085]">
           افتحي لوحة التحكم لإكمال الإعداد ومشاركة الرابط مع مزود واتساب.
         </Text>
       </ManagerCard>
@@ -455,7 +455,7 @@ function WhatsAppHealthCard({
               {p.label}
             </Text>
             {p.phoneNumber ? (
-              <Text className="mt-0.5 text-right text-xs text-stone-600" selectable>
+              <Text className="mt-0.5 text-right text-xs text-[#667085]" selectable>
                 {p.phoneNumber}
               </Text>
             ) : null}

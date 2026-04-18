@@ -17,13 +17,13 @@
       "channel": "preview",
       "ios": { "simulator": false },
       "env": {
-        "EXPO_PUBLIC_APP_BASE_URL": "https://staging.example.com"
+        "EXPO_PUBLIC_APP_BASE_URL": "https://whatsapp-cs.vercel.app"
       }
     },
     "production": {
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_APP_BASE_URL": "https://app.example.com"
+        "EXPO_PUBLIC_APP_BASE_URL": "https://whatsapp-cs.vercel.app"
       }
     }
   },

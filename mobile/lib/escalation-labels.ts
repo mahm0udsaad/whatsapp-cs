@@ -1,7 +1,8 @@
 // Human-friendly Arabic labels + tone for the machine-readable
-// `orders.escalation_reason` codes. Keep this list in sync with whatever the
-// AI orchestrator / ai-reply-jobs emits. Unknown codes fall back to a neutral
-// "تصعيد" so the UI never shows raw snake_case to the owner.
+// `orders.escalation_reason` codes. These codes are emitted by
+// src/lib/escalation-classifier.ts — keep the keys in sync with that file.
+// Unknown codes fall back to a neutral "تصعيد" so the UI never shows raw
+// snake_case to the owner.
 
 export type EscalationTone = "info" | "warn" | "danger";
 
@@ -11,11 +12,16 @@ interface Entry {
 }
 
 const DICT: Record<string, Entry> = {
+  // Emitted by the classifier today
+  customer_asked_human: { label: "طلب التحدث مع موظف", tone: "danger" },
+  sensitive: { label: "محادثة حساسة", tone: "danger" },
   knowledge_gap: { label: "فجوة معرفية", tone: "warn" },
+  // Emitted by other escalation paths (SLA sweep, AI orchestrator direct calls)
+  sla_breach: { label: "تأخر الرد", tone: "warn" },
+  // Legacy / alternate synonyms kept for backwards compat with historical rows.
   human_request: { label: "طلب التحدث مع موظف", tone: "danger" },
   complaint: { label: "شكوى", tone: "danger" },
   refund_request: { label: "طلب استرداد", tone: "danger" },
-  sla_breach: { label: "تأخر الرد", tone: "warn" },
   policy_required: { label: "يحتاج قرار إداري", tone: "info" },
   safety: { label: "محتوى حساس", tone: "danger" },
 };

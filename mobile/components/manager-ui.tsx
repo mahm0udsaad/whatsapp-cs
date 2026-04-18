@@ -5,27 +5,31 @@ import { Pressable, Text, View } from "react-native";
 type Tone = "neutral" | "success" | "warning" | "danger" | "info";
 
 export const managerColors = {
-  bg: "#F4F3EF",
-  surface: "#FFFDF8",
-  surfaceMuted: "#F8F7F2",
-  ink: "#151515",
-  muted: "#6B6A63",
-  border: "#E5E1D8",
-  brand: "#128C5B",
-  brandDark: "#0B3D2E",
-  bot: "#34308A",
-  danger: "#B42318",
-  warning: "#A15C07",
+  bg: "#F6F7F9",
+  surface: "#FFFFFF",
+  surfaceMuted: "#F1F5F3",
+  ink: "#0B0F13",
+  muted: "#667085",
+  border: "#E6E8EC",
+  brand: "#00A884",
+  brandDark: "#052E26",
+  bot: "#4F46E5",
+  danger: "#E11D48",
+  warning: "#D97706",
 };
 
 export const premiumShadow = {
-  boxShadow: "0 10px 24px rgba(21, 21, 21, 0.07)",
+  boxShadow: "0 12px 30px rgba(15, 23, 42, 0.08)",
+} as const;
+
+export const softShadow = {
+  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.06)",
 } as const;
 
 const toneClasses: Record<Tone, { card: string; text: string; icon: string }> = {
   neutral: {
-    card: "border-stone-200 bg-[#FFFDF8]",
-    text: "text-[#151515]",
+    card: "border-[#E6E8EC] bg-white",
+    text: "text-[#0B0F13]",
     icon: managerColors.muted,
   },
   success: {
@@ -59,8 +63,8 @@ export function ManagerCard({
 }) {
   return (
     <View
-      className={`rounded-lg border border-stone-200 bg-[#FFFDF8] p-4 ${className}`}
-      style={premiumShadow}
+      className={`rounded-lg border border-[#E6E8EC] bg-white p-4 ${className}`}
+      style={softShadow}
     >
       {children}
     </View>
@@ -89,7 +93,7 @@ export function ManagerMetric({
         {value}
       </Text>
       <Text
-        className="mt-1 text-right text-xs font-medium text-stone-600"
+        className="mt-1 text-right text-xs font-medium text-[#667085]"
         numberOfLines={1}
         adjustsFontSizeToFit
       >
@@ -121,14 +125,14 @@ export function PriorityAction({
       className={`flex-row-reverse items-center gap-3 rounded-lg border p-3 ${classes.card}`}
       style={tone === "danger" ? premiumShadow : undefined}
     >
-      <View className="h-10 w-10 items-center justify-center rounded-lg bg-white/80">
+      <View className="h-11 w-11 items-center justify-center rounded-lg bg-white/90">
         <Ionicons name={icon} size={21} color={classes.icon} />
       </View>
       <View className="flex-1">
         <Text className={`text-right text-sm font-bold ${classes.text}`}>
           {title}
         </Text>
-        <Text className="mt-0.5 text-right text-xs leading-5 text-stone-600">
+        <Text className="mt-0.5 text-right text-xs leading-5 text-[#667085]">
           {description}
         </Text>
       </View>
@@ -163,10 +167,10 @@ export function SectionHeader({
 }) {
   return (
     <View className="flex-row-reverse items-center justify-between">
-      <Text className="text-right text-base font-bold text-[#151515]">{title}</Text>
+      <Text className="text-right text-base font-bold text-[#0B0F13]">{title}</Text>
       {actionLabel && onActionPress ? (
         <Pressable onPress={onActionPress} hitSlop={8}>
-          <Text className="text-sm font-semibold text-[#128C5B]">
+          <Text className="text-sm font-semibold text-[#00A884]">
             {actionLabel}
           </Text>
         </Pressable>
@@ -176,7 +180,7 @@ export function SectionHeader({
 }
 
 export function SkeletonBlock({ className = "" }: { className?: string }) {
-  return <View className={`bg-stone-200/80 ${className}`} />;
+  return <View className={`bg-slate-200/80 ${className}`} />;
 }
 
 export function CardSkeleton({
@@ -187,7 +191,7 @@ export function CardSkeleton({
   className?: string;
 }) {
   return (
-    <View className={`rounded-lg border border-stone-200 bg-[#FFFDF8] p-4 ${className}`}>
+    <View className={`rounded-lg border border-[#E6E8EC] bg-white p-4 ${className}`}>
       <View className="items-end gap-2">
         <SkeletonBlock className="h-4 w-32 rounded-lg" />
         {Array.from({ length: rows }).map((_, index) => (
@@ -213,7 +217,7 @@ export function ListSkeleton({
       {Array.from({ length: count }).map((_, index) => (
         <View
           key={index}
-          className="mb-2 flex-row-reverse items-center gap-3 rounded-lg border border-stone-200 bg-[#FFFDF8] p-4"
+          className="mb-2 flex-row-reverse items-center gap-3 rounded-lg border border-[#E6E8EC] bg-white p-4"
         >
           {showAvatar ? <SkeletonBlock className="h-11 w-11 rounded-full" /> : null}
           <View className="flex-1 items-end gap-2">

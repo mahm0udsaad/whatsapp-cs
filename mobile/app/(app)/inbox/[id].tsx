@@ -24,12 +24,17 @@ import {
   asArray,
   claimConversation,
   getTeamRoster,
+  listLabels,
   reassignConversation,
   replyToConversation,
+  setConversationArchived,
+  setConversationLabels,
   uploadConversationMedia,
+  type ConversationLabel,
   type ReplyAttachment,
   type TeamMemberRosterRow,
 } from "../../../lib/api";
+import { labelChipClasses } from "../../../lib/label-colors";
 import { supabase } from "../../../lib/supabase";
 import { useSessionStore } from "../../../lib/session-store";
 import { isManager } from "../../../lib/roles";
@@ -38,11 +43,13 @@ import {
   SkeletonBlock,
   managerColors,
   premiumShadow,
+  softShadow,
 } from "../../../components/manager-ui";
 import {
   escalationReasonLabel,
   escalationReasonTone,
 } from "../../../lib/escalation-labels";
+import { setActiveConv } from "../../../lib/active-conv";
 
 type TwilioStatus =
   | "queued"
@@ -59,7 +66,7 @@ type Msg = {
   content: string;
   message_type: string;
   created_at: string;
-  twilio_status: TwilioStatus;
+  delivery_status: TwilioStatus;
 };
 
 type ConvRow = {
@@ -70,6 +77,7 @@ type ConvRow = {
   handler_mode: "unassigned" | "human" | "bot";
   assigned_to: string | null;
   unread_count: number;
+  archived_at: string | null;
 };
 
 type PendingEscalation = {
@@ -155,10 +163,14 @@ export default function ConversationDetail() {
   const restaurantId = member?.restaurant_id ?? "";
   const listRef = useRef<FlatList<Msg>>(null);
   const atBottomRef = useRef(true);
+  const didInitialScrollRef = useRef(false);
+  const listLaidOutRef = useRef(false);
+  const contentReadyRef = useRef(false);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [claiming, setClaiming] = useState<"human" | "bot" | null>(null);
   const [reassignOpen, setReassignOpen] = useState(false);
+  const [labelsOpen, setLabelsOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<
     | { uri: string; name: string; type: string; sizeBytes?: number }
     | null
@@ -178,14 +190,87 @@ export default function ConversationDetail() {
       forceBot?: boolean;
       unassign?: boolean;
     }) => reassignConversation(input),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["conv", id] });
-      qc.invalidateQueries({ queryKey: ["inbox", restaurantId] });
-      qc.invalidateQueries({ queryKey: qk.kpisToday(restaurantId) });
+    // Optimistic: update the cached conversation + inbox row immediately so
+    // the modal dismisses to a screen that already reflects the new state.
+    // We snapshot the previous value and return it via the mutation context
+    // so onError can roll back without extra fetches.
+    onMutate: async (input) => {
+      await qc.cancelQueries({ queryKey: ["conv", id] });
+      const prevConv = qc.getQueryData<ConvPayload>(["conv", id]);
+      const prevList = restaurantId
+        ? qc.getQueryData<
+            Array<
+              { id: string; handler_mode: string; assigned_to: string | null } & Record<
+                string,
+                unknown
+              >
+            >
+          >(["inbox", restaurantId, teamMemberId])
+        : null;
+
+      const nextMode: "unassigned" | "human" | "bot" = input.forceBot
+        ? "bot"
+        : input.unassign
+        ? "unassigned"
+        : "human";
+      const nextAssigned: string | null = input.forceBot
+        ? null
+        : input.unassign
+        ? null
+        : input.assignToTeamMemberId ?? null;
+
+      if (prevConv) {
+        qc.setQueryData<ConvPayload>(["conv", id], {
+          ...prevConv,
+          conversation: {
+            ...prevConv.conversation,
+            handler_mode: nextMode,
+            assigned_to: nextAssigned,
+            is_mine: nextAssigned === teamMemberId,
+            // `assignee_name` will be refreshed by the realtime UPDATE; clear
+            // it for bot/unassigned so the header chip reads correctly.
+            assignee_name:
+              nextMode === "human"
+                ? prevConv.conversation.assignee_name ?? null
+                : null,
+          },
+        });
+      }
+
+      if (restaurantId && prevList) {
+        qc.setQueryData(
+          ["inbox", restaurantId, teamMemberId],
+          prevList.map((c) =>
+            c.id === input.conversationId
+              ? { ...c, handler_mode: nextMode, assigned_to: nextAssigned }
+              : c
+          )
+        );
+      }
+
+      // Close the modal the moment the mutation starts — the server round
+      // trip will finish on its own.
       setReassignOpen(false);
+
+      return { prevConv, prevList };
     },
-    onError: (e: unknown) => {
+    onError: (e: unknown, _input, ctx) => {
+      // Restore the two caches we touched in onMutate.
+      if (ctx?.prevConv) {
+        qc.setQueryData<ConvPayload>(["conv", id], ctx.prevConv);
+      }
+      if (restaurantId && ctx?.prevList) {
+        qc.setQueryData(
+          ["inbox", restaurantId, teamMemberId],
+          ctx.prevList
+        );
+      }
       Alert.alert("خطأ", e instanceof Error ? e.message : "تعذّر التحويل");
+    },
+    onSettled: () => {
+      // Leave KPIs to the standard 20s cadence — the specific row patches
+      // above already cover the visible surfaces. Invalidating here would
+      // cause a second fetch for no user-visible gain.
     },
   });
 
@@ -198,7 +283,7 @@ export default function ConversationDetail() {
       const { data: conv, error: convErr } = await supabase
         .from("conversations")
         .select(
-          "id, customer_name, customer_phone, last_inbound_at, handler_mode, assigned_to, unread_count"
+          "id, customer_name, customer_phone, last_inbound_at, handler_mode, assigned_to, unread_count, archived_at"
         )
         .eq("id", id!)
         .maybeSingle();
@@ -208,7 +293,7 @@ export default function ConversationDetail() {
       const [msgsRes, assigneeRes, escalationRes] = await Promise.all([
         supabase
           .from("messages")
-          .select("id, role, content, message_type, created_at, twilio_status")
+          .select("id, role, content, message_type, created_at, delivery_status")
           .eq("conversation_id", id!)
           .order("created_at", { ascending: true })
           .limit(200),
@@ -263,7 +348,7 @@ export default function ConversationDetail() {
   const messages = query.data?.messages ?? [];
   const pendingEscalation = query.data?.pendingEscalation ?? null;
 
-  // Realtime: append new messages and apply twilio_status transitions
+  // Realtime: append new messages and apply delivery_status transitions
   // directly to the cache so read-receipt ticks update without a refetch.
   useEffect(() => {
     if (!id) return;
@@ -382,16 +467,51 @@ export default function ConversationDetail() {
     };
   }, [id, qc, queryKey, teamMemberId]);
 
-  // Initial jump-to-bottom on first load. For subsequent messages we rely on
-  // FlatList's onContentSizeChange, which only re-pins when the user is
-  // already at the bottom (so history-scrollers aren't yanked around).
-  const didInitialScrollRef = useRef(false);
+  // Track "this is the conversation the user is looking at right now" so the
+  // push notification handler can suppress the in-app banner for inbound
+  // messages on THIS conversation (the realtime cache-patcher already shows
+  // them — a banner on top would be noise).
   useEffect(() => {
-    if (!didInitialScrollRef.current && messages.length > 0) {
-      didInitialScrollRef.current = true;
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 50);
+    if (!id) return;
+    setActiveConv(id);
+    return () => setActiveConv(null);
+  }, [id]);
+
+  useEffect(() => {
+    didInitialScrollRef.current = false;
+    contentReadyRef.current = false;
+    atBottomRef.current = true;
+  }, [id]);
+
+  const scrollToLatestMessage = useCallback((animated: boolean) => {
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToEnd({ animated });
+      setTimeout(() => {
+        listRef.current?.scrollToEnd({ animated });
+      }, 80);
+    });
+  }, []);
+
+  // Initial jump-to-bottom on first load. Wait for both layout and content
+  // measurement; a timeout alone can fire before FlatList knows its height.
+  const tryInitialScrollToLatest = useCallback(() => {
+    if (
+      didInitialScrollRef.current ||
+      messages.length === 0 ||
+      !listLaidOutRef.current ||
+      !contentReadyRef.current
+    ) {
+      return false;
     }
-  }, [messages.length]);
+    didInitialScrollRef.current = true;
+    atBottomRef.current = true;
+    scrollToLatestMessage(false);
+    return true;
+  }, [messages.length, scrollToLatestMessage]);
+
+  useEffect(() => {
+    tryInitialScrollToLatest();
+  }, [tryInitialScrollToLatest]);
 
   // --- Mark-as-read on scroll-to-bottom -----------------------------------
   // We clear unread_count + bump last_read_at only when the user actually
@@ -425,7 +545,7 @@ export default function ConversationDetail() {
       );
       if (restaurantId) {
         qc.setQueryData<
-          Array<{ id: string; unread_count: number } & Record<string, unknown>>
+          ({ id: string; unread_count: number } & Record<string, unknown>)[]
         >(
           ["inbox", restaurantId, teamMemberId],
           (prev) =>
@@ -468,30 +588,120 @@ export default function ConversationDetail() {
     async (mode: "human" | "bot") => {
       if (!id) return;
       setClaiming(mode);
+
+      // Snapshot the previous conversation shape so we can roll back on
+      // failure. Flip handler_mode + assigned_to immediately so the Footer
+      // switches from "unassigned" / "bot" to the send composer (or vice
+      // versa) without waiting on the API.
+      const prev = qc.getQueryData<ConvPayload>(queryKey);
+      const prevConvRow = prev?.conversation ?? null;
+
+      qc.setQueryData<ConvPayload>(queryKey, (p) => {
+        if (!p) return p;
+        const next = {
+          ...p.conversation,
+          handler_mode: mode,
+          assigned_to: mode === "human" ? teamMemberId : null,
+          is_mine: mode === "human",
+        };
+        return { ...p, conversation: next };
+      });
+
+      // Also patch the inbox list row so the row colour / badge reflects the
+      // new state before the next refetch.
+      if (member?.restaurant_id) {
+        qc.setQueryData<
+          Array<{ id: string; handler_mode: string; assigned_to: string | null } & Record<string, unknown>>
+        >(
+          ["inbox", member.restaurant_id, teamMemberId],
+          (list) =>
+            list?.map((c) =>
+              c.id === id
+                ? {
+                    ...c,
+                    handler_mode: mode,
+                    assigned_to: mode === "human" ? teamMemberId : null,
+                  }
+                : c
+            ) as typeof list
+        );
+      }
+
       try {
         await claimConversation(id, mode);
-        qc.invalidateQueries({ queryKey });
-        if (member?.restaurant_id) {
-          qc.invalidateQueries({ queryKey: ["inbox", member.restaurant_id] });
-        }
+        // No invalidation — the realtime UPDATE subscription on
+        // conversations will reconcile any server-side diffs. Invalidating
+        // would cause a flicker as the fetch races the socket.
       } catch (e: unknown) {
+        // Roll back the conversation row we patched above.
+        if (prev && prevConvRow) {
+          qc.setQueryData<ConvPayload>(queryKey, (p) =>
+            p ? { ...p, conversation: prevConvRow } : p
+          );
+        }
+        if (member?.restaurant_id) {
+          qc.invalidateQueries({
+            queryKey: ["inbox", member.restaurant_id],
+          });
+        }
         const err = e as { message?: string };
         Alert.alert("تعذّر الاستلام", err?.message ?? "حاولي مرة أخرى");
       } finally {
         setClaiming(null);
       }
     },
-    [id, qc, queryKey, member?.restaurant_id]
+    [id, qc, queryKey, teamMemberId, member?.restaurant_id]
   );
 
   const onSend = useCallback(async () => {
     if (!id) return;
     const body = text.trim();
     if (!body && !pendingFile) return;
+
+    // --- Optimistic append ---------------------------------------------------
+    // Insert a placeholder message into the cache immediately so the bubble
+    // appears the instant the user taps send. Later:
+    //   - on success: replace the placeholder with the server's real row
+    //   - on failure: remove the placeholder and restore the input text
+    // The realtime INSERT handler dedupes by id, so the real row arriving
+    // from the socket won't double-render.
+    const tempId = `tmp:${Date.now()}`;
+    const hadText = body.length > 0;
+    const hadAttachment = !!pendingFile;
+    const optimisticMsg: Msg = {
+      id: tempId,
+      role: "agent",
+      // If the send has only an attachment and no caption, show a placeholder
+      // line so the bubble isn't empty. The server will replace it.
+      content: hadText
+        ? body
+        : pendingFile
+        ? pendingFile.type.startsWith("image/")
+          ? "📷 صورة"
+          : "📎 ملف"
+        : "",
+      message_type: pendingFile
+        ? pendingFile.type.startsWith("image/")
+          ? "image"
+          : "document"
+        : "text",
+      created_at: new Date().toISOString(),
+      delivery_status: "sending",
+    };
+
+    qc.setQueryData<ConvPayload>(queryKey, (prev) =>
+      prev ? { ...prev, messages: [...prev.messages, optimisticMsg] } : prev
+    );
+
+    // Clear input/attachment right away so the UX feels snappy. If the send
+    // fails we restore the text.
+    setText("");
+    setPendingFile(null);
     setSending(true);
+
     try {
       let attachment: ReplyAttachment | undefined;
-      if (pendingFile) {
+      if (hadAttachment && pendingFile) {
         setUploading(true);
         attachment = await uploadConversationMedia(id, {
           uri: pendingFile.uri,
@@ -500,13 +710,37 @@ export default function ConversationDetail() {
         });
         setUploading(false);
       }
-      await replyToConversation(id, body, attachment);
-      setText("");
-      setPendingFile(null);
-      qc.invalidateQueries({ queryKey });
+      const resp = (await replyToConversation(id, body, attachment)) as {
+        message?: Msg;
+      } | null;
+      const real = resp?.message ?? null;
+
+      qc.setQueryData<ConvPayload>(queryKey, (prev) => {
+        if (!prev) return prev;
+        const withoutTemp = prev.messages.filter((m) => m.id !== tempId);
+        if (real && !withoutTemp.some((m) => m.id === real.id)) {
+          return { ...prev, messages: [...withoutTemp, real] };
+        }
+        return { ...prev, messages: withoutTemp };
+      });
     } catch (e: unknown) {
+      // Roll back: drop the optimistic row, restore the typed text + file.
+      qc.setQueryData<ConvPayload>(queryKey, (prev) =>
+        prev
+          ? {
+              ...prev,
+              messages: prev.messages.filter((m) => m.id !== tempId),
+            }
+          : prev
+      );
+      if (hadText) setText(body);
+      // We can't restore the picker result (uri may be stale), so just warn
+      // the user the attachment was dropped.
       const err = e as { message?: string };
-      Alert.alert("تعذّر الإرسال", err?.message ?? "حاولي مرة أخرى");
+      Alert.alert(
+        "تعذّر الإرسال",
+        err?.message ?? "حاولي مرة أخرى"
+      );
     } finally {
       setSending(false);
       setUploading(false);
@@ -577,27 +811,30 @@ export default function ConversationDetail() {
   const expired = windowState.expired;
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F4F3EF]" edges={["top", "bottom"]}>
-      <View className="border-b border-stone-200 bg-[#FFFDF8] px-4 pb-3 pt-2">
-        <View className="flex-row-reverse items-center gap-3">
+    <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["top", "bottom"]}>
+      <View className="border-b border-[#E6E8EC] bg-white px-4 pb-3 pt-2">
+        <View
+          className="flex-row-reverse items-center gap-3 rounded-lg bg-[#052E26] px-3 py-3"
+          style={premiumShadow}
+        >
           <Pressable
             onPress={() => router.back()}
             hitSlop={8}
-            className="h-10 w-10 items-center justify-center rounded-lg bg-stone-100"
+            className="h-11 w-11 items-center justify-center rounded-lg bg-white/10"
           >
-            <Ionicons name="arrow-forward" size={20} color={managerColors.ink} />
+            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
           </Pressable>
-          <View className="h-11 w-11 items-center justify-center rounded-lg bg-emerald-50">
-            <Ionicons name="person" size={20} color={managerColors.brand} />
+          <View className="h-11 w-11 items-center justify-center rounded-lg bg-white/12">
+            <Ionicons name="person" size={20} color="#B7F7D8" />
           </View>
           <View className="flex-1">
             <Text
-              className="text-right text-base font-bold text-[#151515]"
+              className="text-right text-base font-bold text-white"
               numberOfLines={1}
             >
               {conv.customer_name || conv.customer_phone}
             </Text>
-            <Text className="mt-0.5 text-right text-xs text-stone-500" selectable>
+            <Text className="mt-0.5 text-right text-xs text-emerald-100/80" selectable>
               {conv.customer_phone}
             </Text>
           </View>
@@ -605,9 +842,9 @@ export default function ConversationDetail() {
             <Pressable
               onPress={() => setReassignOpen(true)}
               hitSlop={8}
-              className="h-10 w-10 items-center justify-center rounded-lg bg-stone-100"
+              className="h-11 w-11 items-center justify-center rounded-lg bg-white/10"
             >
-              <Ionicons name="ellipsis-horizontal" size={22} color={managerColors.muted} />
+              <Ionicons name="ellipsis-horizontal" size={22} color="#FFFFFF" />
             </Pressable>
           ) : null}
         </View>
@@ -619,8 +856,9 @@ export default function ConversationDetail() {
               ? "border-amber-200 bg-amber-50"
               : windowState.tone === "success"
               ? "border-emerald-200 bg-emerald-50"
-              : "border-gray-200 bg-gray-50"
+              : "border-[#E6E8EC] bg-[#F6F7F9]"
           }`}
+          style={softShadow}
         >
           <View className="flex-row-reverse items-start gap-2">
             <Ionicons
@@ -652,7 +890,7 @@ export default function ConversationDetail() {
                       ? "text-amber-800"
                       : windowState.tone === "success"
                       ? "text-emerald-900"
-                      : "text-stone-700"
+                      : "text-[#344054]"
                   }`}
                 >
                   {windowState.title}
@@ -669,7 +907,7 @@ export default function ConversationDetail() {
                   {getOwnerLabel(conv)}
                 </Text>
               </View>
-              <Text className="mt-1 text-right text-xs leading-5 text-stone-600">
+              <Text className="mt-1 text-right text-xs leading-5 text-[#667085]">
                 {windowState.description}
               </Text>
             </View>
@@ -688,6 +926,10 @@ export default function ConversationDetail() {
           keyExtractor={(m) => m.id}
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
+          onLayout={() => {
+            listLaidOutRef.current = true;
+            tryInitialScrollToLatest();
+          }}
           onScroll={({ nativeEvent }) => {
             const { contentOffset, contentSize, layoutMeasurement } =
               nativeEvent;
@@ -699,12 +941,18 @@ export default function ConversationDetail() {
           }}
           scrollEventThrottle={200}
           onContentSizeChange={() => {
+            contentReadyRef.current = true;
+            const didInitialScroll = tryInitialScrollToLatest();
+            if (didInitialScroll) {
+              void markReadIfAtBottom(true);
+              return;
+            }
             // A new message pushed content height. If we were already at the
             // bottom, re-pin + clear the freshly incremented unread counter.
             // If the user is scrolled up reading older messages, leave them
             // alone — the badge stays so they know a new message arrived.
             if (atBottomRef.current) {
-              listRef.current?.scrollToEnd({ animated: true });
+              scrollToLatestMessage(true);
               void markReadIfAtBottom(true);
             }
           }}
@@ -764,9 +1012,9 @@ export default function ConversationDetail() {
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            className="rounded-t-lg bg-[#FFFDF8] p-4 pb-8"
+            className="rounded-t-lg bg-white p-4 pb-8"
           >
-            <Text className="text-right text-lg font-bold text-[#151515]">
+            <Text className="text-right text-lg font-bold text-[#0B0F13]">
               إدارة المحادثة
             </Text>
             <View className="mt-4">
@@ -852,6 +1100,26 @@ export default function ConversationDetail() {
                 </Text>
                 <Ionicons name="refresh" size={20} color="#374151" />
               </Pressable>
+              {/* Labels + archive — available regardless of manager role */}
+              <Pressable
+                onPress={() => {
+                  setReassignOpen(false);
+                  setLabelsOpen(true);
+                }}
+                className="flex-row-reverse items-center justify-between rounded-lg border border-stone-200 bg-stone-50 p-3"
+              >
+                <Text className="text-right text-sm font-semibold text-stone-800">
+                  إدارة التسميات
+                </Text>
+                <Ionicons name="pricetags-outline" size={20} color="#44403C" />
+              </Pressable>
+              <ChatArchiveToggle
+                conversationId={id as string}
+                isArchived={!!conv?.archived_at}
+                restaurantId={restaurantId}
+                teamMemberId={teamMemberId}
+                onDone={() => setReassignOpen(false)}
+              />
               <Pressable
                 onPress={() => setReassignOpen(false)}
                 className="mt-1 items-center rounded-lg border border-gray-200 py-3"
@@ -862,14 +1130,22 @@ export default function ConversationDetail() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Labels picker */}
+      <LabelsPickerModal
+        visible={labelsOpen}
+        conversationId={id as string}
+        restaurantId={restaurantId}
+        onClose={() => setLabelsOpen(false)}
+      />
     </SafeAreaView>
   );
 }
 
 function ChatSkeleton() {
   return (
-    <SafeAreaView className="flex-1 bg-[#F4F3EF]" edges={["top", "bottom"]}>
-      <View className="border-b border-stone-200 bg-[#FFFDF8] px-4 pb-3 pt-2">
+    <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["top", "bottom"]}>
+      <View className="border-b border-[#E6E8EC] bg-white px-4 pb-3 pt-2">
         <View className="flex-row-reverse items-center gap-3">
           <SkeletonBlock className="h-10 w-10 rounded-lg" />
           <SkeletonBlock className="h-11 w-11 rounded-lg" />
@@ -879,7 +1155,7 @@ function ChatSkeleton() {
           </View>
           <SkeletonBlock className="h-10 w-10 rounded-lg" />
         </View>
-        <View className="mt-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-3">
+        <View className="mt-3 rounded-lg border border-[#E6E8EC] bg-[#F6F7F9] px-3 py-3">
           <View className="flex-row-reverse items-start gap-2">
             <SkeletonBlock className="h-4 w-4 rounded-lg" />
             <View className="flex-1 items-end gap-2">
@@ -895,17 +1171,17 @@ function ChatSkeleton() {
 
       <View className="flex-1 px-4 py-4">
         <View className="mb-5 items-center">
-          <SkeletonBlock className="h-6 w-28 rounded-lg bg-[#FFFDF8]" />
+          <SkeletonBlock className="h-6 w-28 rounded-lg bg-white" />
         </View>
 
         <View className="mb-4 items-start">
           <SkeletonBlock className="mb-1 h-3 w-12 rounded-lg" />
-          <SkeletonBlock className="h-14 w-36 rounded-lg bg-[#FFFDF8]" />
+          <SkeletonBlock className="h-14 w-36 rounded-lg bg-white" />
         </View>
 
         <View className="mb-4 items-start">
           <SkeletonBlock className="mb-1 h-3 w-12 rounded-lg" />
-          <SkeletonBlock className="h-12 w-56 rounded-lg bg-[#FFFDF8]" />
+          <SkeletonBlock className="h-12 w-56 rounded-lg bg-white" />
         </View>
 
         <View className="mb-4 items-end">
@@ -919,7 +1195,7 @@ function ChatSkeleton() {
         </View>
       </View>
 
-      <View className="border-t border-stone-200 bg-[#FFFDF8] px-3 pb-4 pt-3">
+      <View className="border-t border-[#E6E8EC] bg-white px-3 pb-4 pt-3">
         <View className="flex-row-reverse items-end gap-2">
           <SkeletonBlock className="h-11 w-11 rounded-lg" />
           <SkeletonBlock className="h-11 w-11 rounded-lg" />
@@ -934,7 +1210,7 @@ function ChatSkeleton() {
 function DateSeparator({ date }: { date: string }) {
   return (
     <View className="my-3 items-center">
-      <Text className="rounded-lg bg-[#FFFDF8] px-3 py-1 text-xs font-medium text-stone-500">
+      <Text className="rounded-lg bg-white px-3 py-1 text-xs font-medium text-[#667085]">
         {format(new Date(date), "EEEE d MMMM", { locale: ar })}
       </Text>
     </View>
@@ -961,7 +1237,7 @@ function MessageBubble({ message }: { message: Msg }) {
     <View className={`my-1.5 flex ${isCustomer ? "items-start" : "items-end"}`}>
       <Text
         className={`mb-1 text-[11px] font-semibold ${
-          isCustomer ? "text-stone-500" : "text-[#128C5B]"
+          isCustomer ? "text-[#667085]" : "text-[#00A884]"
         }`}
       >
         {isCustomer ? "العميل" : "الفريق"}
@@ -969,14 +1245,14 @@ function MessageBubble({ message }: { message: Msg }) {
       <View
         className={`max-w-[84%] rounded-lg border px-3 py-2 ${
           isCustomer
-            ? "border-stone-200 bg-[#FFFDF8]"
-            : "border-[#128C5B] bg-[#128C5B]"
+            ? "border-[#E6E8EC] bg-white"
+            : "border-[#00A884] bg-[#00A884]"
         }`}
-        style={!isCustomer ? premiumShadow : undefined}
+        style={isCustomer ? softShadow : premiumShadow}
       >
         <Text
           className={`text-right text-sm leading-5 ${
-            isCustomer ? "text-[#151515]" : "text-white"
+            isCustomer ? "text-[#0B0F13]" : "text-white"
           }`}
           selectable
         >
@@ -985,12 +1261,12 @@ function MessageBubble({ message }: { message: Msg }) {
         <View className="mt-1 flex-row-reverse items-center gap-1.5">
           <Text
             className={`text-[11px] ${
-              isCustomer ? "text-stone-400" : "text-emerald-50"
+              isCustomer ? "text-[#98A2B3]" : "text-emerald-50"
             }`}
           >
             {format(new Date(message.created_at), "HH:mm")}
           </Text>
-          {!isCustomer ? <DeliveryTicks status={message.twilio_status} /> : null}
+          {!isCustomer ? <DeliveryTicks status={message.delivery_status} /> : null}
         </View>
       </View>
     </View>
@@ -1040,12 +1316,12 @@ function EscalationBanner({
             >
               {reasonLabel}
             </Text>
-            <Text className="text-[11px] text-stone-500">{ageLabel}</Text>
+            <Text className="text-[11px] text-[#667085]">{ageLabel}</Text>
           </View>
           {escalation.message ? (
             <Text
               numberOfLines={2}
-              className="mt-1 text-right text-xs leading-5 text-stone-700"
+              className="mt-1 text-right text-xs leading-5 text-[#344054]"
               selectable
             >
               {escalation.message}
@@ -1122,16 +1398,16 @@ function Footer({
 }) {
   if (mode === "unassigned") {
     return (
-      <View className="border-t border-stone-200 bg-[#FFFDF8] px-3 pb-4 pt-3">
+      <View className="border-t border-[#E6E8EC] bg-white px-3 pb-4 pt-3">
         <View className="mb-3 flex-row-reverse items-center gap-2">
           <View className="h-9 w-9 items-center justify-center rounded-lg bg-red-50">
             <Ionicons name="hand-left-outline" size={18} color={managerColors.danger} />
           </View>
           <View className="flex-1">
-            <Text className="text-right text-sm font-bold text-[#151515]">
+            <Text className="text-right text-sm font-bold text-[#0B0F13]">
               المحادثة غير مستلمة
             </Text>
-            <Text className="mt-0.5 text-right text-xs text-stone-500">
+            <Text className="mt-0.5 text-right text-xs text-[#667085]">
               اختاري جهة الاستلام قبل الرد على العميل.
             </Text>
           </View>
@@ -1140,7 +1416,7 @@ function Footer({
           <Pressable
             onPress={() => onClaim("human")}
             disabled={claiming !== null}
-            className="flex-1 items-center rounded-lg bg-[#128C5B] py-3.5"
+            className="min-h-12 flex-1 items-center justify-center rounded-lg bg-[#00A884] py-3.5"
             style={premiumShadow}
           >
             {claiming === "human" ? (
@@ -1152,7 +1428,7 @@ function Footer({
           <Pressable
             onPress={() => onClaim("bot")}
             disabled={claiming !== null}
-            className="flex-1 items-center rounded-lg border border-indigo-200 bg-indigo-50 py-3.5"
+            className="min-h-12 flex-1 items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 py-3.5"
           >
             {claiming === "bot" ? (
               <ActivityIndicator />
@@ -1169,7 +1445,7 @@ function Footer({
     const canSend = !!pendingFile || text.trim().length > 0;
     const isImage = pendingFile?.type.startsWith("image/");
     return (
-      <View className="border-t border-stone-200 bg-[#FFFDF8] px-3 pb-4 pt-3">
+      <View className="border-t border-[#E6E8EC] bg-white px-3 pb-4 pt-3">
         {expired && (
           <View className="mb-2 flex-row-reverse items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
             <Ionicons name="warning-outline" size={17} color={managerColors.warning} />
@@ -1179,14 +1455,14 @@ function Footer({
           </View>
         )}
         {pendingFile && (
-          <View className="mb-2 flex-row-reverse items-center gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
+          <View className="mb-2 flex-row-reverse items-center gap-2 rounded-lg border border-[#E6E8EC] bg-[#F6F7F9] px-3 py-2">
             <Ionicons
               name={isImage ? "image-outline" : "document-outline"}
               size={18}
               color={managerColors.muted}
             />
             <Text
-              className="flex-1 text-right text-xs text-stone-700"
+              className="flex-1 text-right text-xs text-[#344054]"
               numberOfLines={1}
             >
               {pendingFile.name}
@@ -1205,7 +1481,7 @@ function Footer({
             onPress={onPickImage}
             disabled={sending || !!pendingFile}
             hitSlop={6}
-            className="h-11 w-11 items-center justify-center rounded-lg bg-stone-100"
+            className="h-12 w-12 items-center justify-center rounded-lg bg-[#F2F4F7]"
           >
             <Ionicons
               name="image-outline"
@@ -1217,7 +1493,7 @@ function Footer({
             onPress={onPickDocument}
             disabled={sending || !!pendingFile}
             hitSlop={6}
-            className="h-11 w-11 items-center justify-center rounded-lg bg-stone-100"
+            className="h-12 w-12 items-center justify-center rounded-lg bg-[#F2F4F7]"
           >
             <Ionicons
               name="attach-outline"
@@ -1229,15 +1505,15 @@ function Footer({
             value={text}
             onChangeText={setText}
             placeholder={pendingFile ? "أضيفي تعليقًا (اختياري)..." : "اكتبي ردك..."}
-            placeholderTextColor="#8A877F"
-            className="min-h-11 max-h-28 flex-1 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-right text-[#151515]"
+            placeholderTextColor="#98A2B3"
+            className="min-h-12 max-h-28 flex-1 rounded-lg border border-[#E6E8EC] bg-[#F6F7F9] px-3 py-2 text-right text-[#0B0F13]"
             multiline
           />
           <Pressable
             onPress={onSend}
             disabled={sending || !canSend}
-            className={`h-11 min-w-16 items-center justify-center rounded-lg px-4 ${
-              sending || !canSend ? "bg-stone-300" : "bg-[#128C5B]"
+            className={`h-12 min-w-16 items-center justify-center rounded-lg px-4 ${
+              sending || !canSend ? "bg-[#D0D5DD]" : "bg-[#00A884]"
             }`}
             style={!sending && canSend ? premiumShadow : undefined}
           >
@@ -1256,16 +1532,16 @@ function Footer({
 
   if (mode === "bot") {
     return (
-      <View className="border-t border-stone-200 bg-[#FFFDF8] px-3 pb-4 pt-3">
+      <View className="border-t border-[#E6E8EC] bg-white px-3 pb-4 pt-3">
         <View className="mb-3 flex-row-reverse items-center gap-2">
           <View className="h-9 w-9 items-center justify-center rounded-lg bg-indigo-50">
             <Ionicons name="hardware-chip-outline" size={18} color={managerColors.bot} />
           </View>
           <View className="flex-1">
-            <Text className="text-right text-sm font-bold text-[#151515]">
+            <Text className="text-right text-sm font-bold text-[#0B0F13]">
               البوت يدير المحادثة
             </Text>
-            <Text className="mt-0.5 text-right text-xs text-stone-500">
+            <Text className="mt-0.5 text-right text-xs text-[#667085]">
               استلميها يدويًا إذا احتاج العميل متابعة بشرية.
             </Text>
           </View>
@@ -1273,7 +1549,7 @@ function Footer({
         <Pressable
           onPress={() => onClaim("human")}
           disabled={claiming !== null}
-          className="items-center rounded-lg bg-[#128C5B] py-3.5"
+          className="min-h-12 items-center justify-center rounded-lg bg-[#00A884] py-3.5"
           style={premiumShadow}
         >
           {claiming === "human" ? (
@@ -1287,13 +1563,232 @@ function Footer({
   }
 
   return (
-    <View className="border-t border-stone-200 bg-[#FFFDF8] px-3 pb-4 pt-3">
-      <View className="flex-row-reverse items-center gap-2 rounded-lg bg-stone-50 px-3 py-3">
+    <View className="border-t border-[#E6E8EC] bg-white px-3 pb-4 pt-3">
+      <View className="flex-row-reverse items-center gap-2 rounded-lg bg-[#F6F7F9] px-3 py-3">
         <Ionicons name="lock-closed-outline" size={18} color={managerColors.muted} />
-        <Text className="flex-1 text-right text-xs leading-5 text-stone-500">
+        <Text className="flex-1 text-right text-xs leading-5 text-[#667085]">
           هذه المحادثة مستلمة من موظف آخر. يمكنك المتابعة للقراءة فقط.
         </Text>
       </View>
     </View>
+  );
+}
+
+// Archive toggle button inside the chat header's management modal. Calls the
+// archive API and patches the local chat + inbox caches.
+function ChatArchiveToggle({
+  conversationId,
+  isArchived,
+  restaurantId,
+  teamMemberId,
+  onDone,
+}: {
+  conversationId: string;
+  isArchived: boolean;
+  restaurantId: string;
+  teamMemberId: string;
+  onDone: () => void;
+}) {
+  const qc = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: async () =>
+      setConversationArchived(conversationId, !isArchived),
+    onSuccess: (res) => {
+      // Update the chat cache so header chip flips.
+      qc.setQueryData<ConvPayload>(["conv", conversationId], (prev) =>
+        prev
+          ? {
+              ...prev,
+              conversation: {
+                ...prev.conversation,
+                archived_at: res.archived_at,
+              },
+            }
+          : prev
+      );
+      // Invalidate both inbox lists so the row moves between tabs.
+      qc.invalidateQueries({
+        queryKey: ["inbox", restaurantId, teamMemberId, false],
+      });
+      qc.invalidateQueries({
+        queryKey: ["inbox", restaurantId, teamMemberId, true],
+      });
+      onDone();
+    },
+    onError: (e: unknown) => {
+      Alert.alert(
+        "خطأ",
+        e instanceof Error ? e.message : "تعذّر تحديث الأرشيف"
+      );
+    },
+  });
+  return (
+    <Pressable
+      disabled={mutation.isPending}
+      onPress={() => mutation.mutate()}
+      className="flex-row-reverse items-center justify-between rounded-lg border border-stone-200 bg-stone-50 p-3"
+    >
+      <Text className="text-right text-sm font-semibold text-stone-800">
+        {isArchived ? "إلغاء الأرشفة" : "أرشفة المحادثة"}
+      </Text>
+      <Ionicons
+        name={isArchived ? "archive" : "archive-outline"}
+        size={20}
+        color="#44403C"
+      />
+    </Pressable>
+  );
+}
+
+// Modal with a toggleable list of all tenant labels. Tapping a row toggles
+// assignment and calls the replace-set API once. Current assignments are
+// loaded from the join table on open.
+function LabelsPickerModal({
+  visible,
+  conversationId,
+  restaurantId,
+  onClose,
+}: {
+  visible: boolean;
+  conversationId: string;
+  restaurantId: string;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const labelsQuery = useQuery({
+    queryKey: ["labels", restaurantId],
+    enabled: visible && !!restaurantId,
+    staleTime: 5 * 60_000,
+    queryFn: () => listLabels(),
+  });
+  const selectedQuery = useQuery({
+    queryKey: ["conv-labels", conversationId],
+    enabled: visible && !!conversationId,
+    queryFn: async (): Promise<string[]> => {
+      const { data, error } = await supabase
+        .from("conversation_label_assignments")
+        .select("label_id")
+        .eq("conversation_id", conversationId);
+      if (error) throw error;
+      return (data ?? []).map((r: { label_id: string }) => r.label_id);
+    },
+  });
+  const [draft, setDraft] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (selectedQuery.data) setDraft(new Set(selectedQuery.data));
+  }, [selectedQuery.data]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () =>
+      setConversationLabels(conversationId, Array.from(draft)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conv-labels", conversationId] });
+      // Also nudge the inbox caches so the row chips refresh.
+      qc.invalidateQueries({
+        queryKey: ["inbox", restaurantId],
+        exact: false,
+      });
+      onClose();
+    },
+    onError: (e: unknown) => {
+      Alert.alert("خطأ", e instanceof Error ? e.message : "تعذّر الحفظ");
+    },
+  });
+
+  const labels = labelsQuery.data ?? [];
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <Pressable
+        className="flex-1 justify-end bg-black/40"
+        onPress={onClose}
+      >
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          className="rounded-t-lg bg-white p-4 pb-8"
+        >
+          <Text className="text-right text-lg font-bold text-[#0B0F13]">
+            التسميات
+          </Text>
+          <Text className="mt-1 text-right text-xs text-[#667085]">
+            اختاري التسميات التي تنطبق على هذه المحادثة.
+          </Text>
+
+          <View className="mt-4">
+            {labelsQuery.isLoading || selectedQuery.isLoading ? (
+              <ActivityIndicator />
+            ) : labels.length === 0 ? (
+              <View className="items-center py-8">
+                <Text className="text-center text-sm text-[#667085]">
+                  لا توجد تسميات بعد. أنشئي تسميات من لوحة التحكم.
+                </Text>
+              </View>
+            ) : (
+              <ScrollView style={{ maxHeight: 320 }}>
+                {labels.map((l: ConversationLabel) => {
+                  const selected = draft.has(l.id);
+                  const cls = labelChipClasses[l.color];
+                  return (
+                    <Pressable
+                      key={l.id}
+                      onPress={() =>
+                        setDraft((prev) => {
+                          const n = new Set(prev);
+                          if (n.has(l.id)) n.delete(l.id);
+                          else n.add(l.id);
+                          return n;
+                        })
+                      }
+                      className="flex-row-reverse items-center justify-between border-b border-gray-100 py-3"
+                    >
+                      <View className="flex-row-reverse items-center gap-2">
+                        <View
+                          className={`h-3 w-3 rounded-full ${cls.bg} border ${cls.border}`}
+                        />
+                        <Text className="text-right text-sm font-semibold text-gray-950">
+                          {l.name}
+                        </Text>
+                      </View>
+                      <Ionicons
+                        name={
+                          selected ? "checkbox" : "square-outline"
+                        }
+                        size={22}
+                        color={selected ? "#00A884" : "#98A2B3"}
+                      />
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+
+          <View className="mt-4 flex-row-reverse gap-2">
+            <Pressable
+              disabled={saveMutation.isPending}
+              onPress={() => saveMutation.mutate()}
+              className="flex-1 items-center rounded-lg bg-[#00A884] py-3"
+            >
+              {saveMutation.isPending ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text className="font-semibold text-white">حفظ</Text>
+              )}
+            </Pressable>
+            <Pressable
+              onPress={onClose}
+              className="flex-1 items-center rounded-lg border border-gray-200 py-3"
+            >
+              <Text className="font-semibold text-gray-700">إلغاء</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }

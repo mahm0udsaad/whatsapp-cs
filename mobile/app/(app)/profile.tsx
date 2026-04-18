@@ -132,7 +132,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F4F3EF] p-4" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-[#F6F7F9] p-4" edges={["bottom"]}>
       {manager ? (
         <View
           className={`mb-3 rounded-lg border p-4 ${
@@ -217,7 +217,7 @@ export default function ProfileScreen() {
         </Text>
       </View>
 
-      <View className="mb-3 rounded-lg border border-stone-200 bg-[#FFFDF8] p-4">
+      <View className="mb-3 rounded-lg border border-[#E6E8EC] bg-white p-4">
         <Text className="text-right text-xs font-medium text-gray-500">المتجر</Text>
         <Text className="mt-1 text-right text-lg font-semibold text-gray-950">
           {member?.restaurant?.name ?? member?.restaurant_id ?? "—"}
@@ -233,7 +233,7 @@ export default function ProfileScreen() {
             const base = process.env.EXPO_PUBLIC_APP_BASE_URL ?? "";
             if (base) Linking.openURL(`${base}/dashboard`);
           }}
-          className="mb-3 items-center rounded-lg border border-stone-200 bg-[#FFFDF8] py-3"
+          className="mb-3 items-center rounded-lg border border-[#E6E8EC] bg-white py-3"
         >
           <Text className="text-sm text-gray-700">فتح لوحة التحكم</Text>
         </Pressable>

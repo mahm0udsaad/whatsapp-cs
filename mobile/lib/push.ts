@@ -3,6 +3,7 @@ import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import { apiFetch } from "./api";
+import { getActiveConv } from "./active-conv";
 
 export type PushRegistrationResult =
   | { status: "ok"; token: string }
@@ -71,11 +72,25 @@ export async function disablePushToken(deviceId: string, restaurantId: string) {
 }
 
 export const notificationHandler: Notifications.NotificationHandler = {
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
+  handleNotification: async (notification) => {
+    // Suppress the in-app banner + sound when a push arrives for the same
+    // conversation the user is already viewing. The realtime subscription
+    // has already appended the message to the chat — popping a banner over
+    // it would be noise. Badge is still updated so the app icon count is
+    // accurate regardless.
+    const data = (notification.request.content.data ?? {}) as {
+      conversationId?: string;
+    };
+    const active = getActiveConv();
+    const isOnSameConv =
+      !!data.conversationId && !!active && data.conversationId === active;
+
+    return {
+      shouldShowAlert: !isOnSameConv,
+      shouldShowBanner: !isOnSameConv,
+      shouldShowList: true,
+      shouldPlaySound: !isOnSameConv,
+      shouldSetBadge: true,
+    };
+  },
 };

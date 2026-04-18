@@ -33,7 +33,7 @@ export default function ApprovalsScreen() {
 
   if (!restaurantId) {
     return (
-      <SafeAreaView className="flex-1 bg-[#F4F3EF]" edges={["top", "bottom"]}>
+      <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["top", "bottom"]}>
         <ApprovalsHeader />
         <ListSkeleton count={4} />
       </SafeAreaView>
@@ -46,7 +46,7 @@ export default function ApprovalsScreen() {
   const items: PendingApproval[] = Array.isArray(query.data) ? query.data : [];
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F4F3EF]" edges={["top", "bottom"]}>
+    <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["top", "bottom"]}>
       <ApprovalsHeader />
 
       {query.isLoading ? (
@@ -93,7 +93,7 @@ export default function ApprovalsScreen() {
                 onPress={() =>
                   router.push(`/(app)/inbox/${item.conversation_id}`)
                 }
-                className="mb-2 rounded-lg border border-stone-200 bg-[#FFFDF8] p-4"
+              className="mb-2 rounded-lg border border-[#E6E8EC] bg-white p-4"
               >
                 <View className="flex-row-reverse items-start justify-between gap-3">
                   <View className="flex-1">
@@ -115,7 +115,7 @@ export default function ApprovalsScreen() {
                   </Text>
                 </View>
                 {body ? (
-                  <View className="mt-3 rounded-lg border border-stone-100 bg-stone-50 px-3 py-2">
+                  <View className="mt-3 rounded-lg border border-[#E6E8EC] bg-[#F6F7F9] px-3 py-2">
                     <Text
                       numberOfLines={3}
                       className="text-right text-sm leading-5 text-gray-900"
@@ -150,7 +150,7 @@ export default function ApprovalsScreen() {
 
 function ApprovalsHeader() {
   return (
-    <View className="border-b border-stone-200 bg-[#FFFDF8] px-4 py-3">
+    <View className="border-b border-[#E6E8EC] bg-white px-4 py-3">
       <Pressable
         onPress={() => router.back()}
         className="mb-1 self-end"

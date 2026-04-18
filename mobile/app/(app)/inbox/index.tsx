@@ -23,17 +23,22 @@ import { isManager } from "../../../lib/roles";
 import {
   asArray,
   getTeamRoster,
+  listLabels,
   reassignConversation,
+  setConversationArchived,
+  type ConversationLabel,
   type TeamMemberRosterRow,
 } from "../../../lib/api";
+import { labelChipClasses } from "../../../lib/label-colors";
 import { qk } from "../../../lib/query-keys";
 import {
   ListSkeleton,
   managerColors,
   premiumShadow,
+  softShadow,
 } from "../../../components/manager-ui";
 
-type Filter = "all" | "unassigned" | "mine" | "bot" | "expired";
+type Filter = "all" | "unassigned" | "mine" | "bot" | "expired" | "archived";
 type DateRange = "any" | "today" | "week" | "month";
 
 const DATE_RANGES: { key: DateRange; label: string }[] = [
@@ -70,6 +75,7 @@ type ConversationRow = {
   handler_mode: "unassigned" | "human" | "bot";
   assigned_to: string | null;
   unread_count: number;
+  archived_at: string | null;
 };
 
 type ListItem = ConversationRow & {
@@ -77,6 +83,7 @@ type ListItem = ConversationRow & {
   assignee_name: string | null;
   is_expired: boolean;
   is_mine: boolean;
+  label_ids: string[];
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -87,6 +94,7 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: "mine", label: "محادثاتي" },
   { key: "bot", label: "مع البوت" },
   { key: "expired", label: "خارج النافذة" },
+  { key: "archived", label: "المؤرشفة" },
 ];
 
 const EMPTY_ITEMS: ListItem[] = [];
@@ -152,94 +160,119 @@ export default function InboxScreen() {
       forceBot?: boolean;
       unassign?: boolean;
     }) => reassignConversation(input),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inbox", restaurantId] });
-      qc.invalidateQueries({ queryKey: qk.kpisToday(restaurantId) });
+    // Optimistic: flip the row immediately so the modal can close to a list
+    // that already reflects the new owner. Realtime UPDATE reconciles any
+    // server-side diffs.
+    onMutate: async (input) => {
+      const inboxKey = ["inbox", restaurantId, teamMemberId];
+      await qc.cancelQueries({ queryKey: inboxKey });
+      const prevList = qc.getQueryData<ListItem[]>(inboxKey);
+
+      const nextMode: "unassigned" | "human" | "bot" = input.forceBot
+        ? "bot"
+        : input.unassign
+        ? "unassigned"
+        : "human";
+      const nextAssigned: string | null = input.forceBot
+        ? null
+        : input.unassign
+        ? null
+        : input.assignToTeamMemberId ?? null;
+
+      if (prevList) {
+        qc.setQueryData<ListItem[]>(
+          inboxKey,
+          prevList.map((c) =>
+            c.id === input.conversationId
+              ? {
+                  ...c,
+                  handler_mode: nextMode,
+                  assigned_to: nextAssigned,
+                  is_mine: nextAssigned === teamMemberId,
+                  assignee_name:
+                    nextMode === "human" ? c.assignee_name : null,
+                }
+              : c
+          )
+        );
+      }
+
       setReassignTarget(null);
+      return { prevList };
     },
-    onError: (e: unknown) => {
+    onError: (e: unknown, _input, ctx) => {
+      if (ctx?.prevList) {
+        qc.setQueryData(
+          ["inbox", restaurantId, teamMemberId],
+          ctx.prevList
+        );
+      }
       Alert.alert("خطأ", e instanceof Error ? e.message : "تعذّر التحويل");
     },
   });
 
+  // When the user selects "المؤرشفة" we fetch archived rows; every other
+  // filter hides them. Two separate caches so toggling doesn't discard the
+  // other set.
+  const showArchived = filter === "archived";
   const query = useQuery({
-    queryKey: ["inbox", restaurantId, teamMemberId],
+    queryKey: ["inbox", restaurantId, teamMemberId, showArchived],
     enabled: !!restaurantId,
     refetchInterval: 20_000,
     queryFn: async (): Promise<ListItem[]> => {
-      const { data, error } = await supabase
-        .from("conversations")
-        .select(
-          "id, customer_name, customer_phone, status, last_message_at, last_inbound_at, handler_mode, assigned_to, unread_count"
-        )
-        .eq("restaurant_id", restaurantId)
-        .order("last_message_at", { ascending: false })
-        .limit(100);
+      const { data, error } = await supabase.rpc("mobile_inbox_list", {
+        p_restaurant_id: restaurantId,
+        p_limit: 100,
+        p_include_archived: showArchived,
+      });
       if (error) throw error;
 
-      const rows = (data ?? []) as ConversationRow[];
-      if (rows.length === 0) return [];
+      const rows = (data ?? []) as (ConversationRow & {
+        preview: string | null;
+        assignee_name: string | null;
+        label_ids: string[] | null;
+      })[];
 
-      const convIds = rows.map((r) => r.id);
-      const assigneeIds = Array.from(
-        new Set(rows.map((r) => r.assigned_to).filter(Boolean) as string[])
-      );
-
-      // Latest customer preview + assignee names in parallel.
-      const [previewsRes, membersRes] = await Promise.all([
-        supabase
-          .from("messages")
-          .select("conversation_id, content, created_at, role")
-          .in("conversation_id", convIds)
-          .eq("role", "customer")
-          .order("created_at", { ascending: false })
-          .limit(convIds.length * 3),
-        assigneeIds.length > 0
-          ? supabase
-              .from("team_members")
-              .select("id, full_name, role")
-              .in("id", assigneeIds)
-          : Promise.resolve({
-              data: [] as {
-                id: string;
-                full_name: string | null;
-                role: "admin" | "agent";
-              }[],
-              error: null,
-            }),
-      ]);
-
-      const previewMap = new Map<string, string>();
-      for (const m of (previewsRes.data ?? []) as {
-        conversation_id: string;
-        content: string;
-      }[]) {
-        if (!previewMap.has(m.conversation_id)) {
-          previewMap.set(m.conversation_id, m.content ?? "");
-        }
-      }
-      const assigneeMap = new Map<string, string>();
-      for (const a of (membersRes.data ?? []) as {
-        id: string;
-        full_name: string | null;
-        role: "admin" | "agent";
-      }[]) {
-        const trimmed = a.full_name?.trim();
-        assigneeMap.set(
-          a.id,
-          trimmed || (a.role === "admin" ? "المدير" : "موظف")
-        );
-      }
-
-      return rows.map((r) => ({
-        ...r,
-        preview: previewMap.get(r.id) ?? null,
-        assignee_name: r.assigned_to ? assigneeMap.get(r.assigned_to) ?? null : null,
-        is_expired: isExpired(r.last_inbound_at),
-        is_mine: r.assigned_to === teamMemberId,
-      }));
+      return rows
+        // When showArchived is true the RPC returns BOTH archived and
+        // active rows; filter to archived-only so the inbox shows what the
+        // user expects. When false the RPC already excluded archived.
+        .filter((r) => (showArchived ? r.archived_at !== null : true))
+        .map((r) => ({
+          id: r.id,
+          customer_name: r.customer_name,
+          customer_phone: r.customer_phone,
+          status: r.status,
+          last_message_at: r.last_message_at,
+          last_inbound_at: r.last_inbound_at,
+          handler_mode: r.handler_mode,
+          assigned_to: r.assigned_to,
+          unread_count: r.unread_count,
+          archived_at: r.archived_at,
+          preview: r.preview,
+          assignee_name: r.assignee_name,
+          is_expired: isExpired(r.last_inbound_at),
+          is_mine: r.assigned_to === teamMemberId,
+          label_ids: r.label_ids ?? [],
+        }));
     },
   });
+
+  // Labels list for rendering chips + the picker modal. Cached aggressively
+  // since labels rarely change during a session.
+  const labelsQuery = useQuery({
+    queryKey: ["labels", restaurantId],
+    enabled: !!restaurantId,
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<ConversationLabel[]> => {
+      return listLabels();
+    },
+  });
+  const labelsById = useMemo(() => {
+    const m = new Map<string, ConversationLabel>();
+    for (const l of labelsQuery.data ?? []) m.set(l.id, l);
+    return m;
+  }, [labelsQuery.data]);
 
   // Realtime: patch the inbox cache in place instead of refetching the whole
   // list. On INSERT we prepend; on UPDATE we replace + resort by
@@ -247,7 +280,7 @@ export default function InboxScreen() {
   // back to the 20s refetchInterval if the socket drops.
   useEffect(() => {
     if (!restaurantId) return;
-    const inboxKey = ["inbox", restaurantId, teamMemberId];
+    const inboxKey = ["inbox", restaurantId, teamMemberId, showArchived];
     const ch = supabase
       .channel(`inbox-conv:${restaurantId}`)
       .on(
@@ -263,10 +296,15 @@ export default function InboxScreen() {
           qc.setQueryData<ListItem[]>(inboxKey, (prev) => {
             if (!prev) return prev;
             if (prev.some((c) => c.id === row.id)) return prev;
+            // New rows are never archived on insert; skip if we're on the
+            // "archived only" tab.
+            if (showArchived && !row.archived_at) return prev;
+            if (!showArchived && row.archived_at) return prev;
             const next: ListItem = {
               ...row,
               preview: null,
               assignee_name: null,
+              label_ids: [],
               is_expired: isExpired(row.last_inbound_at),
               is_mine: row.assigned_to === teamMemberId,
             };
@@ -352,7 +390,7 @@ export default function InboxScreen() {
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [restaurantId, teamMemberId, qc]);
+  }, [restaurantId, teamMemberId, qc, showArchived]);
 
   const allItems = query.data ?? EMPTY_ITEMS;
 
@@ -382,6 +420,10 @@ export default function InboxScreen() {
       if (filter === "mine" && !item.is_mine) return false;
       if (filter === "bot" && item.handler_mode !== "bot") return false;
       if (filter === "expired" && !item.is_expired) return false;
+      // `archived` filter is enforced by the query fetch itself, but we
+      // still guard here so a stale cache doesn't leak rows.
+      if (filter === "archived" && !item.archived_at) return false;
+      if (filter !== "archived" && item.archived_at) return false;
       // Date range — apply only when not 'any'.
       if (minTs > 0) {
         const ts = new Date(item.last_message_at).getTime();
@@ -400,23 +442,26 @@ export default function InboxScreen() {
 
   const header = useMemo(
     () => (
-      <View className="border-b border-stone-200 bg-[#FFFDF8]">
+      <View className="border-b border-[#E6E8EC] bg-white">
         <View className="px-4 pb-3 pt-3">
           <View
-            className={`overflow-hidden rounded-lg p-4 ${
-              attentionCount > 0 ? "bg-[#2A1713]" : "bg-[#123D2E]"
-            }`}
+            className="overflow-hidden rounded-lg bg-[#052E26] p-4"
             style={premiumShadow}
           >
             <View className="flex-row-reverse items-start justify-between gap-4">
               <View className="flex-1">
-                <Text className="text-right text-xs font-semibold text-white/70">
+                <Text className="text-right text-xs font-semibold text-emerald-100/80">
                   مركز المحادثات
                 </Text>
-                <Text className="mt-2 text-right text-3xl font-bold text-white">
-                  {attentionCount}
-                </Text>
-                <Text className="mt-1 text-right text-sm leading-6 text-white/80">
+                <View className="mt-2 flex-row-reverse items-end gap-2">
+                  <Text className="text-right text-4xl font-bold text-white">
+                    {attentionCount}
+                  </Text>
+                  <Text className="pb-1 text-right text-sm font-semibold text-emerald-100/80">
+                    تحتاج إجراء
+                  </Text>
+                </View>
+                <Text className="mt-2 text-right text-sm leading-6 text-white/80">
                   {attentionCount > 0
                     ? "محادثات تحتاج تدخل قبل باقي القائمة."
                     : "لا توجد محادثات عاجلة الآن."}
@@ -424,12 +469,12 @@ export default function InboxScreen() {
               </View>
               <Pressable
                 onPress={() => setFilter(leadFilter)}
-                className="items-center rounded-lg bg-white px-4 py-3"
+                className="min-h-12 items-center justify-center rounded-lg bg-white px-4 py-3"
               >
-                <Text className="text-xs font-semibold text-stone-500">
+                <Text className="text-xs font-semibold text-[#667085]">
                   ابدأي من
                 </Text>
-                <Text className="mt-1 text-sm font-bold text-[#151515]">
+                <Text className="mt-1 text-sm font-bold text-[#0B0F13]">
                   {leadFilter === "unassigned"
                     ? "غير مستلمة"
                     : leadFilter === "expired"
@@ -472,15 +517,15 @@ export default function InboxScreen() {
               <Pressable
                 key={f.key}
                 onPress={() => setFilter(f.key)}
-                className={`rounded-lg border px-3 py-2 ${
+                className={`min-h-11 rounded-lg border px-3 py-2 ${
                   active
-                    ? "border-gray-950 bg-gray-950"
-                    : "border-gray-200 bg-white"
+                    ? "border-[#0B0F13] bg-[#0B0F13]"
+                    : "border-[#E6E8EC] bg-white"
                 }`}
               >
                 <Text
                   className={`text-xs font-semibold ${
-                    active ? "text-white" : "text-gray-700"
+                    active ? "text-white" : "text-[#344054]"
                   }`}
                 >
                   {f.label} {count}
@@ -507,20 +552,20 @@ export default function InboxScreen() {
               <Pressable
                 key={r.key}
                 onPress={() => setDateRange(r.key)}
-                className={`flex-row-reverse items-center gap-1.5 rounded-lg border px-3 py-2 ${
+                className={`min-h-11 flex-row-reverse items-center gap-1.5 rounded-lg border px-3 py-2 ${
                   active
-                    ? "border-emerald-700 bg-emerald-50"
-                    : "border-gray-200 bg-white"
+                    ? "border-[#00A884] bg-[#E9FBF3]"
+                    : "border-[#E6E8EC] bg-white"
                 }`}
               >
                 <Ionicons
                   name="calendar-outline"
                   size={12}
-                  color={active ? "#065F46" : "#6B7280"}
+                  color={active ? managerColors.brand : managerColors.muted}
                 />
                 <Text
                   className={`text-xs font-semibold ${
-                    active ? "text-emerald-900" : "text-gray-700"
+                    active ? "text-[#052E26]" : "text-[#344054]"
                   }`}
                 >
                   {r.label}
@@ -532,19 +577,22 @@ export default function InboxScreen() {
 
         {/* Search */}
         <View className="px-4 pb-3">
-          <View className="flex-row-reverse items-center gap-2 rounded-lg border border-stone-200 bg-white px-3">
-            <Ionicons name="search" size={16} color="#6B7280" />
+          <View
+            className="min-h-12 flex-row-reverse items-center gap-2 rounded-lg border border-[#E6E8EC] bg-[#F6F7F9] px-3"
+            style={softShadow}
+          >
+            <Ionicons name="search" size={16} color={managerColors.muted} />
             <TextInput
               value={search}
               onChangeText={setSearch}
               placeholder="بحث بالاسم أو الرقم أو نص الرسالة..."
-              placeholderTextColor="#9CA3AF"
-              className="flex-1 py-2.5 text-right text-sm text-[#151515]"
+              placeholderTextColor="#98A2B3"
+              className="flex-1 py-2.5 text-right text-sm text-[#0B0F13]"
               returnKeyType="search"
             />
             {search.length > 0 ? (
               <Pressable onPress={() => setSearch("")} hitSlop={8}>
-                <Ionicons name="close-circle" size={16} color="#9CA3AF" />
+                <Ionicons name="close-circle" size={16} color="#98A2B3" />
               </Pressable>
             ) : null}
           </View>
@@ -559,7 +607,7 @@ export default function InboxScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F4F3EF]" edges={["top", "bottom"]}>
+    <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["top", "bottom"]}>
       {header}
       {query.isLoading ? (
         <ListSkeleton count={6} />
@@ -595,16 +643,22 @@ export default function InboxScreen() {
           renderItem={({ item }) => (
             <Pressable
               onPress={() => openConversation(item.id)}
-              onLongPress={manager ? () => setReassignTarget(item) : undefined}
+              onLongPress={() => setReassignTarget(item)}
               delayLongPress={400}
-              className={`relative mx-3 my-1.5 overflow-hidden rounded-lg border bg-[#FFFDF8] p-4 ${
+              className={`relative mx-3 my-1.5 overflow-hidden rounded-lg border bg-white p-4 ${
                 item.is_expired
                   ? "border-amber-200"
                   : item.handler_mode === "unassigned"
                   ? "border-red-200"
-                  : "border-stone-200"
+                  : "border-[#E6E8EC]"
               }`}
-              style={item.handler_mode === "unassigned" || item.is_expired ? premiumShadow : undefined}
+              style={
+                item.handler_mode === "unassigned" ||
+                item.is_expired ||
+                item.unread_count > 0
+                  ? premiumShadow
+                  : softShadow
+              }
             >
               <View
                 className={`absolute bottom-0 right-0 top-0 w-1.5 ${
@@ -615,32 +669,32 @@ export default function InboxScreen() {
                     : item.handler_mode === "bot"
                     ? "bg-indigo-500"
                     : item.is_mine
-                    ? "bg-emerald-600"
-                    : "bg-stone-200"
+                    ? "bg-[#00A884]"
+                    : "bg-[#D0D5DD]"
                 }`}
               />
               <View className="mb-2 flex-row-reverse items-start justify-between gap-3">
                 <View className="flex-1">
                   <Text
-                    className="text-right text-base font-bold text-[#151515]"
+                    className="text-right text-base font-bold text-[#0B0F13]"
                     numberOfLines={1}
                   >
                     {item.customer_name || item.customer_phone}
                   </Text>
-                  <Text className="mt-1 text-right text-xs text-stone-500">
+                  <Text className="mt-1 text-right text-xs text-[#667085]">
                     {item.customer_phone}
                   </Text>
                 </View>
                 <View className="items-start gap-2">
                   <View className="flex-row-reverse items-center gap-2">
-                    <Text className="text-xs text-stone-500" numberOfLines={1}>
+                    <Text className="text-xs text-[#667085]" numberOfLines={1}>
                       {formatDistanceToNow(new Date(item.last_message_at), {
                         addSuffix: true,
                         locale: ar,
                       })}
                     </Text>
                     {item.unread_count > 0 ? (
-                      <View className="min-w-5 items-center justify-center rounded-full bg-[#128C5B] px-1.5 py-0.5">
+                      <View className="min-w-5 items-center justify-center rounded-full bg-[#00A884] px-1.5 py-0.5">
                         <Text className="text-[11px] font-bold text-white">
                           {item.unread_count > 99 ? "99+" : item.unread_count}
                         </Text>
@@ -654,10 +708,10 @@ export default function InboxScreen() {
                         setReassignTarget(item);
                       }}
                       hitSlop={8}
-                      className="flex-row-reverse items-center gap-1 rounded-lg bg-stone-100 px-2.5 py-1"
+                      className="min-h-8 flex-row-reverse items-center gap-1 rounded-lg bg-[#F2F4F7] px-2.5 py-1"
                     >
                       <Ionicons name="swap-horizontal" size={14} color={managerColors.muted} />
-                      <Text className="text-xs font-semibold text-stone-700">
+                      <Text className="text-xs font-semibold text-[#344054]">
                         نقل
                       </Text>
                     </Pressable>
@@ -667,7 +721,7 @@ export default function InboxScreen() {
               {!!item.preview && (
                 <Text
                   numberOfLines={2}
-                  className="text-right text-sm leading-5 text-stone-700"
+                  className="text-right text-sm leading-5 text-[#344054]"
                 >
                   {item.preview}
                 </Text>
@@ -682,12 +736,37 @@ export default function InboxScreen() {
                     className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
                       item.is_expired
                         ? "bg-amber-50 text-amber-900"
-                        : "bg-emerald-50 text-emerald-900"
+                        : "bg-[#E9FBF3] text-[#052E26]"
                     }`}
                   >
                     {getWindowLabel(item.last_inbound_at)}
                   </Text>
                 )}
+                {/* Render up to 3 label chips inline; overflow shows a "+N". */}
+                {item.label_ids.slice(0, 3).map((lid) => {
+                  const lbl = labelsById.get(lid);
+                  if (!lbl) return null;
+                  const cls = labelChipClasses[lbl.color];
+                  return (
+                    <Text
+                      key={lid}
+                      className={`rounded-lg border px-2 py-0.5 text-[11px] font-semibold ${cls.bg} ${cls.fg} ${cls.border}`}
+                      numberOfLines={1}
+                    >
+                      {lbl.name}
+                    </Text>
+                  );
+                })}
+                {item.label_ids.length > 3 ? (
+                  <Text className="text-[11px] font-semibold text-[#667085]">
+                    +{item.label_ids.length - 3}
+                  </Text>
+                ) : null}
+                {item.archived_at ? (
+                  <Text className="rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
+                    مؤرشفة
+                  </Text>
+                ) : null}
               </View>
             </Pressable>
           )}
@@ -707,15 +786,16 @@ export default function InboxScreen() {
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            className="rounded-t-lg bg-[#FFFDF8] p-4 pb-8"
+            className="rounded-t-lg bg-white p-4 pb-8"
           >
-            <Text className="text-right text-lg font-bold text-[#151515]">
-              نقل المحادثة
+            <Text className="text-right text-lg font-bold text-[#0B0F13]">
+              إدارة المحادثة
             </Text>
-            <Text className="mt-1 text-right text-xs text-stone-500">
+            <Text className="mt-1 text-right text-xs text-[#667085]">
               {reassignTarget?.customer_name ?? reassignTarget?.customer_phone}
             </Text>
 
+            {manager ? (
             <View className="mt-4">
               <Text className="mb-2 text-right text-xs font-semibold text-gray-600">
                 نقل إلى موظف
@@ -762,40 +842,54 @@ export default function InboxScreen() {
                 </ScrollView>
               )}
             </View>
+            ) : null}
 
             <View className="mt-4 gap-2">
-              <Pressable
-                disabled={reassignMutation.isPending}
-                onPress={() =>
-                  reassignTarget &&
-                  reassignMutation.mutate({
-                    conversationId: reassignTarget.id,
-                    forceBot: true,
-                  })
-                }
-                className="flex-row-reverse items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 p-3"
-              >
-                <Text className="text-right text-sm font-semibold text-indigo-900">
-                  إرجاع للبوت
-                </Text>
-                <Ionicons name="hardware-chip-outline" size={20} color="#3730A3" />
-              </Pressable>
-              <Pressable
-                disabled={reassignMutation.isPending}
-                onPress={() =>
-                  reassignTarget &&
-                  reassignMutation.mutate({
-                    conversationId: reassignTarget.id,
-                    unassign: true,
-                  })
-                }
-                className="flex-row-reverse items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3"
-              >
-                <Text className="text-right text-sm font-semibold text-gray-800">
-                  إلغاء التعيين
-                </Text>
-                <Ionicons name="refresh" size={20} color="#374151" />
-              </Pressable>
+              {manager ? (
+                <>
+                  <Pressable
+                    disabled={reassignMutation.isPending}
+                    onPress={() =>
+                      reassignTarget &&
+                      reassignMutation.mutate({
+                        conversationId: reassignTarget.id,
+                        forceBot: true,
+                      })
+                    }
+                    className="flex-row-reverse items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 p-3"
+                  >
+                    <Text className="text-right text-sm font-semibold text-indigo-900">
+                      إرجاع للبوت
+                    </Text>
+                    <Ionicons name="hardware-chip-outline" size={20} color="#3730A3" />
+                  </Pressable>
+                  <Pressable
+                    disabled={reassignMutation.isPending}
+                    onPress={() =>
+                      reassignTarget &&
+                      reassignMutation.mutate({
+                        conversationId: reassignTarget.id,
+                        unassign: true,
+                      })
+                    }
+                    className="flex-row-reverse items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3"
+                  >
+                    <Text className="text-right text-sm font-semibold text-gray-800">
+                      إلغاء التعيين
+                    </Text>
+                    <Ionicons name="refresh" size={20} color="#374151" />
+                  </Pressable>
+                </>
+              ) : null}
+              {/* Archive toggle — available to all members. Archiving removes
+                 the row from the default inbox; "المؤرشفة" filter brings it
+                 back. */}
+              {reassignTarget ? (
+                <ArchiveToggleButton
+                  target={reassignTarget}
+                  onDone={() => setReassignTarget(null)}
+                />
+              ) : null}
               <Pressable
                 onPress={() => setReassignTarget(null)}
                 className="mt-1 items-center rounded-lg border border-gray-200 py-3"
@@ -821,17 +915,17 @@ function MetricCard({
 }) {
   const toneClass =
     tone === "urgent"
-      ? "bg-red-50 border-red-100"
+      ? "bg-rose-50 border-rose-100"
       : tone === "success"
-      ? "bg-emerald-50 border-emerald-100"
+      ? "bg-[#E9FBF3] border-emerald-100"
       : tone === "bot"
       ? "bg-indigo-50 border-indigo-100"
       : "bg-amber-50 border-amber-100";
   const textClass =
     tone === "urgent"
-      ? "text-red-800"
+      ? "text-rose-800"
       : tone === "success"
-      ? "text-emerald-800"
+      ? "text-[#052E26]"
       : tone === "bot"
       ? "text-indigo-800"
       : "text-amber-800";
@@ -841,7 +935,7 @@ function MetricCard({
         {value}
       </Text>
       <Text
-        className="mt-0.5 text-right text-[11px] font-medium text-stone-600"
+        className="mt-0.5 text-right text-[11px] font-medium text-[#667085]"
         numberOfLines={1}
         adjustsFontSizeToFit
       >
@@ -861,14 +955,14 @@ function ModeBadge({
   const bg =
     mode === "unassigned"
       ? "bg-red-50"
-      : mode === "human"
-      ? "bg-emerald-50"
+    : mode === "human"
+      ? "bg-[#E9FBF3]"
       : "bg-indigo-50";
   const fg =
     mode === "unassigned"
       ? "text-red-800"
       : mode === "human"
-      ? "text-emerald-900"
+      ? "text-[#052E26]"
       : "text-indigo-900";
   const trimmed = assigneeName?.trim();
   const label =
@@ -883,5 +977,93 @@ function ModeBadge({
     <View className={`rounded-lg px-2.5 py-1 ${bg}`}>
       <Text className={`text-xs font-semibold ${fg}`}>{label}</Text>
     </View>
+  );
+}
+
+// Small component so we can use hooks for the archive toggle without
+// polluting the main InboxScreen. Optimistically flips the row in cache,
+// rolls back on failure.
+function ArchiveToggleButton({
+  target,
+  onDone,
+}: {
+  target: ListItem;
+  onDone: () => void;
+}) {
+  const qc = useQueryClient();
+  const member = useSessionStore((s) => s.activeMember);
+  const restaurantId = member?.restaurant_id ?? "";
+  const teamMemberId = member?.id ?? "";
+  const isArchived = !!target.archived_at;
+
+  const mutation = useMutation({
+    mutationFn: async () => setConversationArchived(target.id, !isArchived),
+    onMutate: async () => {
+      // Patch both inbox caches (active and archived) so the row moves
+      // between tabs without a refetch.
+      const activeKey = ["inbox", restaurantId, teamMemberId, false];
+      const archivedKey = ["inbox", restaurantId, teamMemberId, true];
+      const prevActive = qc.getQueryData<ListItem[]>(activeKey);
+      const prevArchived = qc.getQueryData<ListItem[]>(archivedKey);
+      const nowIso = new Date().toISOString();
+      if (!isArchived) {
+        // Active → archived: remove from active, prepend to archived.
+        if (prevActive) {
+          qc.setQueryData(
+            activeKey,
+            prevActive.filter((c) => c.id !== target.id)
+          );
+        }
+        if (prevArchived) {
+          qc.setQueryData(archivedKey, [
+            { ...target, archived_at: nowIso },
+            ...prevArchived,
+          ]);
+        }
+      } else {
+        // Archived → active
+        if (prevArchived) {
+          qc.setQueryData(
+            archivedKey,
+            prevArchived.filter((c) => c.id !== target.id)
+          );
+        }
+        if (prevActive) {
+          qc.setQueryData(activeKey, [
+            { ...target, archived_at: null },
+            ...prevActive,
+          ]);
+        }
+      }
+      onDone();
+      return { prevActive, prevArchived };
+    },
+    onError: (e: unknown, _input, ctx) => {
+      const activeKey = ["inbox", restaurantId, teamMemberId, false];
+      const archivedKey = ["inbox", restaurantId, teamMemberId, true];
+      if (ctx?.prevActive) qc.setQueryData(activeKey, ctx.prevActive);
+      if (ctx?.prevArchived) qc.setQueryData(archivedKey, ctx.prevArchived);
+      Alert.alert(
+        "خطأ",
+        e instanceof Error ? e.message : "تعذّر تحديث الأرشيف"
+      );
+    },
+  });
+
+  return (
+    <Pressable
+      disabled={mutation.isPending}
+      onPress={() => mutation.mutate()}
+      className="flex-row-reverse items-center justify-between rounded-lg border border-stone-200 bg-stone-50 p-3"
+    >
+      <Text className="text-right text-sm font-semibold text-stone-800">
+        {isArchived ? "إلغاء الأرشفة" : "أرشفة المحادثة"}
+      </Text>
+      <Ionicons
+        name={isArchived ? "archive" : "archive-outline"}
+        size={20}
+        color="#44403C"
+      />
+    </Pressable>
   );
 }

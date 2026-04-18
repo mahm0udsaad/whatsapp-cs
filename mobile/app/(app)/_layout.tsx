@@ -3,12 +3,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSessionStore } from "../../lib/session-store";
 import { isManager } from "../../lib/roles";
 import { managerColors } from "../../components/manager-ui";
+import { useInAppToasts } from "../../hooks/use-in-app-toasts";
 
 export default function AppLayout() {
   // Guard: if the active member was cleared (e.g. by sign-out), bounce to
   // the login stack so the (app) group never renders without a session.
   const member = useSessionStore((s) => s.activeMember);
   const segments = useSegments();
+  // Must run BEFORE any early return so hook order stays stable; no-op when
+  // restaurantId is null.
+  useInAppToasts(member?.restaurant_id ?? null);
   if (!member) {
     return <Redirect href="/(auth)/login" />;
   }
