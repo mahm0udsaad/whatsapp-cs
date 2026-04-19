@@ -32,6 +32,13 @@ export interface ExpoPushMessage {
   priority?: "default" | "high";
   channelId?: string;
   sound?: "default" | null;
+  /**
+   * iOS home-screen red app-icon badge count (also the native badge on
+   * Android launchers that support it). Expo forwards this as `badge` in the
+   * APNs payload and the count shown on the iOS app icon. Set to total
+   * unread conversations for the recipient's tenant.
+   */
+  badge?: number;
 }
 
 export interface SendExpoPushResult {

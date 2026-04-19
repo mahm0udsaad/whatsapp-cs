@@ -6,16 +6,20 @@
  * Runs locally (no LLM call) so it is cheap, fast, and unit-testable. The
  * rules are intentionally simple and ordered — first match wins.
  *
- * Escalation reasons, in precedence order:
- *   1. knowledge_gap        — the AI self-reported uncertainty (aiUncertain
+ * Escalation reasons, in precedence order (user-explicit intent beats
+ * model-side uncertainty — if the customer literally says "I want to talk
+ * to the manager", the reason is `customer_asked_human` regardless of
+ * whether RAG was weak or the model flagged itself uncertain):
+ *
+ *   1. sensitive            — complaint / refund / cancellation wording.
+ *   2. customer_asked_human — customer explicitly asked for a human / manager.
+ *   3. knowledge_gap        — the AI self-reported uncertainty (aiUncertain
  *                             from the structured output), OR punted with
  *                             the "I'll check with the team" phrase (Arabic
  *                             or English), OR the RAG returned zero chunks
  *                             and the customer asked a non-trivial question,
  *                             OR RAG returned only weak hits (topScore below
  *                             RAG_MATCH_THRESHOLD) on a non-trivial question.
- *   2. sensitive            — complaint / refund / cancellation wording.
- *   3. customer_asked_human — customer explicitly asked for a human / manager.
  *   4. (none)               — send the AI reply.
  */
 
@@ -64,9 +68,17 @@ const SENSITIVE_PATTERNS: RegExp[] = [
 ];
 
 const HUMAN_HANDOFF_PATTERNS: RegExp[] = [
+  // Saudi / Gulf dialect ("أبغى", "أبي")
   /أبغى\s+(أكلم|اكلم)|كلميني|أبي\s+(إنسان|انسان|بشر)|موظفة|مدير(ة)?|محامي/u,
+  // Egyptian / Levantine dialect ("عايز" / "عاوز" / "بدي")
+  // Covers: "عايز اتواصل مع المدير", "عاوز أكلم حد", "بدي موظف", etc.
+  /(عايز|عاوز|بدي|بدنا|ابغى|ابي)\s+(اتواصل|اكلم|أكلم|أحكي|احكي|كلام|حد|واحد|موظف|موظفة|مدير(ة)?|مسؤول|بني\s*آدم)/u,
+  // Direct mentions of a human role anywhere in the message.
+  /\b(مدير|مديره|مديرة|مسؤول|مسؤوله|مسؤولة|موظف|موظفه|موظفة)\b/u,
+  // English
   /\bspeak\s+to\s+(a\s+)?(human|agent|manager|person|real)\b/i,
   /\btalk\s+to\s+(a\s+)?(human|agent|manager|person|real)\b/i,
+  /\b(contact|reach)\s+(a\s+)?(human|agent|manager)\b/i,
 ];
 
 const MIN_CUSTOMER_MESSAGE_LENGTH_FOR_GAP = 15;
@@ -85,35 +97,38 @@ export function classifyEscalation(input: EscalationSignal): EscalationResult {
   const customerIsNonTrivial =
     customer.trim().length >= MIN_CUSTOMER_MESSAGE_LENGTH_FOR_GAP;
 
-  // 1a. Model self-reported uncertainty via the structured-output flag.
+  // 1. Sensitive content (complaint/refund/cancellation). User intent is the
+  //    strongest signal — if the customer is upset we route to a human even
+  //    when RAG could technically answer.
+  if (matchesAny(customer, SENSITIVE_PATTERNS)) {
+    return { shouldEscalate: true, reason: "sensitive" };
+  }
+
+  // 2. Explicit human handoff request. Also an explicit user intent — it
+  //    MUST win over any AI-side uncertainty flag so the manager sees the
+  //    reason as "customer asked for a human", not "knowledge gap".
+  if (matchesAny(customer, HUMAN_HANDOFF_PATTERNS)) {
+    return { shouldEscalate: true, reason: "customer_asked_human" };
+  }
+
+  // 3a. Model self-reported uncertainty via the structured-output flag.
   //     Narrow: only escalates when the customer asked something substantive,
   //     so a casual "ok" with aiUncertain=true doesn't bounce to a human.
   if (input.aiUncertain === true && customerIsNonTrivial) {
     return { shouldEscalate: true, reason: "knowledge_gap" };
   }
 
-  // 1b. AI itself said "I'll check with the team".
+  // 3b. AI itself said "I'll check with the team".
   if (matchesAny(reply, PUNT_PATTERNS)) {
     return { shouldEscalate: true, reason: "knowledge_gap" };
   }
 
-  // 2. Sensitive content (complaint/refund/etc.). Check BEFORE the knowledge
-  //    gap so a long complaint with zero RAG chunks still gets the right tag.
-  if (matchesAny(customer, SENSITIVE_PATTERNS)) {
-    return { shouldEscalate: true, reason: "sensitive" };
-  }
-
-  // 3. Explicit human handoff request.
-  if (matchesAny(customer, HUMAN_HANDOFF_PATTERNS)) {
-    return { shouldEscalate: true, reason: "customer_asked_human" };
-  }
-
-  // 1c. No RAG match + non-trivial customer question = knowledge gap.
+  // 3c. No RAG match + non-trivial customer question = knowledge gap.
   if (input.ragChunkCount === 0 && customerIsNonTrivial) {
     return { shouldEscalate: true, reason: "knowledge_gap" };
   }
 
-  // 1d. Weak-hit gap: chunks came back but none were above the match
+  // 3d. Weak-hit gap: chunks came back but none were above the match
   //     threshold. This happens when the RPC is called with a lower floor
   //     (legacy callers) or when the top score sits in a grey zone. We only
   //     trust RAG as grounding when topScore ≥ threshold.

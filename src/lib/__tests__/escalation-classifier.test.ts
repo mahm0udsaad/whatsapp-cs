@@ -74,13 +74,47 @@ describe("classifyEscalation", () => {
     expect(r).toEqual({ shouldEscalate: false, reason: null });
   });
 
-  it("prioritizes AI-punt over sensitive when both match", () => {
+  it("prioritizes sensitive over AI-punt when both match", () => {
+    // User intent (complaint) is a stronger signal than AI uncertainty.
     const r = classifyEscalation({
       customerMessage: "عندي مشكلة في الحجز",
       aiReply: "سأتحقق من ذلك مع فريقنا.",
       ragChunkCount: 2,
     });
-    // punt pattern fires first
-    expect(r.reason).toBe("knowledge_gap");
+    expect(r.reason).toBe("sensitive");
+  });
+
+  it("prioritizes explicit human-handoff over aiUncertain", () => {
+    // Regression: an explicit "I want to talk to the manager" MUST beat
+    // aiUncertain=true. Otherwise the owner sees "فجوة معرفية" on what is
+    // clearly a handoff request.
+    const r = classifyEscalation({
+      customerMessage: "عايز اتواصل مع المدير ضروري",
+      aiReply: "تفضل، كيف أقدر أساعدك؟",
+      ragChunkCount: 2,
+      aiUncertain: true,
+    });
+    expect(r).toEqual({
+      shouldEscalate: true,
+      reason: "customer_asked_human",
+    });
+  });
+
+  it("matches Egyptian dialect human-handoff ('عايز اتواصل مع المدير')", () => {
+    const r = classifyEscalation({
+      customerMessage: "عايز اتواصل مع المدير",
+      aiReply: "أهلا بك",
+      ragChunkCount: 3,
+    });
+    expect(r.reason).toBe("customer_asked_human");
+  });
+
+  it("matches Egyptian dialect 'عاوز أكلم موظف'", () => {
+    const r = classifyEscalation({
+      customerMessage: "عاوز أكلم موظف لو سمحت",
+      aiReply: "أهلا بك",
+      ragChunkCount: 3,
+    });
+    expect(r.reason).toBe("customer_asked_human");
   });
 });

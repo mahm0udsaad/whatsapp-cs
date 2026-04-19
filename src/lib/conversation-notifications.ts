@@ -27,6 +27,34 @@ function truncate(text: string, max: number): string {
   return clean.slice(0, max - 1) + "…";
 }
 
+/**
+ * Total number of conversations in a tenant that currently have
+ * `unread_count > 0`. This is what we stamp onto every push's `badge` field
+ * so the iOS/Android app icon shows a live activity count even when the
+ * owner hasn't opened the app.
+ *
+ * We count CONVERSATIONS with unread, not the sum of unread_count, because
+ * "7" on an app icon reads as "7 conversations need attention" — summing
+ * message counts would show "143" which is unhelpful.
+ */
+async function countUnreadConversations(
+  restaurantId: string
+): Promise<number> {
+  const { count, error } = await adminSupabaseClient
+    .from("conversations")
+    .select("id", { head: true, count: "exact" })
+    .eq("restaurant_id", restaurantId)
+    .gt("unread_count", 0);
+  if (error) {
+    console.error(
+      "[conversation-notifications] unread count query failed:",
+      error.message
+    );
+    return 0;
+  }
+  return count ?? 0;
+}
+
 async function fetchOnShiftTeamMemberIds(restaurantId: string): Promise<string[]> {
   const { data, error } = await adminSupabaseClient.rpc("current_on_duty_agents", {
     p_restaurant_id: restaurantId,
@@ -118,6 +146,7 @@ export async function notifyAgentsOfNewConversation(
       : preview.customerPhone;
 
     const body = truncate(preview.body || "رسالة جديدة", PREVIEW_MAX_LEN);
+    const badge = await countUnreadConversations(restaurantId);
 
     const messages: ExpoPushMessage[] = tokens.map((t) => ({
       to: t.expo_token,
@@ -131,6 +160,7 @@ export async function notifyAgentsOfNewConversation(
       priority: "high",
       channelId: PUSH_CHANNEL,
       sound: "default",
+      badge,
     }));
 
     const result = await sendExpoPush(messages);
@@ -191,6 +221,7 @@ export async function notifyAssignedAgentOfNewMessage(
       ? `${preview.customerName} — ${preview.customerPhone}`
       : preview.customerPhone;
     const body = truncate(preview.body || "رسالة جديدة", PREVIEW_MAX_LEN);
+    const badge = await countUnreadConversations(restaurantId);
 
     const messages: ExpoPushMessage[] = tokens.map((t) => ({
       to: t.expo_token,
@@ -204,6 +235,7 @@ export async function notifyAssignedAgentOfNewMessage(
       priority: "high",
       channelId: PUSH_CHANNEL,
       sound: "default",
+      badge,
     }));
 
     const result = await sendExpoPush(messages);
@@ -234,6 +266,7 @@ export async function notifyManagersOfSlaBreach(
         : truncate(preview.body, 120),
       PREVIEW_MAX_LEN
     );
+    const badge = await countUnreadConversations(restaurantId);
 
     const messages: ExpoPushMessage[] = tokens.map((t) => ({
       to: t.expo_token,
@@ -247,6 +280,7 @@ export async function notifyManagersOfSlaBreach(
       priority: "high",
       channelId: PUSH_CHANNEL,
       sound: "default",
+      badge,
     }));
 
     const result = await sendExpoPush(messages);

@@ -14,6 +14,19 @@ describe("customer-service helpers", () => {
     expect(template).not.toContain("restaurant");
   });
 
+  it("instructs Arabic replies to use a Saudi customer-service dialect", () => {
+    const template = buildCustomerServiceTemplate("Acme Studio", "ar");
+    const prompt = buildCustomerServiceSystemPrompt({
+      businessName: "Acme Studio",
+      language: "ar",
+    });
+
+    expect(template).toContain("لهجة سعودية");
+    expect(prompt).toContain("باللهجة السعودية");
+    expect(prompt).toContain("أبشري");
+    expect(prompt).toContain("تجنب اللهجات المصرية أو الشامية أو المغربية");
+  });
+
   it("builds a business support context from available business fields", () => {
     const context = buildBusinessSupportContext({
       id: "1",

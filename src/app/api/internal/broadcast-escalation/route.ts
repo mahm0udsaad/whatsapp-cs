@@ -218,6 +218,14 @@ export async function POST(request: NextRequest) {
     // to decide whether to open immediately.
     const bodyText = `${maskedPhone} — ${detailsSnippet}`.trim();
 
+    // App-icon badge = number of conversations with unread customer
+    // messages. Kept in the same payload so iOS shows a live activity count.
+    const { count: badgeCount } = await adminSupabaseClient
+      .from("conversations")
+      .select("id", { head: true, count: "exact" })
+      .eq("restaurant_id", order.restaurant_id)
+      .gt("unread_count", 0);
+
     const messages: ExpoPushMessage[] = tokenRows.map((row) => ({
       to: row.expo_token,
       title: "طلب تصعيد بانتظار قرارك",
@@ -234,6 +242,7 @@ export async function POST(request: NextRequest) {
       priority: "high",
       channelId: "escalations",
       sound: "default",
+      badge: badgeCount ?? 0,
     }));
 
     // 5. Send
