@@ -61,8 +61,18 @@ export function useInAppToasts(restaurantId: string | null) {
     // role='customer' to cut most noise and guard the conversation-scope
     // check in the handler. For huge tenants we'd scope by a conversation_id
     // IN () list, but the mobile tenant size makes role filtering adequate.
+    //
+    // Topic name is uniquified per effect run. Supabase JS keeps a registry
+    // of channels keyed by topic, so reusing `in-app-toasts:${restaurantId}`
+    // across StrictMode double-invokes (or rapid re-mounts) returns an
+    // already-subscribed channel and `.on()` then errors with
+    // "cannot add 'postgres_changes' callbacks ... after subscribe()".
+    // A unique suffix forces a fresh channel each run; cleanup removes it.
+    const channelName = `in-app-toasts:${restaurantId}:${Date.now().toString(36)}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
     const channel = supabase
-      .channel(`in-app-toasts:${restaurantId}`)
+      .channel(channelName)
       .on(
         "postgres_changes",
         {

@@ -40,6 +40,29 @@ eas build -p all     --profile preview
 eas build -p all     --profile production
 ```
 
+To create an Expo-hosted Android APK install page for testers:
+
+```bash
+bun run build:android:preview:cloud
+```
+
+This starts the `preview` Android APK build on EAS and prints a build URL. When
+the build finishes, open that URL on an Android device to see the install /
+download button.
+
+For a local Android EAS build on macOS, run the project script so Gradle can
+find the Android SDK:
+
+```bash
+bun run build:android:preview:local
+```
+
+The script defaults `ANDROID_HOME` and `ANDROID_SDK_ROOT` to
+`$HOME/Library/Android/sdk`, which is the standard Android Studio SDK location.
+It also sets Java/Gradle network options used by the local release build. If
+your SDK is installed somewhere else, export both variables before running the
+script.
+
 Profiles in `eas.json`:
 - `development` — dev client, internal distribution, iOS simulator enabled.
 - `preview` — internal distribution against the staging backend.
