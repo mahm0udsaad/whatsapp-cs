@@ -25,6 +25,16 @@ export async function registerForPushNotificationsAsync(
       sound: "default",
       lightColor: "#25D366",
     });
+    // New-booking channel. Lower importance than escalations so the owner
+    // can tell them apart in do-not-disturb schedules; still high enough to
+    // hit the lockscreen.
+    await Notifications.setNotificationChannelAsync("reservations", {
+      name: "Reservations",
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 200, 100, 200],
+      sound: "default",
+      lightColor: "#25D366",
+    });
   }
 
   const existing = await Notifications.getPermissionsAsync();

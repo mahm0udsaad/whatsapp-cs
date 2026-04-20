@@ -12,7 +12,10 @@ import {
 import { classifyIntent } from "@/lib/intent-classifier";
 import { createOrder } from "@/lib/order-manager";
 import { loadActiveAgentInstructions } from "@/lib/agent-instructions";
-import { classifyEscalation } from "@/lib/escalation-classifier";
+import {
+  classifyEscalation,
+  isBookingRequest,
+} from "@/lib/escalation-classifier";
 import type { InteractiveReply } from "@/lib/types";
 
 interface QueueAIReplyJobInput {
@@ -540,70 +543,106 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
       }
 
       // -----------------------------------------------------------------
-      // Claim-first escalation gate. Run BEFORE Twilio send.
-      // If the classifier decides a human should take over, we DO NOT send
-      // the AI reply to the customer — instead we stash it as
-      // `orders.ai_draft_reply` and let the inbox / mobile agent pick it up.
+      // Classification gates, in precedence order:
+      //   1. Booking pre-gate  — a reservation is a workflow, not a
+      //      knowledge gap. If the customer clearly wants to book, take
+      //      the reservation path and let the bot send its reply. The
+      //      human confirms the slot via the orders surface.
+      //   2. Escalation gate   — (complaint, human handoff, knowledge gap)
+      //      holds the reply and fans a push to agents.
+      //   3. Send reply + soft reservation classifier for edge cases.
       // -----------------------------------------------------------------
       const customerPhoneForJob =
         (job.payload as { customerPhone?: string | null })?.customerPhone || "";
 
-      const escalation = classifyEscalation({
-        customerMessage: inboundMessage.content,
-        aiReply: responseText,
-        ragChunkCount,
-        ragTopScore,
-        aiUncertain,
-      });
+      const isBooking = isBookingRequest(inboundMessage.content);
 
-      if (escalation.shouldEscalate) {
+      if (isBooking) {
+        // Create the reservation order synchronously so the push fires
+        // before we send the AI reply. Extract structured details via the
+        // intent classifier; fall back to the raw inbound on any failure so
+        // we never drop the booking.
+        let details = inboundMessage.content;
+        try {
+          const classified = await classifyIntent(
+            inboundMessage.content,
+            responseText,
+            history
+          );
+          if (classified.intent === "reservation" && classified.details.trim()) {
+            details = classified.details;
+          }
+        } catch {
+          /* non-fatal — use the raw message */
+        }
+
         await createOrder({
           restaurantId: job.restaurant_id,
           conversationId: job.conversation_id,
           customerPhone: customerPhoneForJob,
           customerName: conversation?.customer_name ?? null,
-          type: "escalation",
-          details: inboundMessage.content,
-          aiDraftReply: responseText,
-          escalationReason: escalation.reason,
-          priority:
-            escalation.reason === "sensitive" ? "urgent" : "normal",
+          type: "reservation",
+          details,
         });
 
-        await adminSupabaseClient
-          .from("ai_reply_jobs")
-          .update({
-            status: "completed",
-            processed_at: new Date().toISOString(),
-            last_error: `escalated:${escalation.reason}`,
-          })
-          .eq("id", job.id);
+        // Fall through — we DO send the AI reply. The bot's acknowledgement
+        // ("تم استلام الطلب وسنؤكد الموعد") is exactly what the customer
+        // needs to see; the owner gets the push to confirm the slot.
+      } else {
+        const escalation = classifyEscalation({
+          customerMessage: inboundMessage.content,
+          aiReply: responseText,
+          ragChunkCount,
+          ragTopScore,
+          aiUncertain,
+        });
 
-        processed += 1;
-        continue;
-      }
-
-      // Non-escalation path: still run the soft reservation classifier so
-      // we can capture bookings as orders. Fire-and-forget — it's not on
-      // the critical send path.
-      classifyIntent(inboundMessage.content, responseText, history)
-        .then(async ({ intent, details }) => {
-          if (intent === "none" || !details.trim()) return;
-          // Escalation-intent from this classifier is already covered by
-          // the deterministic gate above; skip to avoid duplicate rows.
-          if (intent !== "reservation") return;
+        if (escalation.shouldEscalate) {
           await createOrder({
             restaurantId: job.restaurant_id,
             conversationId: job.conversation_id,
             customerPhone: customerPhoneForJob,
             customerName: conversation?.customer_name ?? null,
-            type: intent,
-            details,
+            type: "escalation",
+            details: inboundMessage.content,
+            aiDraftReply: responseText,
+            escalationReason: escalation.reason,
+            priority:
+              escalation.reason === "sensitive" ? "urgent" : "normal",
           });
-        })
-        .catch(() => {
-          /* non-fatal */
-        });
+
+          await adminSupabaseClient
+            .from("ai_reply_jobs")
+            .update({
+              status: "completed",
+              processed_at: new Date().toISOString(),
+              last_error: `escalated:${escalation.reason}`,
+            })
+            .eq("id", job.id);
+
+          processed += 1;
+          continue;
+        }
+
+        // Non-booking, non-escalation: still run the soft reservation
+        // classifier so we capture edge-case bookings the regex missed
+        // (e.g. "ممكن تسجيلي لخميس القادم"). Fire-and-forget.
+        classifyIntent(inboundMessage.content, responseText, history)
+          .then(async ({ intent, details }) => {
+            if (intent !== "reservation" || !details.trim()) return;
+            await createOrder({
+              restaurantId: job.restaurant_id,
+              conversationId: job.conversation_id,
+              customerPhone: customerPhoneForJob,
+              customerName: conversation?.customer_name ?? null,
+              type: intent,
+              details,
+            });
+          })
+          .catch(() => {
+            /* non-fatal */
+          });
+      }
 
       const senderPhoneNumber =
         (job.payload as { senderPhoneNumber?: string | null })?.senderPhoneNumber ||

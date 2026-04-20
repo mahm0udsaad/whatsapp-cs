@@ -1,5 +1,8 @@
 import { adminSupabaseClient } from "@/lib/supabase/admin";
-import { triggerEscalationBroadcast } from "@/lib/escalation-broadcaster";
+import {
+  triggerEscalationBroadcast,
+  triggerReservationBroadcast,
+} from "@/lib/escalation-broadcaster";
 
 export interface CreateOrderInput {
   restaurantId: string;
@@ -92,10 +95,13 @@ export async function createOrder(input: CreateOrderInput): Promise<string | nul
 
   const newId = data.id as string;
 
-  // Fan out a claim-first broadcast to on-duty agents for NEW escalations.
-  // Fire-and-forget — never blocks or throws upstream.
+  // Fan a push out to on-duty agents for NEW orders. Fire-and-forget —
+  // never blocks or throws upstream. Escalations get the "decision
+  // needed" title/channel; reservations get the "new booking" one.
   if (input.type === "escalation") {
     void triggerEscalationBroadcast(newId);
+  } else if (input.type === "reservation") {
+    void triggerReservationBroadcast(newId);
   }
 
   return newId;

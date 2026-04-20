@@ -83,12 +83,48 @@ const HUMAN_HANDOFF_PATTERNS: RegExp[] = [
 
 const MIN_CUSTOMER_MESSAGE_LENGTH_FOR_GAP = 15;
 
+// Booking intent. Runs BEFORE the knowledge-gap rule so a reservation request
+// is never swallowed by "AI doesn't have live calendar data → escalate". A
+// booking is a workflow, not a knowledge gap — the bot accepts it, a human
+// confirms the slot. Pattern requires a booking verb/noun; a time/date token
+// is a tie-breaker for ambiguous short messages.
+const BOOKING_VERB_PATTERNS: RegExp[] = [
+  // Arabic noun / verb. `\b` doesn't fire against Arabic letters in JS, so
+  // we anchor with "start or non-Arabic-letter" on each side. Covers:
+  //   - noun "حجز" / "الحجز"
+  //   - verbs: "احجز", "أحجز", "تحجز", "يحجز", "احجزي", "احجزلي", "أحجزلي"
+  //   - "موعد" / "الموعد"
+  /(^|[^\p{L}])(ال)?(حجز|موعد|[يتأا]حجز(ي|لي|)?|أحجز(ي|لي|)?)(?=[^\p{L}]|$)/u,
+  // Common intent prefixes ("ابغى حجز", "ممكن احجز"). Kept separate so we
+  // match even when the noun is stuck to the verb via conjugation.
+  /(ابغى|ابغا|أبغى|أبي|ابي|ودي|احتاج|أحتاج|ممكن|بدي|عايز|عاوز)\s*(ال)?(حجز|موعد|احجز|أحجز|تحجز|يحجز)/u,
+  // English
+  /\b(book|booking|reserve|reservation|appointment|schedule)\b/i,
+];
+
 // ---------------------------------------------------------------------------
 // Classifier
 // ---------------------------------------------------------------------------
 
 function matchesAny(text: string, patterns: RegExp[]): boolean {
   return patterns.some((p) => p.test(text));
+}
+
+/**
+ * Deterministic booking-intent detector. TRUE = this message is clearly a
+ * reservation request and must be routed through the reservation path, NOT
+ * escalated as a knowledge gap.
+ *
+ * Rule: a booking verb/noun is always enough (short requests like "احجز لي"
+ * are valid bookings). If the verb didn't match, a time hint alone is NOT
+ * enough — "بكرة الساعة 10" without "حجز" could be about a delivery time or
+ * anything else.
+ */
+export function isBookingRequest(customerMessage: string): boolean {
+  const text = (customerMessage ?? "").trim();
+  if (text.length === 0) return false;
+  if (matchesAny(text, BOOKING_VERB_PATTERNS)) return true;
+  return false;
 }
 
 export function classifyEscalation(input: EscalationSignal): EscalationResult {

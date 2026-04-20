@@ -69,13 +69,51 @@ interface PushTokenRow {
   team_member_id: string;
 }
 
+interface BroadcastLogInput {
+  orderId: string | null;
+  restaurantId: string | null;
+  kind: "escalation" | "reservation";
+  ok: boolean;
+  sent?: number;
+  skipped?: number;
+  invalid?: number;
+  onDutyCount?: number;
+  recipientCount?: number;
+  managerFallback?: boolean;
+  skippedReason?: string | null;
+  errorMessage?: string | null;
+}
+
+async function logBroadcast(row: BroadcastLogInput): Promise<void> {
+  try {
+    await adminSupabaseClient.from("push_broadcast_log").insert({
+      order_id: row.orderId,
+      restaurant_id: row.restaurantId,
+      kind: row.kind,
+      ok: row.ok,
+      sent: row.sent ?? 0,
+      skipped: row.skipped ?? 0,
+      invalid: row.invalid ?? 0,
+      on_duty_count: row.onDutyCount ?? 0,
+      recipient_count: row.recipientCount ?? 0,
+      manager_fallback: row.managerFallback ?? false,
+      skipped_reason: row.skippedReason ?? null,
+      error_message: row.errorMessage ?? null,
+    });
+  } catch (err) {
+    // Logging the broadcast must never fail the broadcast itself.
+    const msg = err instanceof Error ? err.message : "unknown";
+    console.error(`[broadcast] log insert failed: ${msg}`);
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     if (!isAuthorized(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    let body: { orderId?: string };
+    let body: { orderId?: string; kind?: string };
     try {
       body = await request.json();
     } catch {
@@ -87,6 +125,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "orderId required" }, { status: 400 });
     }
 
+    // "kind" drives the push title/channel. Defaults to "escalation" for
+    // backward compatibility with the existing caller.
+    const rawKind = body.kind?.trim() || "escalation";
+    const kind: "escalation" | "reservation" =
+      rawKind === "reservation" ? "reservation" : "escalation";
+
     // 1. Load the order
     const { data: order, error: orderErr } = await adminSupabaseClient
       .from("orders")
@@ -97,21 +141,45 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (orderErr) {
+      await logBroadcast({
+        orderId,
+        restaurantId: null,
+        kind,
+        ok: false,
+        errorMessage: `load_order: ${orderErr.message}`,
+      });
       return NextResponse.json({ error: orderErr.message }, { status: 500 });
     }
     if (!order) {
+      await logBroadcast({
+        orderId,
+        restaurantId: null,
+        kind,
+        ok: false,
+        errorMessage: "order_not_found",
+      });
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
     // No-op paths (idempotent)
     if (order.assigned_to || order.hanan_escalated_at) {
+      const reason = order.assigned_to
+        ? "already_claimed"
+        : "already_escalated";
+      await logBroadcast({
+        orderId,
+        restaurantId: order.restaurant_id,
+        kind,
+        ok: true,
+        skippedReason: reason,
+      });
       return NextResponse.json(
         {
           sent: 0,
           skipped: 0,
           invalid: 0,
           onDutyCount: 0,
-          skippedReason: order.assigned_to ? "already_claimed" : "already_escalated",
+          skippedReason: reason,
         },
         { status: 200 }
       );
@@ -126,6 +194,13 @@ export async function POST(request: NextRequest) {
       { p_restaurant_id: order.restaurant_id }
     );
     if (onDutyErr) {
+      await logBroadcast({
+        orderId,
+        restaurantId: order.restaurant_id,
+        kind,
+        ok: false,
+        errorMessage: `on_duty_rpc: ${onDutyErr.message}`,
+      });
       return NextResponse.json({ error: onDutyErr.message }, { status: 500 });
     }
 
@@ -144,6 +219,13 @@ export async function POST(request: NextRequest) {
         .eq("role", "admin")
         .eq("is_active", true);
       if (managersErr) {
+        await logBroadcast({
+          orderId,
+          restaurantId: order.restaurant_id,
+          kind,
+          ok: false,
+          errorMessage: `managers_lookup: ${managersErr.message}`,
+        });
         return NextResponse.json(
           { error: managersErr.message },
           { status: 500 }
@@ -169,6 +251,14 @@ export async function POST(request: NextRequest) {
       console.log(
         `[broadcast] order=${orderId} sent=0 skipped=0 invalid=0 (no recipients; fallback=${usedManagerFallback})`
       );
+      await logBroadcast({
+        orderId,
+        restaurantId: order.restaurant_id,
+        kind,
+        ok: true,
+        skippedReason: "no_recipients",
+        managerFallback: usedManagerFallback,
+      });
       return NextResponse.json(
         {
           sent: 0,
@@ -189,6 +279,16 @@ export async function POST(request: NextRequest) {
       .eq("disabled", false);
 
     if (tokensErr) {
+      await logBroadcast({
+        orderId,
+        restaurantId: order.restaurant_id,
+        kind,
+        ok: false,
+        onDutyCount,
+        recipientCount: memberIds.length,
+        managerFallback: usedManagerFallback,
+        errorMessage: `tokens_lookup: ${tokensErr.message}`,
+      });
       return NextResponse.json({ error: tokensErr.message }, { status: 500 });
     }
 
@@ -198,6 +298,16 @@ export async function POST(request: NextRequest) {
       console.log(
         `[broadcast] order=${orderId} sent=0 skipped=0 invalid=0 recipients=${memberIds.length} fallback=${usedManagerFallback} (no tokens)`
       );
+      await logBroadcast({
+        orderId,
+        restaurantId: order.restaurant_id,
+        kind,
+        ok: true,
+        skippedReason: "no_push_tokens",
+        onDutyCount,
+        recipientCount: memberIds.length,
+        managerFallback: usedManagerFallback,
+      });
       return NextResponse.json(
         {
           sent: 0,
@@ -226,21 +336,28 @@ export async function POST(request: NextRequest) {
       .eq("restaurant_id", order.restaurant_id)
       .gt("unread_count", 0);
 
+    const title =
+      kind === "reservation"
+        ? "حجز جديد من البوت"
+        : "طلب تصعيد بانتظار قرارك";
+    const channelId = kind === "reservation" ? "reservations" : "escalations";
+
     const messages: ExpoPushMessage[] = tokenRows.map((row) => ({
       to: row.expo_token,
-      title: "طلب تصعيد بانتظار قرارك",
+      title,
       body: bodyText,
       data: {
         orderId: order.id,
         restaurantId: order.restaurant_id,
         conversationId: order.conversation_id,
+        kind,
         // Use the existing 'new_conversation' deep-link type so tap opens the
-        // conversation directly — the owner lands on the escalation banner in
-        // the chat header and can decide in-context.
+        // conversation directly — the owner lands on the banner in the chat
+        // header and can act in-context.
         type: "new_conversation",
       },
       priority: "high",
-      channelId: "escalations",
+      channelId,
       sound: "default",
       badge: badgeCount ?? 0,
     }));
@@ -266,6 +383,19 @@ export async function POST(request: NextRequest) {
       `[broadcast] order=${orderId} sent=${result.sent} skipped=${result.skipped} invalid=${result.invalidTokens.length} onDuty=${onDutyCount} recipients=${memberIds.length} fallback=${usedManagerFallback}`
     );
 
+    await logBroadcast({
+      orderId,
+      restaurantId: order.restaurant_id,
+      kind,
+      ok: true,
+      sent: result.sent,
+      skipped: result.skipped,
+      invalid: result.invalidTokens.length,
+      onDutyCount,
+      recipientCount: memberIds.length,
+      managerFallback: usedManagerFallback,
+    });
+
     return NextResponse.json(
       {
         sent: result.sent,
@@ -279,6 +409,13 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    await logBroadcast({
+      orderId: null,
+      restaurantId: null,
+      kind: "escalation",
+      ok: false,
+      errorMessage: message,
+    });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

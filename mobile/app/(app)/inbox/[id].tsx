@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  InteractionManager,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -23,6 +24,7 @@ import * as DocumentPicker from "expo-document-picker";
 import {
   asArray,
   claimConversation,
+  createLabel,
   getTeamRoster,
   listLabels,
   reassignConversation,
@@ -31,10 +33,11 @@ import {
   setConversationLabels,
   uploadConversationMedia,
   type ConversationLabel,
+  type LabelColor,
   type ReplyAttachment,
   type TeamMemberRosterRow,
 } from "../../../lib/api";
-import { labelChipClasses } from "../../../lib/label-colors";
+import { labelChipClasses, labelColorOrder } from "../../../lib/label-colors";
 import { supabase } from "../../../lib/supabase";
 import { useSessionStore } from "../../../lib/session-store";
 import { isManager } from "../../../lib/roles";
@@ -166,6 +169,7 @@ export default function ConversationDetail() {
   const didInitialScrollRef = useRef(false);
   const listLaidOutRef = useRef(false);
   const contentReadyRef = useRef(false);
+  const prevMsgCountRef = useRef(0);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [claiming, setClaiming] = useState<"human" | "bot" | null>(null);
@@ -347,6 +351,8 @@ export default function ConversationDetail() {
   const conv = query.data?.conversation;
   const messages = query.data?.messages ?? [];
   const pendingEscalation = query.data?.pendingEscalation ?? null;
+  const latestMessageId =
+    messages.length > 0 ? messages[messages.length - 1]?.id : null;
 
   // Realtime: append new messages and apply delivery_status transitions
   // directly to the cache so read-receipt ticks update without a refetch.
@@ -484,11 +490,15 @@ export default function ConversationDetail() {
   }, [id]);
 
   const scrollToLatestMessage = useCallback((animated: boolean) => {
+    // Request animation frame ensures we wait for the next render tick before scrolling
     requestAnimationFrame(() => {
       listRef.current?.scrollToEnd({ animated });
-      setTimeout(() => {
-        listRef.current?.scrollToEnd({ animated });
-      }, 80);
+      // A small fallback timeout catches any straggling layout shifts (like text wrapping)
+      if (!animated) {
+        setTimeout(() => {
+          listRef.current?.scrollToEnd({ animated: false });
+        }, 100);
+      }
     });
   }, []);
 
@@ -572,6 +582,37 @@ export default function ConversationDetail() {
     },
     [id, qc, queryKey, restaurantId, teamMemberId]
   );
+
+  // When opening a chat, messages may already be in the React Query cache by
+  // the time FlatList mounts. In that path onContentSizeChange is not a
+  // reliable first-scroll trigger, so schedule a few post-layout attempts.
+  useEffect(() => {
+    if (!id || !latestMessageId || didInitialScrollRef.current) return;
+
+    didInitialScrollRef.current = true;
+    atBottomRef.current = true;
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const run = () => {
+      listRef.current?.scrollToEnd({ animated: false });
+    };
+
+    const interaction = InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(run);
+      timers.push(setTimeout(run, 80));
+      timers.push(
+        setTimeout(() => {
+          run();
+          void markReadIfAtBottom(true);
+        }, 240)
+      );
+    });
+
+    return () => {
+      interaction.cancel();
+      timers.forEach(clearTimeout);
+    };
+  }, [id, latestMessageId, markReadIfAtBottom]);
 
   // Clear on mount once the cached conversation loads.
   useEffect(() => {
@@ -812,44 +853,46 @@ export default function ConversationDetail() {
 
   return (
     <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["top", "bottom"]}>
-      <View className="border-b border-[#E6E8EC] bg-white px-4 pb-3 pt-2">
+      <View className="border-b border-[#E6E8EC] bg-white px-3 pb-2 pt-2 z-10">
         <View
-          className="flex-row-reverse items-center gap-3 rounded-lg bg-[#052E26] px-3 py-3"
+          className="flex-row-reverse items-center gap-2 rounded-lg bg-[#052E26] px-2 py-2"
           style={premiumShadow}
         >
           <Pressable
             onPress={() => router.back()}
-            hitSlop={8}
-            className="h-11 w-11 items-center justify-center rounded-lg bg-white/10"
+            hitSlop={12}
+            className="h-9 w-9 items-center justify-center rounded-lg bg-white/10"
           >
-            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
           </Pressable>
-          <View className="h-11 w-11 items-center justify-center rounded-lg bg-white/12">
-            <Ionicons name="person" size={20} color="#B7F7D8" />
+          <View className="h-9 w-9 items-center justify-center rounded-lg bg-white/12">
+            <Ionicons name="person" size={18} color="#B7F7D8" />
           </View>
-          <View className="flex-1">
+          <View className="flex-1 justify-center">
             <Text
-              className="text-right text-base font-bold text-white"
+              className="text-right text-sm font-bold text-white"
               numberOfLines={1}
             >
               {conv.customer_name || conv.customer_phone}
             </Text>
-            <Text className="mt-0.5 text-right text-xs text-emerald-100/80" selectable>
-              {conv.customer_phone}
-            </Text>
+            {conv.customer_name ? (
+              <Text className="mt-0.5 text-right text-[10px] text-emerald-100/80" selectable>
+                {conv.customer_phone}
+              </Text>
+            ) : null}
           </View>
           {manager ? (
             <Pressable
               onPress={() => setReassignOpen(true)}
-              hitSlop={8}
-              className="h-11 w-11 items-center justify-center rounded-lg bg-white/10"
+              hitSlop={12}
+              className="h-9 w-9 items-center justify-center rounded-lg bg-white/10"
             >
-              <Ionicons name="ellipsis-horizontal" size={22} color="#FFFFFF" />
+              <Ionicons name="ellipsis-horizontal" size={20} color="#FFFFFF" />
             </Pressable>
           ) : null}
         </View>
         <View
-          className={`mt-3 rounded-lg border px-3 py-2 ${
+          className={`mt-1.5 rounded-lg border px-2 py-1.5 ${
             windowState.tone === "danger"
               ? "border-red-200 bg-red-50"
               : windowState.tone === "warning"
@@ -858,9 +901,8 @@ export default function ConversationDetail() {
               ? "border-emerald-200 bg-emerald-50"
               : "border-[#E6E8EC] bg-[#F6F7F9]"
           }`}
-          style={softShadow}
         >
-          <View className="flex-row-reverse items-start gap-2">
+          <View className="flex-row-reverse items-center gap-2">
             <Ionicons
               name={
                 windowState.tone === "success"
@@ -869,7 +911,7 @@ export default function ConversationDetail() {
                   ? "information-circle"
                   : "time"
               }
-              size={18}
+              size={16}
               color={
                 windowState.tone === "danger"
                   ? managerColors.danger
@@ -880,37 +922,31 @@ export default function ConversationDetail() {
                   : managerColors.muted
               }
             />
-            <View className="flex-1">
-              <View className="flex-row-reverse flex-wrap items-center gap-2">
-                <Text
-                  className={`text-right text-sm font-semibold ${
-                    windowState.tone === "danger"
-                      ? "text-red-800"
-                      : windowState.tone === "warning"
-                      ? "text-amber-800"
-                      : windowState.tone === "success"
-                      ? "text-emerald-900"
-                      : "text-[#344054]"
-                  }`}
-                >
-                  {windowState.title}
-                </Text>
-                <Text
-                  className={`rounded-lg px-2 py-0.5 text-xs font-semibold ${
-                    conv.handler_mode === "unassigned"
-                      ? "bg-red-100 text-red-800"
-                      : conv.handler_mode === "bot"
-                      ? "bg-indigo-100 text-indigo-800"
-                      : "bg-emerald-100 text-emerald-900"
-                  }`}
-                >
-                  {getOwnerLabel(conv)}
-                </Text>
-              </View>
-              <Text className="mt-1 text-right text-xs leading-5 text-[#667085]">
-                {windowState.description}
-              </Text>
-            </View>
+            <Text
+              className={`flex-1 text-right text-xs font-semibold ${
+                windowState.tone === "danger"
+                  ? "text-red-800"
+                  : windowState.tone === "warning"
+                  ? "text-amber-800"
+                  : windowState.tone === "success"
+                  ? "text-emerald-900"
+                  : "text-[#344054]"
+              }`}
+              numberOfLines={1}
+            >
+              {windowState.title}
+            </Text>
+            <Text
+              className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                conv.handler_mode === "unassigned"
+                  ? "bg-red-100 text-red-800"
+                  : conv.handler_mode === "bot"
+                  ? "bg-indigo-100 text-indigo-800"
+                  : "bg-emerald-100 text-emerald-900"
+              }`}
+            >
+              {getOwnerLabel(conv)}
+            </Text>
           </View>
         </View>
         <EscalationBanner escalation={pendingEscalation} />
@@ -924,7 +960,6 @@ export default function ConversationDetail() {
           ref={listRef}
           data={messages}
           keyExtractor={(m) => m.id}
-          contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
           onLayout={() => {
             listLaidOutRef.current = true;
@@ -945,16 +980,16 @@ export default function ConversationDetail() {
             const didInitialScroll = tryInitialScrollToLatest();
             if (didInitialScroll) {
               void markReadIfAtBottom(true);
+              prevMsgCountRef.current = messages.length;
               return;
             }
             // A new message pushed content height. If we were already at the
             // bottom, re-pin + clear the freshly incremented unread counter.
-            // If the user is scrolled up reading older messages, leave them
-            // alone — the badge stays so they know a new message arrived.
-            if (atBottomRef.current) {
+            if (atBottomRef.current && messages.length > prevMsgCountRef.current) {
               scrollToLatestMessage(true);
               void markReadIfAtBottom(true);
             }
+            prevMsgCountRef.current = messages.length;
           }}
           renderItem={({ item, index }) => {
             const prev = messages[index - 1];
@@ -1145,26 +1180,22 @@ export default function ConversationDetail() {
 function ChatSkeleton() {
   return (
     <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["top", "bottom"]}>
-      <View className="border-b border-[#E6E8EC] bg-white px-4 pb-3 pt-2">
-        <View className="flex-row-reverse items-center gap-3">
-          <SkeletonBlock className="h-10 w-10 rounded-lg" />
-          <SkeletonBlock className="h-11 w-11 rounded-lg" />
-          <View className="flex-1 items-end gap-2">
-            <SkeletonBlock className="h-4 w-32 rounded-lg" />
-            <SkeletonBlock className="h-3 w-24 rounded-lg" />
+      <View className="border-b border-[#E6E8EC] bg-white px-3 pb-2 pt-2 z-10">
+        <View className="flex-row-reverse items-center gap-2">
+          <SkeletonBlock className="h-9 w-9 rounded-lg" />
+          <SkeletonBlock className="h-9 w-9 rounded-lg" />
+          <View className="flex-1 items-end gap-1.5">
+            <SkeletonBlock className="h-3.5 w-32 rounded-lg" />
+            <SkeletonBlock className="h-2.5 w-24 rounded-lg" />
           </View>
-          <SkeletonBlock className="h-10 w-10 rounded-lg" />
+          <SkeletonBlock className="h-9 w-9 rounded-lg" />
         </View>
-        <View className="mt-3 rounded-lg border border-[#E6E8EC] bg-[#F6F7F9] px-3 py-3">
-          <View className="flex-row-reverse items-start gap-2">
+        <View className="mt-1.5 rounded-lg border border-[#E6E8EC] bg-[#F6F7F9] px-2 py-2">
+          <View className="flex-row-reverse items-center gap-2">
             <SkeletonBlock className="h-4 w-4 rounded-lg" />
-            <View className="flex-1 items-end gap-2">
-              <View className="flex-row-reverse gap-2">
-                <SkeletonBlock className="h-4 w-36 rounded-lg" />
-                <SkeletonBlock className="h-4 w-16 rounded-lg" />
-              </View>
-              <SkeletonBlock className="h-3 w-48 rounded-lg" />
-            </View>
+            <SkeletonBlock className="h-3 w-40 rounded-lg" />
+            <View className="flex-1" />
+            <SkeletonBlock className="h-4 w-16 rounded-lg" />
           </View>
         </View>
       </View>
@@ -1210,9 +1241,11 @@ function ChatSkeleton() {
 function DateSeparator({ date }: { date: string }) {
   return (
     <View className="my-3 items-center">
-      <Text className="rounded-lg bg-white px-3 py-1 text-xs font-medium text-[#667085]">
-        {format(new Date(date), "EEEE d MMMM", { locale: ar })}
-      </Text>
+      <View className="rounded-lg bg-gray-200/60 px-3 py-1">
+        <Text className="text-[11px] font-semibold text-gray-500">
+          {format(new Date(date), "EEEE d MMMM", { locale: ar })}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -1234,19 +1267,12 @@ function MessageBubble({ message }: { message: Msg }) {
   }
 
   return (
-    <View className={`my-1.5 flex ${isCustomer ? "items-start" : "items-end"}`}>
-      <Text
-        className={`mb-1 text-[11px] font-semibold ${
-          isCustomer ? "text-[#667085]" : "text-[#00A884]"
-        }`}
-      >
-        {isCustomer ? "العميل" : "الفريق"}
-      </Text>
+    <View className={`my-1 flex ${isCustomer ? "items-start" : "items-end"}`}>
       <View
-        className={`max-w-[84%] rounded-lg border px-3 py-2 ${
+        className={`max-w-[84%] px-3 py-2 ${
           isCustomer
-            ? "border-[#E6E8EC] bg-white"
-            : "border-[#00A884] bg-[#00A884]"
+            ? "rounded-2xl rounded-tl-md border border-[#E6E8EC] bg-white"
+            : "rounded-2xl rounded-tr-md bg-[#00A884]"
         }`}
         style={isCustomer ? softShadow : premiumShadow}
       >
@@ -1260,8 +1286,8 @@ function MessageBubble({ message }: { message: Msg }) {
         </Text>
         <View className="mt-1 flex-row-reverse items-center gap-1.5">
           <Text
-            className={`text-[11px] ${
-              isCustomer ? "text-[#98A2B3]" : "text-emerald-50"
+            className={`text-[10px] ${
+              isCustomer ? "text-[#98A2B3]" : "text-emerald-100"
             }`}
           >
             {format(new Date(message.created_at), "HH:mm")}
@@ -1303,31 +1329,19 @@ function EscalationBanner({
     tone === "danger" ? "#991B1B" : tone === "warn" ? "#B45309" : "#3730A3";
   const ageLabel = formatDistanceToNowLocal(escalation.created_at);
   return (
-    <View className={`mt-2 rounded-lg border px-3 py-2 ${toneBg} ${toneBorder}`}>
-      <View className="flex-row-reverse items-start gap-2">
-        <Ionicons name="shield-checkmark" size={18} color={toneIcon} />
-        <View className="flex-1">
-          <View className="flex-row-reverse flex-wrap items-center gap-2">
-            <Text className={`text-right text-sm font-semibold ${toneFg}`}>
-              طلب تصعيد بانتظار قرارك
-            </Text>
-            <Text
-              className={`rounded-lg px-2 py-0.5 text-[11px] font-semibold ${toneBg} ${toneFg}`}
-            >
-              {reasonLabel}
-            </Text>
-            <Text className="text-[11px] text-[#667085]">{ageLabel}</Text>
-          </View>
-          {escalation.message ? (
-            <Text
-              numberOfLines={2}
-              className="mt-1 text-right text-xs leading-5 text-[#344054]"
-              selectable
-            >
-              {escalation.message}
-            </Text>
-          ) : null}
-        </View>
+    <View className={`mt-1.5 rounded-lg border px-2 py-1.5 ${toneBg} ${toneBorder}`}>
+      <View className="flex-row-reverse items-center gap-2">
+        <Ionicons name="shield-checkmark" size={16} color={toneIcon} />
+        <Text className={`text-right text-xs font-semibold ${toneFg}`}>
+          تصعيد:
+        </Text>
+        <Text
+          className={`flex-1 text-right text-xs ${toneFg}`}
+          numberOfLines={1}
+        >
+          {escalation.message || reasonLabel}
+        </Text>
+        <Text className="text-[10px] text-[#667085]">{ageLabel}</Text>
       </View>
     </View>
   );
@@ -1399,41 +1413,34 @@ function Footer({
   if (mode === "unassigned") {
     return (
       <View className="border-t border-[#E6E8EC] bg-white px-3 pb-4 pt-3">
-        <View className="mb-3 flex-row-reverse items-center gap-2">
-          <View className="h-9 w-9 items-center justify-center rounded-lg bg-red-50">
-            <Ionicons name="hand-left-outline" size={18} color={managerColors.danger} />
-          </View>
-          <View className="flex-1">
-            <Text className="text-right text-sm font-bold text-[#0B0F13]">
-              المحادثة غير مستلمة
-            </Text>
-            <Text className="mt-0.5 text-right text-xs text-[#667085]">
-              اختاري جهة الاستلام قبل الرد على العميل.
-            </Text>
-          </View>
+        <View className="mb-3 flex-row-reverse items-center justify-center gap-1.5">
+          <Ionicons name="hand-left-outline" size={16} color={managerColors.danger} />
+          <Text className="text-right text-xs text-[#667085]">
+            هذه المحادثة غير مستلمة. اختاري جهة الاستلام للرد.
+          </Text>
         </View>
         <View className="flex-row-reverse gap-2">
           <Pressable
             onPress={() => onClaim("human")}
             disabled={claiming !== null}
-            className="min-h-12 flex-1 items-center justify-center rounded-lg bg-[#00A884] py-3.5"
+            className="h-10 flex-1 items-center justify-center rounded-lg bg-[#00A884] px-3"
             style={premiumShadow}
           >
             {claiming === "human" ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text className="font-semibold text-white">استلام الآن</Text>
+              <Text className="font-semibold text-sm text-white">استلام الآن</Text>
             )}
           </Pressable>
           <Pressable
             onPress={() => onClaim("bot")}
             disabled={claiming !== null}
-            className="min-h-12 flex-1 items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 py-3.5"
+            className="h-10 flex-1 items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 px-3"
           >
             {claiming === "bot" ? (
-              <ActivityIndicator />
+              <ActivityIndicator size="small" />
             ) : (
-              <Text className="font-semibold text-indigo-800">توكيل للبوت</Text>
+              <Text className="font-semibold text-sm text-indigo-800">توكيل للبوت</Text>
             )}
           </Pressable>
         </View>
@@ -1532,30 +1539,28 @@ function Footer({
 
   if (mode === "bot") {
     return (
-      <View className="border-t border-[#E6E8EC] bg-white px-3 pb-4 pt-3">
-        <View className="mb-3 flex-row-reverse items-center gap-2">
-          <View className="h-9 w-9 items-center justify-center rounded-lg bg-indigo-50">
-            <Ionicons name="hardware-chip-outline" size={18} color={managerColors.bot} />
-          </View>
-          <View className="flex-1">
+      <View className="border-t border-[#E6E8EC] bg-white px-3 pb-4 pt-3 flex-row-reverse items-center gap-3">
+        <View className="flex-1">
+          <View className="flex-row-reverse items-center gap-1.5">
+            <Ionicons name="hardware-chip-outline" size={16} color={managerColors.bot} />
             <Text className="text-right text-sm font-bold text-[#0B0F13]">
               البوت يدير المحادثة
             </Text>
-            <Text className="mt-0.5 text-right text-xs text-[#667085]">
-              استلميها يدويًا إذا احتاج العميل متابعة بشرية.
-            </Text>
           </View>
+          <Text className="mt-0.5 text-right text-xs text-[#667085]">
+            استلميها يدويًا للرد على العميل.
+          </Text>
         </View>
         <Pressable
           onPress={() => onClaim("human")}
           disabled={claiming !== null}
-          className="min-h-12 items-center justify-center rounded-lg bg-[#00A884] py-3.5"
+          className="h-10 px-4 items-center justify-center rounded-lg bg-[#00A884]"
           style={premiumShadow}
         >
           {claiming === "human" ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text className="font-semibold text-white">استلام يدوي</Text>
+            <Text className="font-semibold text-sm text-white">استلام يدوي</Text>
           )}
         </Pressable>
       </View>
@@ -1678,6 +1683,46 @@ function LabelsPickerModal({
     if (selectedQuery.data) setDraft(new Set(selectedQuery.data));
   }, [selectedQuery.data]);
 
+  // Inline "create new label" form state. Hidden until the agent taps
+  // the "+ تسمية جديدة" button; closes itself after a successful save.
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newColor, setNewColor] = useState<LabelColor>("emerald");
+  const resetCreateForm = useCallback(() => {
+    setCreating(false);
+    setNewName("");
+    setNewColor("emerald");
+  }, []);
+  // Reset the create form whenever the modal is dismissed so a reopen
+  // starts clean.
+  useEffect(() => {
+    if (!visible) resetCreateForm();
+  }, [visible, resetCreateForm]);
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      const name = newName.trim();
+      if (!name) throw new Error("الاسم مطلوب");
+      return createLabel({ restaurantId, name, color: newColor });
+    },
+    onSuccess: (label) => {
+      // Preselect the new label so the agent doesn't have to tap it again.
+      setDraft((prev) => {
+        const n = new Set(prev);
+        n.add(label.id);
+        return n;
+      });
+      qc.invalidateQueries({ queryKey: ["labels", restaurantId] });
+      resetCreateForm();
+    },
+    onError: (e: unknown) => {
+      Alert.alert(
+        "تعذّر إنشاء التسمية",
+        e instanceof Error ? e.message : "حدث خطأ"
+      );
+    },
+  });
+
   const saveMutation = useMutation({
     mutationFn: async () =>
       setConversationLabels(conversationId, Array.from(draft)),
@@ -1722,51 +1767,124 @@ function LabelsPickerModal({
           <View className="mt-4">
             {labelsQuery.isLoading || selectedQuery.isLoading ? (
               <ActivityIndicator />
-            ) : labels.length === 0 ? (
-              <View className="items-center py-8">
-                <Text className="text-center text-sm text-[#667085]">
-                  لا توجد تسميات بعد. أنشئي تسميات من لوحة التحكم.
-                </Text>
-              </View>
             ) : (
               <ScrollView style={{ maxHeight: 320 }}>
-                {labels.map((l: ConversationLabel) => {
-                  const selected = draft.has(l.id);
-                  const cls = labelChipClasses[l.color];
-                  return (
-                    <Pressable
-                      key={l.id}
-                      onPress={() =>
-                        setDraft((prev) => {
-                          const n = new Set(prev);
-                          if (n.has(l.id)) n.delete(l.id);
-                          else n.add(l.id);
-                          return n;
-                        })
-                      }
-                      className="flex-row-reverse items-center justify-between border-b border-gray-100 py-3"
-                    >
-                      <View className="flex-row-reverse items-center gap-2">
-                        <View
-                          className={`h-3 w-3 rounded-full ${cls.bg} border ${cls.border}`}
-                        />
-                        <Text className="text-right text-sm font-semibold text-gray-950">
-                          {l.name}
-                        </Text>
-                      </View>
-                      <Ionicons
-                        name={
-                          selected ? "checkbox" : "square-outline"
+                {labels.length === 0 ? (
+                  <View className="items-center py-6">
+                    <Text className="text-center text-sm text-[#667085]">
+                      لا توجد تسميات بعد. أنشئي أول تسمية مثل &quot;بانتظار
+                      الدفع&quot; أو &quot;لم يستلم بعد&quot;.
+                    </Text>
+                  </View>
+                ) : (
+                  labels.map((l: ConversationLabel) => {
+                    const selected = draft.has(l.id);
+                    const cls = labelChipClasses[l.color];
+                    return (
+                      <Pressable
+                        key={l.id}
+                        onPress={() =>
+                          setDraft((prev) => {
+                            const n = new Set(prev);
+                            if (n.has(l.id)) n.delete(l.id);
+                            else n.add(l.id);
+                            return n;
+                          })
                         }
-                        size={22}
-                        color={selected ? "#00A884" : "#98A2B3"}
-                      />
-                    </Pressable>
-                  );
-                })}
+                        className="flex-row-reverse items-center justify-between border-b border-gray-100 py-3"
+                      >
+                        <View className="flex-row-reverse items-center gap-2">
+                          <View
+                            className={`h-3 w-3 rounded-full ${cls.bg} border ${cls.border}`}
+                          />
+                          <Text className="text-right text-sm font-semibold text-gray-950">
+                            {l.name}
+                          </Text>
+                        </View>
+                        <Ionicons
+                          name={selected ? "checkbox" : "square-outline"}
+                          size={22}
+                          color={selected ? "#00A884" : "#98A2B3"}
+                        />
+                      </Pressable>
+                    );
+                  })
+                )}
               </ScrollView>
             )}
           </View>
+
+          {/* Create new label — inline form */}
+          {creating ? (
+            <View className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+              <Text className="text-right text-xs text-[#667085]">
+                اسم التسمية
+              </Text>
+              <TextInput
+                value={newName}
+                onChangeText={setNewName}
+                placeholder="مثال: بانتظار الدفع"
+                maxLength={40}
+                textAlign="right"
+                className="mt-1 rounded-md border border-gray-200 bg-white px-3 py-2 text-right text-sm text-gray-950"
+              />
+              <Text className="mt-3 text-right text-xs text-[#667085]">
+                اللون
+              </Text>
+              <View className="mt-2 flex-row-reverse flex-wrap gap-2">
+                {labelColorOrder.map((c) => {
+                  const cls = labelChipClasses[c];
+                  const active = newColor === c;
+                  return (
+                    <Pressable
+                      key={c}
+                      onPress={() => setNewColor(c)}
+                      className={`h-8 w-8 items-center justify-center rounded-full border ${cls.bg} ${active ? "border-[#00A884]" : cls.border}`}
+                    >
+                      {active ? (
+                        <Ionicons name="checkmark" size={16} color="#00A884" />
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <View className="mt-3 flex-row-reverse gap-2">
+                <Pressable
+                  disabled={
+                    createMutation.isPending || newName.trim().length === 0
+                  }
+                  onPress={() => createMutation.mutate()}
+                  className={`flex-1 items-center rounded-md py-2 ${
+                    newName.trim().length === 0
+                      ? "bg-[#B6E5D6]"
+                      : "bg-[#00A884]"
+                  }`}
+                >
+                  {createMutation.isPending ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text className="font-semibold text-white">إنشاء</Text>
+                  )}
+                </Pressable>
+                <Pressable
+                  onPress={resetCreateForm}
+                  className="flex-1 items-center rounded-md border border-gray-200 py-2"
+                >
+                  <Text className="font-semibold text-gray-700">إلغاء</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => setCreating(true)}
+              className="mt-3 flex-row-reverse items-center justify-center gap-2 rounded-lg border border-dashed border-[#00A884] py-3"
+            >
+              <Ionicons name="add-circle-outline" size={18} color="#00A884" />
+              <Text className="font-semibold text-[#00A884]">
+                تسمية جديدة
+              </Text>
+            </Pressable>
+          )}
 
           <View className="mt-4 flex-row-reverse gap-2">
             <Pressable

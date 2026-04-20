@@ -27,4 +27,16 @@ export const qk = {
     ["manager", "approvals", restaurantId] as const,
   whatsappHealth: (restaurantId: string) =>
     ["manager", "whatsapp-health", restaurantId] as const,
+  teamPerformance: (restaurantId: string, from: string, to: string) =>
+    ["manager", "team-performance", restaurantId, from, to] as const,
+  agentPerformanceDetail: (
+    teamMemberId: string,
+    from: string,
+    to: string
+  ) =>
+    ["manager", "agent-performance", teamMemberId, from, to] as const,
+  teamMemberNotes: (teamMemberId: string) =>
+    ["manager", "team-member-notes", teamMemberId] as const,
+  teamMemberGoals: (teamMemberId: string) =>
+    ["manager", "team-member-goals", teamMemberId] as const,
 };

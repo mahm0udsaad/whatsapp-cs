@@ -42,15 +42,18 @@ function getInternalSecret(): string | null {
   );
 }
 
-export async function triggerEscalationBroadcast(
-  orderId: string
+type BroadcastKind = "escalation" | "reservation";
+
+async function triggerBroadcast(
+  orderId: string,
+  kind: BroadcastKind
 ): Promise<void> {
   if (!orderId) return;
 
   const secret = getInternalSecret();
   if (!secret) {
     console.warn(
-      "[escalation-broadcaster] no internal secret configured; skipping broadcast"
+      `[broadcaster] no internal secret configured; skipping ${kind} broadcast`
     );
     return;
   }
@@ -67,22 +70,30 @@ export async function triggerEscalationBroadcast(
         "Content-Type": "application/json",
         Authorization: `Bearer ${secret}`,
       },
-      body: JSON.stringify({ orderId }),
+      body: JSON.stringify({ orderId, kind }),
       signal: controller.signal,
     });
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
       console.error(
-        `[escalation-broadcaster] non-2xx for order=${orderId}: ${response.status} ${text.slice(0, 200)}`
+        `[broadcaster:${kind}] non-2xx for order=${orderId}: ${response.status} ${text.slice(0, 200)}`
       );
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "unknown error";
     console.error(
-      `[escalation-broadcaster] failed for order=${orderId}: ${msg}`
+      `[broadcaster:${kind}] failed for order=${orderId}: ${msg}`
     );
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export function triggerEscalationBroadcast(orderId: string): Promise<void> {
+  return triggerBroadcast(orderId, "escalation");
+}
+
+export function triggerReservationBroadcast(orderId: string): Promise<void> {
+  return triggerBroadcast(orderId, "reservation");
 }

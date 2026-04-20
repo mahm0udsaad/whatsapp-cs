@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { classifyEscalation } from "@/lib/escalation-classifier";
+import {
+  classifyEscalation,
+  isBookingRequest,
+} from "@/lib/escalation-classifier";
 
 describe("classifyEscalation", () => {
   it("escalates when the AI punts in Arabic", () => {
@@ -116,5 +119,36 @@ describe("classifyEscalation", () => {
       ragChunkCount: 3,
     });
     expect(r.reason).toBe("customer_asked_human");
+  });
+});
+
+describe("isBookingRequest", () => {
+  it("matches classic Gulf booking requests", () => {
+    expect(isBookingRequest("ابغى حجز بكره ساعه 10 مساج ساعه")).toBe(true);
+    expect(isBookingRequest("ابي حجز اليوم")).toBe(true);
+    expect(isBookingRequest("ودي احجز")).toBe(true);
+    expect(isBookingRequest("احجز لي الخميس")).toBe(true);
+  });
+
+  it("matches English booking requests", () => {
+    expect(isBookingRequest("I want to book tomorrow at 10")).toBe(true);
+    expect(isBookingRequest("Can I make a reservation?")).toBe(true);
+    expect(isBookingRequest("appointment for Friday please")).toBe(true);
+  });
+
+  it("matches the 'موعد' alias", () => {
+    expect(isBookingRequest("ابغى موعد بكره")).toBe(true);
+  });
+
+  it("does NOT match complaints or small talk", () => {
+    expect(isBookingRequest("الخدمه جدآ سيئه")).toBe(false);
+    expect(isBookingRequest("مرحبا، كيف الحال")).toBe(false);
+    expect(isBookingRequest("بكم السعر؟")).toBe(false);
+    expect(isBookingRequest("")).toBe(false);
+  });
+
+  it("does NOT match a bare time token without a booking verb", () => {
+    // Prevents "البوس بكره الساعه 10" from being classified as booking.
+    expect(isBookingRequest("بكره الساعه 10")).toBe(false);
   });
 });

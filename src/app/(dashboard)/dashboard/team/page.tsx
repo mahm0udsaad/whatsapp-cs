@@ -1,5 +1,8 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { BarChart3 } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 import {
   getCurrentSessionContext,
@@ -84,9 +87,17 @@ export default async function TeamPage() {
   return (
     <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8" dir="rtl">
       <Card>
-        <CardHeader>
-          <CardDescription>{t("team.title")}</CardDescription>
-          <CardTitle>{t("team.subtitle")}</CardTitle>
+        <CardHeader className="flex-row items-start justify-between gap-4">
+          <div>
+            <CardDescription>{t("team.title")}</CardDescription>
+            <CardTitle>{t("team.subtitle")}</CardTitle>
+          </div>
+          <Link
+            href="/dashboard/team/performance"
+            className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <BarChart3 className="h-4 w-4" /> أداء الفريق
+          </Link>
         </CardHeader>
       </Card>
 

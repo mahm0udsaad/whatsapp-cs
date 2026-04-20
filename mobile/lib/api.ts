@@ -356,6 +356,140 @@ export async function setConversationArchived(
   );
 }
 
+// ---- Team performance ------------------------------------------------------
+
+export interface TeamPerformanceRow {
+  team_member_id: string;
+  full_name: string | null;
+  role: "admin" | "agent";
+  is_active: boolean;
+  is_available: boolean;
+  messages_sent: number;
+  conversations_handled: number;
+  active_now: number;
+  first_response_p50_sec: number;
+  first_response_p90_sec: number;
+  reply_latency_p50_sec: number;
+  takeovers_from_bot: number;
+  reassigns_received: number;
+  reassigns_given: number;
+  sla_breaches: number;
+  labels_applied: number;
+  approx_hours_worked: number;
+}
+
+export interface TeamPerformanceResponse {
+  from: string;
+  to: string;
+  rows: TeamPerformanceRow[];
+}
+
+export interface AgentPerformanceDaily {
+  day: string; // YYYY-MM-DD
+  messages: number;
+  conversations: number;
+  p50_reply_sec: number;
+}
+
+export interface AgentPerformanceHeatCell {
+  weekday: number; // 0=Sun .. 6=Sat
+  hour: number; // 0..23
+  messages: number;
+}
+
+export interface AgentPerformanceDetail {
+  from: string;
+  to: string;
+  daily: AgentPerformanceDaily[];
+  heatmap: AgentPerformanceHeatCell[];
+}
+
+function buildRangeQuery(from?: string, to?: string) {
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  const q = params.toString();
+  return q ? `?${q}` : "";
+}
+
+export async function getTeamPerformance(
+  from?: string,
+  to?: string
+): Promise<TeamPerformanceResponse> {
+  return apiFetch(`/api/mobile/team/performance${buildRangeQuery(from, to)}`);
+}
+
+export async function getAgentPerformanceDetail(
+  teamMemberId: string,
+  from?: string,
+  to?: string
+): Promise<AgentPerformanceDetail> {
+  return apiFetch(
+    `/api/mobile/team/performance/${teamMemberId}${buildRangeQuery(from, to)}`
+  );
+}
+
+// ---- Manager notes + goals -------------------------------------------------
+
+export interface TeamMemberNote {
+  id: string;
+  body: string;
+  author_user_id: string | null;
+  created_at: string;
+}
+
+export interface TeamMemberGoals {
+  team_member_id: string;
+  target_first_response_sec: number | null;
+  target_messages_per_day: number | null;
+  updated_at: string;
+}
+
+export async function listTeamMemberNotes(
+  teamMemberId: string
+): Promise<TeamMemberNote[]> {
+  return apiFetch(`/api/mobile/team/members/${teamMemberId}/notes`);
+}
+
+export async function addTeamMemberNote(
+  teamMemberId: string,
+  body: string
+): Promise<TeamMemberNote> {
+  return apiFetch(`/api/mobile/team/members/${teamMemberId}/notes`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
+}
+
+export async function deleteTeamMemberNote(
+  teamMemberId: string,
+  noteId: string
+): Promise<{ ok: true }> {
+  return apiFetch(
+    `/api/mobile/team/members/${teamMemberId}/notes/${noteId}`,
+    { method: "DELETE" }
+  );
+}
+
+export async function getTeamMemberGoals(
+  teamMemberId: string
+): Promise<TeamMemberGoals | null> {
+  return apiFetch(`/api/mobile/team/members/${teamMemberId}/goals`);
+}
+
+export async function setTeamMemberGoals(
+  teamMemberId: string,
+  input: {
+    target_first_response_sec?: number | null;
+    target_messages_per_day?: number | null;
+  }
+): Promise<TeamMemberGoals> {
+  return apiFetch(`/api/mobile/team/members/${teamMemberId}/goals`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
 export interface WhatsAppHealth {
   primary: {
     phoneNumber: string | null;
