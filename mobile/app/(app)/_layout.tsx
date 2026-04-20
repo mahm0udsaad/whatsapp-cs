@@ -97,6 +97,24 @@ export default function AppLayout() {
         }}
       />
 
+      {/* Customers — manager-only directory of contactable customers. */}
+      <Tabs.Screen
+        name="customers"
+        options={{
+          title: "العملاء",
+          tabBarLabel: "العملاء",
+          href: manager ? "/customers" : null,
+          headerShown: false,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? "people-circle" : "people-circle-outline"}
+              color={color}
+              size={size}
+            />
+          ),
+        }}
+      />
+
       {/* Campaigns — manager-only marketing surface (nested stack). */}
       <Tabs.Screen
         name="campaigns"

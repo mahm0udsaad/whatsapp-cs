@@ -165,6 +165,12 @@ export function Sidebar({
       icon: MessageSquare,
     },
     {
+      href: "/dashboard/customers",
+      label: "العملاء",
+      description: "قاعدة عملائك المؤهلين للتواصل والحملات",
+      icon: Users,
+    },
+    {
       href: "/dashboard/marketing",
       label: t("nav.marketing"),
       description: t("nav.marketing.desc"),

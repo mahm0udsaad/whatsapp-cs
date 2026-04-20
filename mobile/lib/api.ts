@@ -750,3 +750,77 @@ export async function sendMarketingCampaign(
     method: "POST",
   });
 }
+
+// ---- Customers directory --------------------------------------------------
+
+export interface CustomerDirectoryRow {
+  id: string;
+  phone_number: string;
+  full_name: string | null;
+  source: string;
+  metadata: Record<string, unknown> | null;
+  opted_out: boolean;
+  last_seen_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomersListResponse {
+  rows: CustomerDirectoryRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export async function listCustomersPaginated(opts: {
+  q?: string;
+  page?: number;
+  pageSize?: number;
+  optedOut?: boolean | null;
+}): Promise<CustomersListResponse> {
+  const qs = new URLSearchParams();
+  if (opts.q) qs.set("q", opts.q);
+  if (opts.page) qs.set("page", String(opts.page));
+  if (opts.pageSize) qs.set("pageSize", String(opts.pageSize));
+  if (opts.optedOut === true) qs.set("opted_out", "true");
+  if (opts.optedOut === false) qs.set("opted_out", "false");
+  const q = qs.toString();
+  return apiFetch(`/api/mobile/customers${q ? `?${q}` : ""}`);
+}
+
+export async function createCustomer(input: {
+  phone_number: string;
+  full_name?: string | null;
+}): Promise<{ customer: CustomerDirectoryRow }> {
+  return apiFetch(`/api/mobile/customers`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateCustomer(
+  id: string,
+  input: {
+    full_name?: string | null;
+    opted_out?: boolean;
+    metadata?: Record<string, unknown> | null;
+  }
+): Promise<{ customer: CustomerDirectoryRow }> {
+  return apiFetch(`/api/mobile/customers/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteCustomer(id: string): Promise<{ ok: true }> {
+  return apiFetch(`/api/mobile/customers/${id}`, { method: "DELETE" });
+}
+
+export async function findOrCreateConversationForPhone(
+  phone_number: string
+): Promise<{ id: string; is_new: boolean; in_24h_window: boolean }> {
+  return apiFetch(`/api/mobile/conversations/find-or-create`, {
+    method: "POST",
+    body: JSON.stringify({ phone_number }),
+  });
+}

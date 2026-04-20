@@ -47,4 +47,11 @@ export const qk = {
     ["manager", "marketing-campaign", campaignId] as const,
   marketingCustomersCount: (restaurantId: string, since: string | null) =>
     ["manager", "marketing-customers-count", restaurantId, since ?? "all"] as const,
+
+  customers: (
+    restaurantId: string,
+    q: string,
+    page: number,
+    optedOut: "all" | "active" | "opted_out"
+  ) => ["customers", restaurantId, q, page, optedOut] as const,
 };

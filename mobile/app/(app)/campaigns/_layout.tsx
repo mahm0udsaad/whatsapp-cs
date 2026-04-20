@@ -16,7 +16,11 @@ export default function CampaignsLayout() {
       />
       <Stack.Screen
         name="new"
-        options={{ title: "حملة جديدة", presentation: "modal" }}
+        options={{ title: "اختر نوع القالب", presentation: "modal" }}
+      />
+      <Stack.Screen
+        name="new-edit"
+        options={{ title: "بيانات الحملة" }}
       />
       <Stack.Screen
         name="[id]"

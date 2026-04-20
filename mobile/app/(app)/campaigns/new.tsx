@@ -1,297 +1,148 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
+  FlatList,
   Pressable,
-  ScrollView,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
+import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { subDays } from "date-fns";
 import {
-  createMarketingCampaign,
-  listMarketingCustomers,
-  listMarketingTemplates,
-  setCampaignAudience,
-  type AudienceSelection,
   type MarketingTemplate,
+  listMarketingTemplates,
 } from "../../../lib/api";
+import {
+  TEMPLATE_EXAMPLES,
+  type TemplateExample,
+} from "../../../lib/template-examples";
 import { qk } from "../../../lib/query-keys";
 import { useSessionStore } from "../../../lib/session-store";
 import { ManagerCard, managerColors } from "../../../components/manager-ui";
 
-type AudienceKind = "all" | "30d" | "90d";
+type Tab = "curated" | "mine";
 
-function isoSince(kind: AudienceKind): string | null {
-  if (kind === "30d") return subDays(new Date(), 30).toISOString();
-  if (kind === "90d") return subDays(new Date(), 90).toISOString();
-  return null;
-}
-
-export default function NewCampaignScreen() {
-  const router = useRouter();
-  const qc = useQueryClient();
+export default function CampaignNewPickerScreen() {
   const member = useSessionStore((s) => s.activeMember);
   const restaurantId = member?.restaurant_id ?? "";
+  const [tab, setTab] = useState<Tab>("curated");
 
-  const [name, setName] = useState("");
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
-  const [audienceKind, setAudienceKind] = useState<AudienceKind>("all");
-
-  // Templates list — approved only.
   const templatesQuery = useQuery({
     queryKey: qk.marketingTemplates(restaurantId),
-    enabled: !!restaurantId,
+    enabled: tab === "mine" && !!restaurantId,
     queryFn: listMarketingTemplates,
-    staleTime: 5 * 60_000,
   });
-  const templates = useMemo<MarketingTemplate[]>(
-    () => (Array.isArray(templatesQuery.data) ? templatesQuery.data : []),
-    [templatesQuery.data]
+
+  const approved = (templatesQuery.data ?? []).filter(
+    (t: MarketingTemplate) => t.approval_status === "approved"
   );
 
-  // Live audience count per filter.
-  const since = isoSince(audienceKind);
-  const audienceQuery = useQuery({
-    queryKey: qk.marketingCustomersCount(restaurantId, since),
-    enabled: !!restaurantId,
-    // Only need `total` — cap limit small.
-    queryFn: () => listMarketingCustomers({ since: since ?? undefined, limit: 1 }),
-    staleTime: 30_000,
-  });
-  const audienceCount = audienceQuery.data?.total ?? 0;
-
-  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) ?? null;
-
-  const createAndSendMutation = useMutation({
-    mutationFn: async () => {
-      const trimmedName = name.trim();
-      if (!trimmedName) throw new Error("اسم الحملة مطلوب");
-      if (!selectedTemplateId) throw new Error("اختاري قالباً أولاً");
-
-      const campaign = await createMarketingCampaign({
-        name: trimmedName,
-        template_id: selectedTemplateId,
-      });
-
-      const selection: AudienceSelection = since
-        ? { kind: "since", since }
-        : { kind: "all" };
-      const res = await setCampaignAudience(campaign.id, selection);
-      return { campaign, audience: res };
-    },
-    onSuccess: ({ campaign, audience }) => {
-      qc.invalidateQueries({ queryKey: qk.marketingCampaigns(restaurantId) });
-      Alert.alert(
-        "تم إنشاء الحملة",
-        `عدد جهات الاتصال: ${audience.total_recipients}. افتحي الحملة للإرسال.`,
-        [
-          {
-            text: "فتح الحملة",
-            onPress: () =>
-              router.replace({
-                pathname: "/campaigns/[id]",
-                params: { id: campaign.id },
-              }),
-          },
-          { text: "إغلاق", style: "cancel", onPress: () => router.back() },
-        ]
-      );
-    },
-    onError: (e: unknown) =>
-      Alert.alert("خطأ", e instanceof Error ? e.message : "حدث خطأ غير متوقع"),
-  });
+  // Reset to picker on every fresh navigation in case the user backed out of
+  // edit halfway through.
+  useEffect(() => {
+    return () => {
+      // no-op
+    };
+  }, []);
 
   return (
     <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["bottom"]}>
-      <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 140 }}>
-        {/* Step 1 — Name */}
-        <ManagerCard className="mb-3">
-          <Text className="text-right text-xs font-bold text-gray-500">
-            ١. اسم الحملة
-          </Text>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="مثال: عروض الجمعة"
-            textAlign="right"
-            maxLength={80}
-            className="mt-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-right text-sm text-gray-950"
-          />
-        </ManagerCard>
-
-        {/* Step 2 — Template */}
-        <ManagerCard className="mb-3">
-          <Text className="text-right text-xs font-bold text-gray-500">
-            ٢. القالب المعتمد
-          </Text>
-          {templatesQuery.isLoading ? (
-            <ActivityIndicator style={{ marginTop: 12 }} />
-          ) : templates.length === 0 ? (
-            <View className="mt-3 items-center rounded-md border border-dashed border-gray-200 bg-gray-50 p-3">
-              <Text className="text-center text-xs text-gray-500">
-                لا توجد قوالب معتمدة. أنشئي قالباً من لوحة التحكم أولاً.
-              </Text>
-            </View>
-          ) : (
-            <View className="mt-2">
-              {templates.map((t) => {
-                const active = selectedTemplateId === t.id;
-                return (
-                  <Pressable
-                    key={t.id}
-                    onPress={() => setSelectedTemplateId(t.id)}
-                    className={`mb-2 rounded-md border p-3 ${
-                      active
-                        ? "border-[#00A884] bg-emerald-50"
-                        : "border-gray-200 bg-white"
-                    }`}
-                  >
-                    <View className="flex-row-reverse items-center justify-between">
-                      <Text className="flex-1 text-right text-sm font-semibold text-gray-950">
-                        {t.name}
-                      </Text>
-                      <Ionicons
-                        name={
-                          active
-                            ? "radio-button-on"
-                            : "radio-button-off-outline"
-                        }
-                        size={20}
-                        color={active ? managerColors.brand : "#9CA3AF"}
-                      />
-                    </View>
-                    {t.body_template ? (
-                      <Text
-                        className="mt-1 text-right text-[11px] text-gray-500"
-                        numberOfLines={2}
-                      >
-                        {t.body_template}
-                      </Text>
-                    ) : null}
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
-        </ManagerCard>
-
-        {/* Step 3 — Audience */}
-        <ManagerCard className="mb-3">
-          <Text className="text-right text-xs font-bold text-gray-500">
-            ٣. الجمهور
-          </Text>
-          <View className="mt-2 flex-row-reverse gap-2">
-            <AudienceChip
-              label="كل العملاء"
-              active={audienceKind === "all"}
-              onPress={() => setAudienceKind("all")}
-            />
-            <AudienceChip
-              label="آخر ٣٠ يوم"
-              active={audienceKind === "30d"}
-              onPress={() => setAudienceKind("30d")}
-            />
-            <AudienceChip
-              label="آخر ٩٠ يوم"
-              active={audienceKind === "90d"}
-              onPress={() => setAudienceKind("90d")}
-            />
-          </View>
-          <View className="mt-3 flex-row-reverse items-center justify-between rounded-md bg-gray-50 px-3 py-2">
-            <Text className="text-sm text-gray-700">جهات الاتصال</Text>
-            <Text className="text-lg font-bold text-gray-950 tabular-nums">
-              {audienceQuery.isLoading ? "…" : audienceCount.toLocaleString()}
-            </Text>
-          </View>
-          <Text className="mt-1 text-right text-[10px] text-gray-400">
-            يتم استبعاد من سحب اشتراكه تلقائياً.
-          </Text>
-        </ManagerCard>
-
-        {/* Review */}
-        {selectedTemplate ? (
-          <ManagerCard className="mb-3">
-            <Text className="text-right text-xs font-bold text-gray-500">
-              معاينة
-            </Text>
-            <View className="mt-2 rounded-md border border-gray-100 bg-white p-3">
-              <Text className="text-right text-sm text-gray-950">
-                {selectedTemplate.body_template || "—"}
-              </Text>
-              {selectedTemplate.footer_text ? (
-                <Text className="mt-2 text-right text-[11px] text-gray-500">
-                  {selectedTemplate.footer_text}
-                </Text>
-              ) : null}
-            </View>
-            <Text className="mt-2 text-right text-[11px] text-gray-500">
-              سيتم إنشاء الحملة وربطها بـ {audienceCount.toLocaleString()} جهة
-              اتصال. الإرسال يتطلب ضغطة إضافية في شاشة التفاصيل.
-            </Text>
-          </ManagerCard>
-        ) : null}
-      </ScrollView>
-
-      <View className="absolute bottom-0 left-0 right-0 border-t border-gray-200 bg-white p-3">
-        <View className="flex-row-reverse gap-2">
-          <Pressable
-            disabled={
-              createAndSendMutation.isPending ||
-              !name.trim() ||
-              !selectedTemplateId ||
-              audienceCount === 0
-            }
-            onPress={() => createAndSendMutation.mutate()}
-            className={`flex-1 items-center rounded-lg py-3 ${
-              !name.trim() || !selectedTemplateId || audienceCount === 0
-                ? "bg-[#B6E5D6]"
-                : "bg-[#00A884]"
-            }`}
-          >
-            {createAndSendMutation.isPending ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text className="font-bold text-white">
-                إنشاء ({audienceCount.toLocaleString()})
-              </Text>
-            )}
-          </Pressable>
-          <Pressable
-            onPress={() => router.back()}
-            className="flex-1 items-center rounded-lg border border-gray-200 py-3"
-          >
-            <Text className="font-semibold text-gray-700">إلغاء</Text>
-          </Pressable>
-        </View>
+      {/* Tab strip */}
+      <View className="flex-row-reverse gap-2 border-b border-gray-100 bg-white p-3">
+        <TabPill
+          label="جاهزة"
+          icon="sparkles"
+          active={tab === "curated"}
+          onPress={() => setTab("curated")}
+        />
+        <TabPill
+          label="من قوالبك"
+          icon="copy"
+          active={tab === "mine"}
+          onPress={() => setTab("mine")}
+        />
       </View>
+
+      {tab === "curated" ? (
+        <FlatList
+          data={TEMPLATE_EXAMPLES}
+          keyExtractor={(e) => e.slug}
+          contentContainerStyle={{ padding: 12, paddingBottom: 80 }}
+          renderItem={({ item }) => (
+            <ExampleCard
+              example={item}
+              onPress={() =>
+                router.push({
+                  pathname: "/campaigns/new-edit",
+                  params: { example: item.slug },
+                })
+              }
+            />
+          )}
+        />
+      ) : templatesQuery.isLoading ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator />
+        </View>
+      ) : approved.length === 0 ? (
+        <View className="flex-1 items-center justify-center px-6">
+          <Ionicons name="document-outline" size={48} color="#9CA3AF" />
+          <Text className="mt-3 text-gray-500">
+            لا توجد قوالب معتمدة بعد
+          </Text>
+          <Text className="mt-1 text-center text-xs text-gray-400">
+            أنشئ قالباً جديداً من المثال الجاهز ثم انتظر الاعتماد.
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={approved}
+          keyExtractor={(t) => t.id}
+          contentContainerStyle={{ padding: 12, paddingBottom: 80 }}
+          renderItem={({ item }) => (
+            <ApprovedCard
+              template={item}
+              onPress={() =>
+                router.push({
+                  pathname: "/campaigns/new-edit",
+                  params: { from: item.id },
+                })
+              }
+            />
+          )}
+        />
+      )}
     </SafeAreaView>
   );
 }
 
-function AudienceChip({
+function TabPill({
   label,
+  icon,
   active,
   onPress,
 }: {
   label: string;
+  icon: keyof typeof Ionicons.glyphMap;
   active: boolean;
   onPress: () => void;
 }) {
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-1 items-center rounded-full border py-2 ${
+      className={`flex-1 flex-row-reverse items-center justify-center gap-1.5 rounded-full border py-2 ${
         active
           ? "border-emerald-300 bg-emerald-50"
           : "border-gray-200 bg-white"
       }`}
     >
+      <Ionicons
+        name={icon}
+        size={14}
+        color={active ? managerColors.brand : managerColors.muted}
+      />
       <Text
         className={`text-xs font-semibold ${
           active ? "text-emerald-900" : "text-gray-700"
@@ -300,5 +151,119 @@ function AudienceChip({
         {label}
       </Text>
     </Pressable>
+  );
+}
+
+function ExampleCard({
+  example,
+  onPress,
+}: {
+  example: TemplateExample;
+  onPress: () => void;
+}) {
+  return (
+    <ManagerCard className="mb-3">
+      <Pressable onPress={onPress}>
+        <View className="flex-row-reverse items-start justify-between">
+          <View className="flex-1">
+            <Text className="text-right text-base font-semibold text-gray-950">
+              {example.title}
+            </Text>
+            <Text className="mt-1 text-right text-[11px] text-gray-500">
+              {example.description}
+            </Text>
+          </View>
+          <View className="rounded-full bg-gray-100 px-2 py-0.5">
+            <Text className="text-[10px] font-bold text-gray-700">
+              {example.category}
+            </Text>
+          </View>
+        </View>
+
+        <View className="mt-3 rounded-md border border-gray-100 bg-gray-50 p-3">
+          {example.preview.header_type === "text" &&
+          example.preview.header_text ? (
+            <Text className="mb-1 text-right text-[11px] font-bold text-gray-700">
+              {example.preview.header_text}
+            </Text>
+          ) : null}
+          {example.preview.header_type === "image" ? (
+            <View className="mb-2 flex-row-reverse items-center gap-2 rounded-md bg-emerald-50 px-2 py-1">
+              <Ionicons
+                name="image"
+                size={12}
+                color={managerColors.brand}
+              />
+              <Text className="text-[10px] font-semibold text-emerald-700">
+                صورة في الرأس
+              </Text>
+            </View>
+          ) : null}
+          <Text className="text-right text-sm leading-6 text-gray-950">
+            {example.preview.body_template}
+          </Text>
+          {example.preview.footer_text ? (
+            <Text className="mt-2 text-right text-[10px] text-gray-500">
+              {example.preview.footer_text}
+            </Text>
+          ) : null}
+        </View>
+
+        <View className="mt-3 flex-row-reverse items-center justify-between">
+          <Text className="text-[11px] text-gray-500">
+            متغيرات: {example.variables.length}
+          </Text>
+          <View className="flex-row-reverse items-center gap-1">
+            <Text className="text-xs font-bold text-emerald-700">
+              استخدام
+            </Text>
+            <Ionicons
+              name="arrow-back"
+              size={14}
+              color={managerColors.brand}
+            />
+          </View>
+        </View>
+      </Pressable>
+    </ManagerCard>
+  );
+}
+
+function ApprovedCard({
+  template,
+  onPress,
+}: {
+  template: MarketingTemplate;
+  onPress: () => void;
+}) {
+  return (
+    <ManagerCard className="mb-3">
+      <Pressable onPress={onPress}>
+        <View className="flex-row-reverse items-start justify-between">
+          <View className="flex-1">
+            <Text className="text-right text-base font-semibold text-gray-950">
+              {template.name}
+            </Text>
+            <Text className="mt-1 text-right text-[11px] text-gray-500">
+              {template.language?.toUpperCase()} · {template.category}
+            </Text>
+          </View>
+          <View className="rounded-full bg-emerald-50 px-2 py-0.5">
+            <Text className="text-[10px] font-bold text-emerald-700">معتمد</Text>
+          </View>
+        </View>
+
+        {template.body_template ? (
+          <View className="mt-3 rounded-md border border-gray-100 bg-gray-50 p-3">
+            <Text
+              numberOfLines={5}
+              className="text-right text-sm leading-6 text-gray-950"
+            >
+              {template.body_template}
+            </Text>
+          </View>
+        ) : null}
+      </Pressable>
+    </ManagerCard>
   );
 }

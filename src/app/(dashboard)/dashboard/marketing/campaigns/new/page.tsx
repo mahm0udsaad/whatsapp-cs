@@ -1,636 +1,321 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
-  Calendar,
-  Check,
-  CheckCircle2,
-  FileText,
+  Copy,
+  ImageIcon,
   Loader2,
-  Upload,
-  Users,
+  Sparkles,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { TEMPLATE_EXAMPLES, type TemplateExample } from "@/lib/template-examples";
 
 interface ApprovedTemplate {
   id: string;
   name: string;
-  body_template: string | null;
-  language: string;
   category: string;
+  language: string;
+  body_template: string | null;
+  header_type: string | null;
+  header_text: string | null;
+  footer_text: string | null;
+  buttons: Array<Record<string, unknown>> | null;
+  variables: string[] | null;
+  approval_status: string;
 }
 
-interface ParsedRecipient {
-  phone_number: string;
-  name?: string;
-}
+type Tab = "curated" | "mine";
 
-const STEPS = [
-  { label: "الحملة", icon: FileText },
-  { label: "المستلمون", icon: Users },
-  { label: "الجدولة", icon: Calendar },
-  { label: "التأكيد", icon: Check },
-];
+const SELECTED_PHONES_STORAGE_KEY = "whatsapp-cs:campaign-prefill-phones";
 
-export default function NewCampaignPage() {
+export default function NewCampaignPickerPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const preselectedTemplate = searchParams.get("template");
+  const [tab, setTab] = useState<Tab>("curated");
+  const [mine, setMine] = useState<ApprovedTemplate[]>([]);
+  const [loadingMine, setLoadingMine] = useState(false);
+  const [prefillPhones, setPrefillPhones] = useState<string[] | null>(null);
 
-  const [step, setStep] = useState(0);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Step 1: Campaign info
-  const [campaignName, setCampaignName] = useState("");
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
-    preselectedTemplate || ""
-  );
-  const [templates, setTemplates] = useState<ApprovedTemplate[]>([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(true);
-
-  // Step 2: Recipients
-  const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [parsedRecipients, setParsedRecipients] = useState<ParsedRecipient[]>(
-    []
-  );
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Step 3: Schedule
-  const [scheduleType, setScheduleType] = useState<"now" | "later">("now");
-  const [scheduledDate, setScheduledDate] = useState("");
-  const [scheduledTime, setScheduledTime] = useState("");
-
-  // Load approved templates
   useEffect(() => {
-    fetch("/api/marketing/templates?status=approved")
-      .then((r) => r.json())
-      .then((data) => {
-        setTemplates(data.templates || data || []);
-      })
-      .catch(() => setTemplates([]))
-      .finally(() => setLoadingTemplates(false));
+    if (typeof window === "undefined") return;
+    const raw = sessionStorage.getItem(SELECTED_PHONES_STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.every((p) => typeof p === "string")) {
+        setPrefillPhones(parsed as string[]);
+      }
+    } catch {
+      // ignore malformed storage
+    }
   }, []);
 
-  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
+  useEffect(() => {
+    if (tab !== "mine") return;
+    setLoadingMine(true);
+    fetch("/api/marketing/templates")
+      .then((r) => r.json())
+      .then((data) => {
+        const all = (data.templates as ApprovedTemplate[]) || [];
+        setMine(all.filter((t) => t.approval_status === "approved"));
+      })
+      .catch(() => setMine([]))
+      .finally(() => setLoadingMine(false));
+  }, [tab]);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-
-    setFile(f);
-    setUploadError(null);
-    setUploading(true);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", f);
-
-      const res = await fetch("/api/marketing/recipients", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "تعذر قراءة الملف");
-      }
-
-      const data = await res.json();
-      setParsedRecipients(data.recipients || []);
-    } catch (err) {
-      setUploadError(
-        err instanceof Error ? err.message : "تعذر قراءة الملف"
-      );
-      setParsedRecipients([]);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const f = e.dataTransfer.files?.[0];
-    if (f && fileInputRef.current) {
-      const dt = new DataTransfer();
-      dt.items.add(f);
-      fileInputRef.current.files = dt.files;
-      fileInputRef.current.dispatchEvent(new Event("change", { bubbles: true }));
-    }
-  };
-
-  const canProceed = () => {
-    switch (step) {
-      case 0:
-        return campaignName.trim() && selectedTemplateId;
-      case 1:
-        return parsedRecipients.length > 0;
-      case 2:
-        return scheduleType === "now" || (scheduledDate && scheduledTime);
-      case 3:
-        return true;
-      default:
-        return false;
-    }
-  };
-
-  const handleCreate = async () => {
-    setSaving(true);
-    setError(null);
-
-    try {
-      let scheduled_at: string | null = null;
-      if (scheduleType === "later" && scheduledDate && scheduledTime) {
-        scheduled_at = new Date(
-          `${scheduledDate}T${scheduledTime}`
-        ).toISOString();
-      }
-
-      // Create campaign
-      const campaignRes = await fetch("/api/marketing/campaigns", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: campaignName,
-          template_id: selectedTemplateId,
-          scheduled_at,
-          recipients: parsedRecipients,
-        }),
-      });
-
-      if (!campaignRes.ok) {
-        const data = await campaignRes.json().catch(() => ({}));
-        throw new Error(data.error || "تعذر إنشاء الحملة");
-      }
-
-      router.push("/dashboard/marketing/campaigns");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "تعذر إنشاء الحملة");
-    } finally {
-      setSaving(false);
-    }
+  const goToFillForm = (params: { example?: string; from?: string }) => {
+    const search = new URLSearchParams();
+    if (params.example) search.set("example", params.example);
+    if (params.from) search.set("from", params.from);
+    router.push(`/dashboard/marketing/campaigns/new/edit?${search.toString()}`);
   };
 
   return (
-    <div className="flex-1 p-4 sm:p-6 lg:p-8">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
+    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="flex items-center gap-4">
         <Link
           href="/dashboard/marketing/campaigns"
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50"
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
         >
           <ArrowLeft size={18} />
         </Link>
         <div>
           <h1 className="text-2xl font-semibold tracking-[-0.04em] text-slate-950">
-            إنشاء حملة
+            اختر نوع القالب
           </h1>
           <p className="text-sm text-slate-500">
-            جهز وأطلق حملة تسويقية عبر واتساب
+            ابدأ من مثال جاهز أو من قالب معتمد سابق ثم أكمل بياناتك في الخطوة التالية.
           </p>
         </div>
       </div>
 
-      {/* Step indicator */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between max-w-xl mx-auto">
-          {STEPS.map((s, i) => {
-            const Icon = s.icon;
-            const isActive = i === step;
-            const isComplete = i < step;
-
-            return (
-              <div key={s.label} className="flex items-center gap-2">
-                <div className="flex flex-col items-center gap-1.5">
-                  <div
-                    className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-full transition-colors",
-                      isActive && "bg-emerald-600 text-white",
-                      isComplete && "bg-emerald-100 text-emerald-700",
-                      !isActive && !isComplete && "bg-slate-100 text-slate-400"
-                    )}
-                  >
-                    {isComplete ? (
-                      <CheckCircle2 size={18} />
-                    ) : (
-                      <Icon size={18} />
-                    )}
-                  </div>
-                  <span
-                    className={cn(
-                      "text-xs font-medium",
-                      isActive
-                        ? "text-emerald-700"
-                        : isComplete
-                        ? "text-emerald-600"
-                        : "text-slate-400"
-                    )}
-                  >
-                    {s.label}
-                  </span>
-                </div>
-                {i < STEPS.length - 1 && (
-                  <div
-                    className={cn(
-                      "mx-2 mb-5 h-0.5 w-12 sm:w-20 rounded-full",
-                      i < step ? "bg-emerald-400" : "bg-slate-200"
-                    )}
-                  />
-                )}
-              </div>
-            );
-          })}
+      {prefillPhones ? (
+        <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          <div>
+            تم اختيار <strong>{prefillPhones.length}</strong> عميل من قائمة العملاء —
+            ستُستخدم كقائمة استلام لهذه الحملة.
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              sessionStorage.removeItem(SELECTED_PHONES_STORAGE_KEY);
+              setPrefillPhones(null);
+            }}
+            className="text-xs font-semibold text-emerald-800 underline"
+          >
+            إلغاء
+          </button>
         </div>
+      ) : null}
+
+      <div className="inline-flex rounded-full border border-slate-200 bg-white p-1">
+        <TabPill
+          active={tab === "curated"}
+          onClick={() => setTab("curated")}
+          label="جاهزة"
+          icon={Sparkles}
+        />
+        <TabPill
+          active={tab === "mine"}
+          onClick={() => setTab("mine")}
+          label="من قوالبك"
+          icon={Copy}
+        />
       </div>
 
-      {error && (
-        <div className="mb-6 rounded-xl bg-red-50 border border-red-200 p-4">
-          <p className="text-sm text-red-700">{error}</p>
+      {tab === "curated" ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {TEMPLATE_EXAMPLES.map((ex) => (
+            <ExampleCard
+              key={ex.slug}
+              example={ex}
+              onPick={() => goToFillForm({ example: ex.slug })}
+            />
+          ))}
         </div>
-      )}
-
-      {/* Step content */}
-      <div className="max-w-2xl mx-auto">
-        {/* Step 1: Campaign name + template */}
-        {step === 0 && (
-          <Card>
-            <CardContent className="p-6 space-y-6">
-              <div>
-                <label className="text-sm font-semibold text-slate-900 mb-2 block">
-                  اسم الحملة
-                </label>
-                <Input
-                  value={campaignName}
-                  onChange={(e) => setCampaignName(e.target.value)}
-                  placeholder="مثال: عرض الصيف الخاص"
-                  className="rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-semibold text-slate-900 mb-2 block">
-                  اختر القالب
-                </label>
-                {loadingTemplates ? (
-                  <div className="flex items-center gap-2 py-4 text-sm text-slate-500">
-                    <Loader2 size={14} className="animate-spin" />
-                    جارٍ تحميل القوالب...
-                  </div>
-                ) : templates.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 p-6 text-center">
-                    <p className="text-sm text-slate-600">
-                      لا توجد قوالب معتمدة متاحة.
-                    </p>
-                    <Link
-                      href="/dashboard/marketing/templates/new"
-                      className="mt-2 inline-flex text-sm font-medium text-emerald-600 hover:text-emerald-700"
-                    >
-                      أنشئ قالباً أولاً
-                    </Link>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {templates.map((t) => (
-                      <button
-                        key={t.id}
-                        onClick={() => setSelectedTemplateId(t.id)}
-                        className={cn(
-                          "w-full rounded-xl border p-4 text-start transition-all",
-                          selectedTemplateId === t.id
-                            ? "border-emerald-400 bg-emerald-50/70 ring-2 ring-emerald-400/30"
-                            : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
-                        )}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-semibold text-slate-900">
-                            {t.name}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <Badge className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-600">
-                              {t.language.toUpperCase()}
-                            </Badge>
-                            <Badge className="rounded-full bg-emerald-500/12 px-2 py-0.5 text-[10px] text-emerald-700">
-                              {t.category}
-                            </Badge>
-                          </div>
-                        </div>
-                        {t.body_template && (
-                          <p className="mt-2 line-clamp-2 text-xs text-slate-500">
-                            {t.body_template}
-                          </p>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 2: Upload recipients */}
-        {step === 1 && (
-          <Card>
-            <CardContent className="p-6 space-y-6">
-              <div>
-                <label className="text-sm font-semibold text-slate-900 mb-2 block">
-                  رفع قائمة المستلمين
-                </label>
-                <div
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={handleDrop}
-                  className={cn(
-                    "rounded-xl border-2 border-dashed p-8 text-center transition-colors cursor-pointer",
-                    file
-                      ? "border-emerald-300 bg-emerald-50/50"
-                      : "border-slate-300 hover:border-emerald-400 hover:bg-emerald-50/30"
-                  )}
-                  onClick={() => fileInputRef.current?.click()}
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {loadingMine ? (
+            <Card>
+              <CardContent className="flex items-center justify-center p-10 text-slate-500">
+                <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                جارٍ تحميل القوالب المعتمدة...
+              </CardContent>
+            </Card>
+          ) : mine.length === 0 ? (
+            <Card>
+              <CardContent className="space-y-3 p-6 text-center">
+                <p className="text-sm text-slate-600">
+                  لا توجد قوالب معتمدة بعد.
+                </p>
+                <Link
+                  href="/dashboard/marketing/templates/new"
+                  className="text-sm font-medium text-emerald-700 hover:text-emerald-800"
                 >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".csv,.xlsx,.xls"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  <Upload
-                    size={28}
-                    className={cn(
-                      "mx-auto mb-3",
-                      file ? "text-emerald-500" : "text-slate-400"
-                    )}
-                  />
-                  {file ? (
-                    <>
-                      <p className="text-sm font-semibold text-emerald-700">
-                        {file.name}
-                      </p>
-                      <p className="mt-1 text-xs text-emerald-600">
-                        اضغط للاستبدال
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-sm font-medium text-slate-700">
-                        اضغط للرفع أو اسحب الملف هنا
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        ملف CSV أو XLSX يحتوي على أرقام الهواتف
-                      </p>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {uploading && (
-                <div className="flex items-center gap-2 text-sm text-slate-500">
-                  <Loader2 size={14} className="animate-spin" />
-                  جارٍ قراءة الملف...
-                </div>
-              )}
-
-              {uploadError && (
-                <div className="rounded-xl bg-red-50 border border-red-200 p-3">
-                  <p className="text-sm text-red-700">{uploadError}</p>
-                </div>
-              )}
-
-              {parsedRecipients.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-semibold text-slate-900">
-                      تم قراءة {parsedRecipients.length.toLocaleString("ar")} مستلم
-                    </p>
-                    <Badge className="rounded-full bg-emerald-500/12 px-3 py-1 text-xs text-emerald-700">
-                      جاهز
-                    </Badge>
-                  </div>
-
-                  {/* Preview table */}
-                  <div className="rounded-xl border border-slate-200 overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-slate-50">
-                          <th className="px-4 py-2.5 text-start text-xs font-semibold text-slate-500">
-                            الهاتف
-                          </th>
-                          <th className="px-4 py-2.5 text-start text-xs font-semibold text-slate-500">
-                            الاسم
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {parsedRecipients.slice(0, 5).map((r, i) => (
-                          <tr
-                            key={i}
-                            className="border-t border-slate-100"
-                          >
-                            <td className="px-4 py-2.5 text-slate-900 font-mono text-xs">
-                              {r.phone_number}
-                            </td>
-                            <td className="px-4 py-2.5 text-slate-600">
-                              {r.name || "-"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {parsedRecipients.length > 5 && (
-                      <div className="border-t border-slate-100 bg-slate-50 px-4 py-2 text-center text-xs text-slate-500">
-                        و{parsedRecipients.length - 5} مستلم إضافي...
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="rounded-xl bg-sky-50 border border-sky-200 p-4">
-                <p className="text-sm font-medium text-sky-900 mb-1">
-                  صيغة الملف
-                </p>
-                <p className="text-xs text-sky-800">
-                  يجب أن يحتوي الملف على عمود &quot;phone&quot; أو &quot;phone_number&quot; إلزامي، ويمكن إضافة عمود &quot;name&quot; اختياري. يجب وجود عناوين للأعمدة.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 3: Schedule */}
-        {step === 2 && (
-          <Card>
-            <CardContent className="p-6 space-y-6">
-              <div>
-                <label className="text-sm font-semibold text-slate-900 mb-4 block">
-                  وقت الإرسال
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setScheduleType("now")}
-                    className={cn(
-                      "rounded-xl border p-4 text-center transition-all",
-                      scheduleType === "now"
-                        ? "border-emerald-400 bg-emerald-50/70 ring-2 ring-emerald-400/30"
-                        : "border-slate-200 hover:border-slate-300"
-                    )}
-                  >
-                    <div className="text-2xl mb-1">&#9889;</div>
-                    <p className="text-sm font-semibold text-slate-900">
-                      الإرسال الآن
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      بدء الإرسال فوراً
-                    </p>
-                  </button>
-                  <button
-                    onClick={() => setScheduleType("later")}
-                    className={cn(
-                      "rounded-xl border p-4 text-center transition-all",
-                      scheduleType === "later"
-                        ? "border-emerald-400 bg-emerald-50/70 ring-2 ring-emerald-400/30"
-                        : "border-slate-200 hover:border-slate-300"
-                    )}
-                  >
-                    <div className="text-2xl mb-1">&#128197;</div>
-                    <p className="text-sm font-semibold text-slate-900">
-                      جدولة
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      اختر التاريخ والوقت
-                    </p>
-                  </button>
-                </div>
-              </div>
-
-              {scheduleType === "later" && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-medium text-slate-600 mb-1.5 block">
-                      التاريخ
-                    </label>
-                    <Input
-                      type="date"
-                      value={scheduledDate}
-                      onChange={(e) => setScheduledDate(e.target.value)}
-                      className="rounded-xl"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-slate-600 mb-1.5 block">
-                      الوقت
-                    </label>
-                    <Input
-                      type="time"
-                      value={scheduledTime}
-                      onChange={(e) => setScheduledTime(e.target.value)}
-                      className="rounded-xl"
-                    />
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 4: Confirmation */}
-        {step === 3 && (
-          <Card>
-            <CardContent className="p-6 space-y-5">
-              <h3 className="text-lg font-semibold text-slate-950">
-                ملخص الحملة
-              </h3>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                  <span className="text-sm text-slate-500">اسم الحملة</span>
-                  <span className="text-sm font-semibold text-slate-900">
-                    {campaignName}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                  <span className="text-sm text-slate-500">القالب</span>
-                  <span className="text-sm font-semibold text-slate-900">
-                    {selectedTemplate?.name || "غير متاح"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                  <span className="text-sm text-slate-500">المستلمون</span>
-                  <span className="text-sm font-semibold text-slate-900">
-                    {parsedRecipients.length.toLocaleString("ar")}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                  <span className="text-sm text-slate-500">الجدولة</span>
-                  <span className="text-sm font-semibold text-slate-900">
-                    {scheduleType === "now"
-                      ? "إرسال فوري"
-                      : `${scheduledDate} الساعة ${scheduledTime}`}
-                  </span>
-                </div>
-              </div>
-
-              <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
-                <p className="text-sm text-amber-800">
-                  سيتم إرسال رسالة واتساب إلى{" "}
-                  <strong>{parsedRecipients.length.toLocaleString("ar")}</strong>{" "}
-                  مستلم باستخدام قالب &quot;{selectedTemplate?.name}&quot;.{" "}
-                  {scheduleType === "now"
-                    ? "سيبدأ إرسال الرسائل فوراً."
-                    : `سيتم إرسال الرسائل يوم ${scheduledDate} الساعة ${scheduledTime}.`}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Navigation */}
-        <div className="mt-6 flex items-center justify-between">
-          <Button
-            variant="outline"
-            onClick={() => setStep(Math.max(0, step - 1))}
-            disabled={step === 0}
-            className="gap-2 rounded-full"
-          >
-            <ArrowLeft size={16} />
-            السابق
-          </Button>
-
-          {step < 3 ? (
-            <Button
-              onClick={() => setStep(step + 1)}
-              disabled={!canProceed()}
-              className="gap-2 rounded-full"
-            >
-              التالي
-              <ArrowRight size={16} />
-            </Button>
+                  إنشاء قالب جديد
+                </Link>
+              </CardContent>
+            </Card>
           ) : (
-            <Button
-              onClick={handleCreate}
-              disabled={saving}
-              className="gap-2 rounded-full"
-            >
-              {saving ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Check size={16} />
-              )}
-              {saving ? "جارٍ الإنشاء..." : "إنشاء الحملة"}
-            </Button>
+            mine.map((t) => (
+              <ApprovedTemplateCard
+                key={t.id}
+                template={t}
+                onPick={() => goToFillForm({ from: t.id })}
+              />
+            ))
           )}
         </div>
-      </div>
+      )}
     </div>
+  );
+}
+
+function TabPill({
+  active,
+  onClick,
+  label,
+  icon: Icon,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  icon: typeof Sparkles;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors",
+        active
+          ? "bg-emerald-600 text-white shadow-sm"
+          : "text-slate-700 hover:bg-slate-100"
+      )}
+    >
+      <Icon size={14} />
+      {label}
+    </button>
+  );
+}
+
+function ExampleCard({
+  example,
+  onPick,
+}: {
+  example: TemplateExample;
+  onPick: () => void;
+}) {
+  return (
+    <Card className="flex h-full flex-col">
+      <CardContent className="flex flex-1 flex-col gap-3 p-5">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h3 className="text-base font-semibold text-slate-950">
+              {example.title}
+            </h3>
+            <p className="mt-1 text-xs text-slate-500">{example.description}</p>
+          </div>
+          <Badge variant="secondary" className="rounded-full">
+            {example.category}
+          </Badge>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 text-sm leading-7 text-slate-800">
+          {example.preview.header_type === "image" ? (
+            <div className="mb-2 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+              <ImageIcon size={14} />
+              صورة في رأس الرسالة
+            </div>
+          ) : example.preview.header_type === "text" &&
+            example.preview.header_text ? (
+            <div className="mb-2 text-xs font-bold text-slate-700">
+              {example.preview.header_text}
+            </div>
+          ) : null}
+          <p className="whitespace-pre-line">{example.preview.body_template}</p>
+          {example.preview.footer_text ? (
+            <p className="mt-2 text-xs text-slate-500">
+              {example.preview.footer_text}
+            </p>
+          ) : null}
+          {example.preview.buttons && example.preview.buttons.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {example.preview.buttons.map((b, i) => (
+                <span
+                  key={`${b.type}-${i}`}
+                  className="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[11px] font-medium text-emerald-800"
+                >
+                  {b.title}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <Button
+          onClick={onPick}
+          className="mt-auto gap-2 rounded-full bg-emerald-600 hover:bg-emerald-700"
+        >
+          استخدم هذا المثال
+          <ArrowLeft size={14} />
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ApprovedTemplateCard({
+  template,
+  onPick,
+}: {
+  template: ApprovedTemplate;
+  onPick: () => void;
+}) {
+  return (
+    <Card className="flex h-full flex-col">
+      <CardContent className="flex flex-1 flex-col gap-3 p-5">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h3 className="text-base font-semibold text-slate-950">
+              {template.name}
+            </h3>
+            <p className="mt-1 text-xs text-slate-500">
+              {template.language.toUpperCase()} · {template.category}
+            </p>
+          </div>
+          <Badge className="rounded-full">معتمد</Badge>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 text-sm leading-7 text-slate-800">
+          {template.header_type === "text" && template.header_text ? (
+            <div className="mb-2 text-xs font-bold text-slate-700">
+              {template.header_text}
+            </div>
+          ) : null}
+          <p className="line-clamp-5 whitespace-pre-line">
+            {template.body_template ?? "(بدون نص)"}
+          </p>
+          {template.footer_text ? (
+            <p className="mt-2 text-xs text-slate-500">{template.footer_text}</p>
+          ) : null}
+        </div>
+
+        <Button
+          onClick={onPick}
+          variant="outline"
+          className="mt-auto gap-2 rounded-full"
+        >
+          أنشئ حملة من هذا القالب
+          <ArrowRight size={14} />
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
