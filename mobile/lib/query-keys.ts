@@ -39,4 +39,12 @@ export const qk = {
     ["manager", "team-member-notes", teamMemberId] as const,
   teamMemberGoals: (teamMemberId: string) =>
     ["manager", "team-member-goals", teamMemberId] as const,
+  marketingTemplates: (restaurantId: string) =>
+    ["manager", "marketing-templates", restaurantId] as const,
+  marketingCampaigns: (restaurantId: string) =>
+    ["manager", "marketing-campaigns", restaurantId] as const,
+  marketingCampaignDetail: (campaignId: string) =>
+    ["manager", "marketing-campaign", campaignId] as const,
+  marketingCustomersCount: (restaurantId: string, since: string | null) =>
+    ["manager", "marketing-customers-count", restaurantId, since ?? "all"] as const,
 };

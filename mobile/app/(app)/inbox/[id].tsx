@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  InteractionManager,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -97,6 +96,7 @@ type ConvPayload = {
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const EMPTY_MESSAGES: Msg[] = [];
 
 function getWindowState(lastInboundAt: string | null) {
   if (!lastInboundAt) {
@@ -349,10 +349,23 @@ export default function ConversationDetail() {
   });
 
   const conv = query.data?.conversation;
-  const messages = query.data?.messages ?? [];
+  const messages = query.data?.messages ?? EMPTY_MESSAGES;
   const pendingEscalation = query.data?.pendingEscalation ?? null;
-  const latestMessageId =
-    messages.length > 0 ? messages[messages.length - 1]?.id : null;
+  const displayMessages = useMemo(() => [...messages].reverse(), [messages]);
+  const dateSeparatorIds = useMemo(() => {
+    const ids = new Set<string>();
+    messages.forEach((message, index) => {
+      const prev = messages[index - 1];
+      if (
+        !prev ||
+        new Date(prev.created_at).toDateString() !==
+          new Date(message.created_at).toDateString()
+      ) {
+        ids.add(message.id);
+      }
+    });
+    return ids;
+  }, [messages]);
 
   // Realtime: append new messages and apply delivery_status transitions
   // directly to the cache so read-receipt ticks update without a refetch.
@@ -490,15 +503,9 @@ export default function ConversationDetail() {
   }, [id]);
 
   const scrollToLatestMessage = useCallback((animated: boolean) => {
-    // Request animation frame ensures we wait for the next render tick before scrolling
+    // The message list is inverted, so the latest message lives at offset 0.
     requestAnimationFrame(() => {
-      listRef.current?.scrollToEnd({ animated });
-      // A small fallback timeout catches any straggling layout shifts (like text wrapping)
-      if (!animated) {
-        setTimeout(() => {
-          listRef.current?.scrollToEnd({ animated: false });
-        }, 100);
-      }
+      listRef.current?.scrollToOffset({ offset: 0, animated });
     });
   }, []);
 
@@ -582,37 +589,6 @@ export default function ConversationDetail() {
     },
     [id, qc, queryKey, restaurantId, teamMemberId]
   );
-
-  // When opening a chat, messages may already be in the React Query cache by
-  // the time FlatList mounts. In that path onContentSizeChange is not a
-  // reliable first-scroll trigger, so schedule a few post-layout attempts.
-  useEffect(() => {
-    if (!id || !latestMessageId || didInitialScrollRef.current) return;
-
-    didInitialScrollRef.current = true;
-    atBottomRef.current = true;
-
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    const run = () => {
-      listRef.current?.scrollToEnd({ animated: false });
-    };
-
-    const interaction = InteractionManager.runAfterInteractions(() => {
-      requestAnimationFrame(run);
-      timers.push(setTimeout(run, 80));
-      timers.push(
-        setTimeout(() => {
-          run();
-          void markReadIfAtBottom(true);
-        }, 240)
-      );
-    });
-
-    return () => {
-      interaction.cancel();
-      timers.forEach(clearTimeout);
-    };
-  }, [id, latestMessageId, markReadIfAtBottom]);
 
   // Clear on mount once the cached conversation loads.
   useEffect(() => {
@@ -958,7 +934,8 @@ export default function ConversationDetail() {
       >
         <FlatList
           ref={listRef}
-          data={messages}
+          data={displayMessages}
+          inverted
           keyExtractor={(m) => m.id}
           contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
           onLayout={() => {
@@ -966,11 +943,7 @@ export default function ConversationDetail() {
             tryInitialScrollToLatest();
           }}
           onScroll={({ nativeEvent }) => {
-            const { contentOffset, contentSize, layoutMeasurement } =
-              nativeEvent;
-            const distanceFromBottom =
-              contentSize.height - layoutMeasurement.height - contentOffset.y;
-            const atBottom = distanceFromBottom <= 40;
+            const atBottom = nativeEvent.contentOffset.y <= 40;
             atBottomRef.current = atBottom;
             if (atBottom) void markReadIfAtBottom(true);
           }}
@@ -991,12 +964,8 @@ export default function ConversationDetail() {
             }
             prevMsgCountRef.current = messages.length;
           }}
-          renderItem={({ item, index }) => {
-            const prev = messages[index - 1];
-            const showDate =
-              !prev ||
-              new Date(prev.created_at).toDateString() !==
-                new Date(item.created_at).toDateString();
+          renderItem={({ item }) => {
+            const showDate = dateSeparatorIds.has(item.id);
             return (
               <>
                 {showDate && <DateSeparator date={item.created_at} />}

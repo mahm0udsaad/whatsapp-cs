@@ -603,3 +603,150 @@ export async function respondToOrder(
     body: JSON.stringify({ action, ...options }),
   });
 }
+
+// ---- Marketing campaigns ---------------------------------------------------
+
+export interface MarketingTemplate {
+  id: string;
+  name: string;
+  category: string | null;
+  language: string | null;
+  body_template: string | null;
+  header_type: string | null;
+  header_text: string | null;
+  header_image_url: string | null;
+  footer_text: string | null;
+  approval_status: string;
+  created_at: string;
+}
+
+export interface MarketingCustomer {
+  id: string;
+  phone_number: string;
+  full_name: string | null;
+  source: string;
+  last_seen_at: string | null;
+  opted_out: boolean;
+  created_at: string;
+}
+
+export interface MarketingCustomersResponse {
+  total: number;
+  rows: MarketingCustomer[];
+}
+
+export type CampaignStatus =
+  | "draft"
+  | "scheduled"
+  | "sending"
+  | "completed"
+  | "partially_completed"
+  | "failed";
+
+export interface MarketingCampaignRow {
+  id: string;
+  name: string;
+  template_id: string | null;
+  status: CampaignStatus;
+  scheduled_at: string | null;
+  total_recipients: number;
+  sent_count: number;
+  delivered_count: number;
+  read_count: number;
+  failed_count: number;
+  created_at: string;
+  sending_started_at: string | null;
+  sending_completed_at: string | null;
+  marketing_templates?: {
+    id: string;
+    name: string;
+    category: string | null;
+    language: string | null;
+    approval_status: string;
+  } | null;
+}
+
+export interface CampaignRecipientRow {
+  id: string;
+  phone_number: string;
+  name: string | null;
+  status: "pending" | "sent" | "delivered" | "read" | "failed";
+  error_message: string | null;
+  sent_at: string | null;
+  delivered_at: string | null;
+  read_at: string | null;
+}
+
+export interface MarketingCampaignDetail {
+  campaign: MarketingCampaignRow & {
+    error_message: string | null;
+    marketing_templates: (MarketingCampaignRow["marketing_templates"] & {
+      body_template: string | null;
+    }) | null;
+  };
+  recipients: CampaignRecipientRow[];
+}
+
+export type AudienceSelection =
+  | { kind: "all" }
+  | { kind: "since"; since: string }
+  | { kind: "custom"; phones: string[] };
+
+export async function listMarketingTemplates(): Promise<MarketingTemplate[]> {
+  return apiFetch(`/api/mobile/marketing/templates`);
+}
+
+export async function listMarketingCustomers(
+  opts: { since?: string; limit?: number } = {}
+): Promise<MarketingCustomersResponse> {
+  const qs = new URLSearchParams();
+  if (opts.since) qs.set("since", opts.since);
+  if (opts.limit) qs.set("limit", String(opts.limit));
+  const q = qs.toString();
+  return apiFetch(`/api/mobile/marketing/customers${q ? `?${q}` : ""}`);
+}
+
+export async function listMarketingCampaigns(): Promise<MarketingCampaignRow[]> {
+  return apiFetch(`/api/mobile/marketing/campaigns`);
+}
+
+export async function getMarketingCampaignDetail(
+  id: string
+): Promise<MarketingCampaignDetail> {
+  return apiFetch(`/api/mobile/marketing/campaigns/${id}`);
+}
+
+export async function createMarketingCampaign(input: {
+  name: string;
+  template_id: string;
+  scheduled_at?: string | null;
+}): Promise<MarketingCampaignRow> {
+  return apiFetch(`/api/mobile/marketing/campaigns`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function setCampaignAudience(
+  campaignId: string,
+  selection: AudienceSelection
+): Promise<{ total_recipients: number; opted_out_skipped: number }> {
+  return apiFetch(`/api/mobile/marketing/campaigns/${campaignId}/audience`, {
+    method: "POST",
+    body: JSON.stringify(selection),
+  });
+}
+
+export async function sendMarketingCampaign(
+  campaignId: string
+): Promise<{
+  campaign_id: string;
+  status: CampaignStatus;
+  total: number;
+  sent: number;
+  failed: number;
+}> {
+  return apiFetch(`/api/mobile/marketing/campaigns/${campaignId}/send`, {
+    method: "POST",
+  });
+}

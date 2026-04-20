@@ -98,6 +98,7 @@ const FILTERS: { key: Filter; label: string }[] = [
 ];
 
 const EMPTY_ITEMS: ListItem[] = [];
+const INBOX_PAGE_SIZE = 30;
 
 function isExpired(lastInboundAt: string | null) {
   return (
@@ -140,12 +141,13 @@ export default function InboxScreen() {
   const [filter, setFilter] = useState<Filter>(initialFilter);
   const [dateRange, setDateRange] = useState<DateRange>("any");
   const [search, setSearch] = useState("");
+  const [inboxLimit, setInboxLimit] = useState(INBOX_PAGE_SIZE);
   useEffect(() => {
     setFilter(initialFilter);
   }, [initialFilter]);
 
   // Reassign bottom-sheet state (manager only).
-  const [reassignTarget, setReassignTarget] = useState<ConversationRow | null>(
+  const [reassignTarget, setReassignTarget] = useState<ListItem | null>(
     null
   );
   const rosterQuery = useQuery({
@@ -164,9 +166,15 @@ export default function InboxScreen() {
     // that already reflects the new owner. Realtime UPDATE reconciles any
     // server-side diffs.
     onMutate: async (input) => {
-      const inboxKey = ["inbox", restaurantId, teamMemberId];
-      await qc.cancelQueries({ queryKey: inboxKey });
-      const prevList = qc.getQueryData<ListItem[]>(inboxKey);
+      const activeInboxKey = [
+        "inbox",
+        restaurantId,
+        teamMemberId,
+        filter === "archived",
+        inboxLimit,
+      ];
+      await qc.cancelQueries({ queryKey: activeInboxKey });
+      const prevList = qc.getQueryData<ListItem[]>(activeInboxKey);
 
       const nextMode: "unassigned" | "human" | "bot" = input.forceBot
         ? "bot"
@@ -181,7 +189,7 @@ export default function InboxScreen() {
 
       if (prevList) {
         qc.setQueryData<ListItem[]>(
-          inboxKey,
+          activeInboxKey,
           prevList.map((c) =>
             c.id === input.conversationId
               ? {
@@ -203,7 +211,7 @@ export default function InboxScreen() {
     onError: (e: unknown, _input, ctx) => {
       if (ctx?.prevList) {
         qc.setQueryData(
-          ["inbox", restaurantId, teamMemberId],
+          ["inbox", restaurantId, teamMemberId, filter === "archived", inboxLimit],
           ctx.prevList
         );
       }
@@ -215,14 +223,22 @@ export default function InboxScreen() {
   // filter hides them. Two separate caches so toggling doesn't discard the
   // other set.
   const showArchived = filter === "archived";
+  const inboxKey = useMemo(
+    () => ["inbox", restaurantId, teamMemberId, showArchived, inboxLimit],
+    [restaurantId, teamMemberId, showArchived, inboxLimit]
+  );
+  useEffect(() => {
+    setInboxLimit(INBOX_PAGE_SIZE);
+  }, [showArchived]);
+
   const query = useQuery({
-    queryKey: ["inbox", restaurantId, teamMemberId, showArchived],
+    queryKey: inboxKey,
     enabled: !!restaurantId,
     refetchInterval: 20_000,
     queryFn: async (): Promise<ListItem[]> => {
       const { data, error } = await supabase.rpc("mobile_inbox_list", {
         p_restaurant_id: restaurantId,
-        p_limit: 100,
+        p_limit: inboxLimit,
         p_include_archived: showArchived,
       });
       if (error) throw error;
@@ -280,7 +296,6 @@ export default function InboxScreen() {
   // back to the 20s refetchInterval if the socket drops.
   useEffect(() => {
     if (!restaurantId) return;
-    const inboxKey = ["inbox", restaurantId, teamMemberId, showArchived];
     const ch = supabase
       .channel(`inbox-conv:${restaurantId}`)
       .on(
@@ -390,7 +405,7 @@ export default function InboxScreen() {
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [restaurantId, teamMemberId, qc, showArchived]);
+  }, [restaurantId, teamMemberId, qc, showArchived, inboxKey]);
 
   const allItems = query.data ?? EMPTY_ITEMS;
 
@@ -439,6 +454,12 @@ export default function InboxScreen() {
       return true;
     });
   }, [allItems, filter, dateRange, search]);
+
+  const canLoadMore = allItems.length >= inboxLimit;
+  const loadMore = useCallback(() => {
+    if (!canLoadMore || query.isFetching) return;
+    setInboxLimit((current) => current + INBOX_PAGE_SIZE);
+  }, [canLoadMore, query.isFetching]);
 
   const header = useMemo(
     () => (
@@ -616,6 +637,8 @@ export default function InboxScreen() {
           data={items}
           keyExtractor={(c) => c.id}
           contentInsetAdjustmentBehavior="automatic"
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
           refreshControl={
             <RefreshControl
               refreshing={query.isFetching}
@@ -639,6 +662,19 @@ export default function InboxScreen() {
                   : "سيظهر أي طلب يحتاج متابعة في هذه القائمة."}
               </Text>
             </View>
+          }
+          ListFooterComponent={
+            canLoadMore ? (
+              <View className="items-center py-4">
+                {query.isFetching ? (
+                  <ActivityIndicator color={managerColors.brand} />
+                ) : (
+                  <Text className="text-xs font-semibold text-[#667085]">
+                    اسحبي لأسفل لتحميل المزيد
+                  </Text>
+                )}
+              </View>
+            ) : null
           }
           renderItem={({ item }) => (
             <Pressable

@@ -1,0 +1,49 @@
+diff --git a/node_modules/react-native-css-interop/babel.js b/node_modules/react-native-css-interop/babel.js
+index 0000000..0000001 100644
+--- a/node_modules/react-native-css-interop/babel.js
++++ b/node_modules/react-native-css-interop/babel.js
+@@ -1,16 +1,28 @@
+-module.exports = function () {
+-  return {
+-    plugins: [
+-      require("./dist/babel-plugin").default,
+-      [
+-        "@babel/plugin-transform-react-jsx",
+-        {
+-          runtime: "automatic",
+-          importSource: "react-native-css-interop",
+-        },
+-      ],
+-      // Use this plugin in reanimated 4 and later
+-      "react-native-worklets/plugin",
+-    ],
+-  };
+-};
++// Patched via patch-package (patches/react-native-css-interop+0.2.3.patch).
++// Upstream unconditionally required "react-native-worklets/plugin" which is
++// only needed by Reanimated 4+. On Reanimated 3 it's absent on fresh EAS
++// cloud builds and crashes Metro. We drop the plugin from the preset; if a
++// future codebase on this repo upgrades to Reanimated 4, re-add it here.
++module.exports = function () {
++  const plugins = [
++    require("./dist/babel-plugin").default,
++    [
++      "@babel/plugin-transform-react-jsx",
++      {
++        runtime: "automatic",
++        importSource: "react-native-css-interop",
++      },
++    ],
++  ];
++
++  // Opportunistically include the worklets plugin only when installed (so a
++  // future Reanimated 4 upgrade works without re-patching).
++  try {
++    require.resolve("react-native-worklets/plugin");
++    plugins.push("react-native-worklets/plugin");
++  } catch (_) {
++    // Not installed — fine, Reanimated 3 doesn't need it.
++  }
++
++  return { plugins };
++};

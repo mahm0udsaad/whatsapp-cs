@@ -97,6 +97,24 @@ export default function AppLayout() {
         }}
       />
 
+      {/* Campaigns — manager-only marketing surface (nested stack). */}
+      <Tabs.Screen
+        name="campaigns"
+        options={{
+          title: "الحملات",
+          tabBarLabel: "الحملات",
+          href: manager ? "/campaigns" : null,
+          headerShown: false,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? "megaphone" : "megaphone-outline"}
+              color={color}
+              size={size}
+            />
+          ),
+        }}
+      />
+
       {/* Shifts — agent-only; managers see shifts under Team */}
       <Tabs.Screen
         name="shifts"
@@ -135,6 +153,7 @@ export default function AppLayout() {
         options={{
           title: "في انتظار الموافقة",
           href: null,
+          headerShown: false,
         }}
       />
     </Tabs>
