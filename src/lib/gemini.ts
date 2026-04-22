@@ -417,7 +417,13 @@ export async function generateGeminiResponse(
   const generationConfig = {
     responseMimeType: "application/json",
     responseSchema: REPLY_SCHEMA,
-  };
+    maxOutputTokens: 768,
+    // Gemini 3.x enables "thinking" by default, which adds 3–6s of latency
+    // before the first output token on what is effectively a structured
+    // chat reply. Disable it for this hot path — the schema + system prompt
+    // already constrain the model enough that extra deliberation is wasted.
+    thinkingConfig: { thinkingBudget: 0 },
+  } as Record<string, unknown>;
 
   // Convert conversation history to chat format. Gemini requires history to
   // start with a 'user' message — drop leading agent messages.

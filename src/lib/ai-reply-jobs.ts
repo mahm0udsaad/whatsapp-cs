@@ -85,6 +85,19 @@ async function getConversationHistory(conversationId: string, limit = 12) {
       }
     }
 
+    // Enrich customer interactive taps so the model sees the human-readable
+    // title (in the customer's language) instead of only the opaque
+    // "[user_action:<id>]" token. Without this, the language-detection
+    // heuristic sees no natural-language turn and can flip locales.
+    if (message.role === "customer" && message.message_type === "interactive_reply") {
+      const meta = message.metadata as { tap?: { id?: string; title?: string | null } } | null;
+      const title = meta?.tap?.title?.trim();
+      const id = meta?.tap?.id;
+      if (title) {
+        content = id ? `${title} [user_action:${id}]` : title;
+      }
+    }
+
     return {
       role: (message.role === "customer" ? "user" : "assistant") as
         | "user"
@@ -181,6 +194,27 @@ interface KnowledgeBaseResult {
   expandedQuery: string;
 }
 
+const RESTAURANT_HAS_CHUNKS_CACHE = new Map<string, { hasChunks: boolean; expiresAt: number }>();
+const RESTAURANT_HAS_CHUNKS_TTL_MS = 5 * 60 * 1000;
+
+async function restaurantHasKnowledgeChunks(restaurantId: string): Promise<boolean> {
+  const cached = RESTAURANT_HAS_CHUNKS_CACHE.get(restaurantId);
+  if (cached && cached.expiresAt > Date.now()) return cached.hasChunks;
+
+  const { count } = await adminSupabaseClient
+    .from("knowledge_chunks")
+    .select("id", { count: "exact", head: true })
+    .eq("restaurant_id", restaurantId)
+    .limit(1);
+
+  const hasChunks = (count ?? 0) > 0;
+  RESTAURANT_HAS_CHUNKS_CACHE.set(restaurantId, {
+    hasChunks,
+    expiresAt: Date.now() + RESTAURANT_HAS_CHUNKS_TTL_MS,
+  });
+  return hasChunks;
+}
+
 async function queryKnowledgeBase(
   restaurantId: string,
   query: string,
@@ -197,13 +231,15 @@ async function queryKnowledgeBase(
     .join(" ");
   const expandedQuery = `${query} ${recentUserTurns}`.trim();
 
-  // Primary path: semantic RAG over the `knowledge_chunks` table populated
-  // by `scripts/ingest-knowledge-base.ts`.
-  const { context, chunks } = await retrieveKnowledgeChunks(
-    restaurantId,
-    expandedQuery,
-    5
-  );
+  // Short-circuit the embedding call for tenants that haven't ingested
+  // chunks yet. The embedQuery API call is ~500–1500ms per turn, and on a
+  // table with zero rows for this restaurant it's pure waste. Cache the
+  // empty-bucket result for 5 min so a freshly ingested tenant starts
+  // using RAG soon after backfill.
+  const hasChunks = await restaurantHasKnowledgeChunks(restaurantId);
+  const { context, chunks } = hasChunks
+    ? await retrieveKnowledgeChunks(restaurantId, expandedQuery, 5)
+    : { context: "", chunks: [] as RetrievedChunk[] };
   if (chunks.length > 0) {
     return summarizeRagResult(context, chunks, expandedQuery);
   }
