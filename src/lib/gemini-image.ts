@@ -23,10 +23,11 @@ interface GenerateMarketingImageResult {
 
 /**
  * Generate a marketing image using Gemini's image generation capabilities.
- * Uses gemini-2.5-flash-image-preview (Nano Banana) with
- * responseModalities: ["Text", "Image"]. The 3.1 preview model has a
- * per-project free-tier quota of 0 and reliably 429s on unpaid keys, so
- * we deliberately use the 2.5 preview which is broadly available.
+ * Uses `gemini-3.1-flash-image-preview` (Nano Banana 2) with
+ * responseModalities: ["Text", "Image"]. This model requires a paid
+ * Gemini API tier — the free tier has quota 0 for it and will 429.
+ * The calling route translates 429s into a short Arabic fallback
+ * message that tells the user to upload instead of generate.
  */
 export async function generateMarketingImage(
   params: GenerateMarketingImageParams
@@ -34,7 +35,7 @@ export async function generateMarketingImage(
   const { prompt, restaurantName, language, aspectRatio = "16:9" } = params;
 
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash-image-preview",
+    model: "gemini-3.1-flash-image-preview",
     generationConfig: {
       responseModalities: ["Text", "Image"],
     } as any, // responseModalities not in older SDK types
