@@ -186,6 +186,24 @@ export default function CustomersListScreen() {
             <View className="items-center py-16">
               <ActivityIndicator />
             </View>
+          ) : customersQuery.isError ? (
+            <View className="items-center px-6 py-16">
+              <Ionicons name="cloud-offline-outline" size={48} color="#DC2626" />
+              <Text className="mt-3 text-center text-sm text-red-700">
+                تعذر تحميل العملاء
+              </Text>
+              <Text className="mt-1 text-center text-[11px] text-gray-500">
+                {customersQuery.error instanceof Error
+                  ? customersQuery.error.message
+                  : "تأكد من اتصالك ثم حاول مرة أخرى"}
+              </Text>
+              <Pressable
+                onPress={() => customersQuery.refetch()}
+                className="mt-3 rounded-full border border-gray-200 px-4 py-2"
+              >
+                <Text className="text-xs text-gray-700">إعادة المحاولة</Text>
+              </Pressable>
+            </View>
           ) : (
             <View className="items-center py-16">
               <Ionicons name="people-outline" size={48} color="#9CA3AF" />
