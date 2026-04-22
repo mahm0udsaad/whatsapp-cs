@@ -134,7 +134,21 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    const raw = err instanceof Error ? err.message : "Unknown error";
+    // Gemini quota/rate-limit errors come back as huge JSON blobs. Detect
+    // them and surface a short Arabic message the user can actually act on
+    // (upload from device instead of generating).
+    const isQuota =
+      /\b429\b|Too Many Requests|quota|rate[- ]?limit/i.test(raw);
+    if (isQuota) {
+      return NextResponse.json(
+        {
+          error:
+            "خدمة توليد الصور مشغولة حالياً أو تجاوزت الحصة. الرجاء رفع صورة من جهازك بدلاً من التوليد.",
+        },
+        { status: 429 }
+      );
+    }
+    return NextResponse.json({ error: raw }, { status: 500 });
   }
 }
