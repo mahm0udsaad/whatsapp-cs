@@ -1,5 +1,6 @@
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 import { getApprovalStatus } from "@/lib/twilio-content";
+import { notifyManagersOfTemplateDecision } from "@/lib/template-notifications";
 
 const TERMINAL_STATUSES = ["approved", "rejected", "paused", "disabled"];
 
@@ -45,15 +46,35 @@ export async function processPendingTemplateApprovalPolls(limit = 50) {
           templateUpdate.rejection_reason = rejectionReason;
         }
 
-        await adminSupabaseClient
+        const { data: updatedTemplate } = await adminSupabaseClient
           .from("marketing_templates")
           .update(templateUpdate)
-          .eq("id", poll.template_id);
+          .eq("id", poll.template_id)
+          .select("id, name, restaurant_id")
+          .single();
 
         await adminSupabaseClient
           .from("template_approval_polls")
           .update({ status: "completed", updated_at: new Date().toISOString() })
           .eq("id", poll.id);
+
+        if (updatedTemplate) {
+          // Fire-and-forget — notification failures must not block polling.
+          notifyManagersOfTemplateDecision({
+            restaurantId: updatedTemplate.restaurant_id,
+            templateId: updatedTemplate.id,
+            templateName: updatedTemplate.name,
+            status: normalizedStatus as
+              | "approved"
+              | "rejected"
+              | "paused"
+              | "disabled",
+            rejectionReason:
+              normalizedStatus === "rejected" ? rejectionReason : null,
+          }).catch((e) =>
+            console.error("[template-poller] notify failed:", e)
+          );
+        }
       } else {
         const newPollCount = (poll.poll_count || 0) + 1;
         const nextPollAt = getNextPollAt(newPollCount);

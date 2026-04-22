@@ -53,6 +53,8 @@ export default function RootLayout() {
         }
       } else if (data?.type === "approval_needed") {
         router.push("/(app)/approvals");
+      } else if (data?.type === "template_decision") {
+        router.push("/(app)/campaigns/templates");
       } else if (data?.orderId) {
         router.push(`/inbox/${data.orderId}`);
       }

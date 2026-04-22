@@ -146,6 +146,22 @@ export default function CampaignsIndexScreen() {
         <Ionicons name="add" size={22} color="#fff" />
         <Text className="font-bold text-white">حملة جديدة</Text>
       </Pressable>
+
+      {/* Secondary FAB — Templates library */}
+      <Pressable
+        onPress={() => router.push("/campaigns/templates")}
+        className="absolute bottom-6 right-6 h-12 flex-row items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4"
+        style={{
+          shadowColor: "#000",
+          shadowOpacity: 0.08,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 3,
+        }}
+      >
+        <Ionicons name="document-text-outline" size={18} color="#4B5563" />
+        <Text className="text-sm font-semibold text-gray-700">القوالب</Text>
+      </Pressable>
     </SafeAreaView>
   );
 }

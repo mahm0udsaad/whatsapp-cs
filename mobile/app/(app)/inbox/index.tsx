@@ -80,6 +80,7 @@ type ConversationRow = {
 
 type ListItem = ConversationRow & {
   preview: string | null;
+  preview_role: "customer" | "agent" | "system" | null;
   assignee_name: string | null;
   is_expired: boolean;
   is_mine: boolean;
@@ -249,12 +250,42 @@ export default function InboxScreen() {
         label_ids: string[] | null;
       })[];
 
-      return rows
-        // When showArchived is true the RPC returns BOTH archived and
-        // active rows; filter to archived-only so the inbox shows what the
-        // user expects. When false the RPC already excluded archived.
-        .filter((r) => (showArchived ? r.archived_at !== null : true))
-        .map((r) => ({
+      const filtered = rows.filter((r) =>
+        showArchived ? r.archived_at !== null : true
+      );
+
+      // The RPC only returns the latest customer message as `preview`. Fetch
+      // the actual latest message (any role) so the inbox reflects whichever
+      // side spoke most recently.
+      const convIds = filtered.map((r) => r.id);
+      const latestByConv = new Map<
+        string,
+        { content: string; role: "customer" | "agent" | "system" }
+      >();
+      if (convIds.length > 0) {
+        const { data: recent } = await supabase
+          .from("messages")
+          .select("conversation_id, content, created_at, role")
+          .in("conversation_id", convIds)
+          .order("created_at", { ascending: false })
+          .limit(convIds.length * 3);
+        for (const m of (recent ?? []) as {
+          conversation_id: string;
+          content: string | null;
+          role: "customer" | "agent" | "system";
+        }[]) {
+          if (!latestByConv.has(m.conversation_id)) {
+            latestByConv.set(m.conversation_id, {
+              content: m.content ?? "",
+              role: m.role,
+            });
+          }
+        }
+      }
+
+      return filtered.map((r) => {
+        const latest = latestByConv.get(r.id);
+        return {
           id: r.id,
           customer_name: r.customer_name,
           customer_phone: r.customer_phone,
@@ -265,12 +296,14 @@ export default function InboxScreen() {
           assigned_to: r.assigned_to,
           unread_count: r.unread_count,
           archived_at: r.archived_at,
-          preview: r.preview,
+          preview: latest?.content ?? r.preview,
+          preview_role: latest?.role ?? (r.preview ? "customer" : null),
           assignee_name: r.assignee_name,
           is_expired: isExpired(r.last_inbound_at),
           is_mine: r.assigned_to === teamMemberId,
           label_ids: r.label_ids ?? [],
-        }));
+        };
+      });
     },
   });
 
@@ -318,6 +351,7 @@ export default function InboxScreen() {
             const next: ListItem = {
               ...row,
               preview: null,
+              preview_role: null,
               assignee_name: null,
               label_ids: [],
               is_expired: isExpired(row.last_inbound_at),
@@ -373,28 +407,34 @@ export default function InboxScreen() {
           // insert in the project. That's OK for a small-to-mid tenant — we
           // guard the cache write below by checking the conversation is in
           // this user's inbox.
-          filter: `role=eq.customer`,
+          // No role filter — we want preview to update for customer AND
+          // agent/bot replies so the inbox reflects whichever side spoke last.
         },
         (payload) => {
           const msg = payload.new as {
             conversation_id: string;
             content: string | null;
             created_at: string;
+            role: "customer" | "agent" | "system";
           };
           qc.setQueryData<ListItem[]>(inboxKey, (prev) => {
             if (!prev) return prev;
             const idx = prev.findIndex((c) => c.id === msg.conversation_id);
             if (idx === -1) return prev;
+            const isCustomer = msg.role === "customer";
             const merged: ListItem = {
               ...prev[idx],
               preview: msg.content ?? prev[idx].preview,
+              preview_role: msg.role,
               last_message_at: msg.created_at,
-              last_inbound_at: msg.created_at,
-              is_expired: false,
-              // Optimistically bump — the DB trigger does the same on the
-              // server. If the conversation is currently open, the chat
-              // screen's mark-read will zero it out on scroll-to-bottom.
-              unread_count: (prev[idx].unread_count ?? 0) + 1,
+              last_inbound_at: isCustomer
+                ? msg.created_at
+                : prev[idx].last_inbound_at,
+              is_expired: isCustomer ? false : prev[idx].is_expired,
+              // Only customer inbound messages bump unread — matches DB trigger.
+              unread_count: isCustomer
+                ? (prev[idx].unread_count ?? 0) + 1
+                : prev[idx].unread_count,
             };
             const rest = prev.filter((_, i) => i !== idx);
             return [merged, ...rest];
@@ -759,6 +799,16 @@ export default function InboxScreen() {
                   numberOfLines={2}
                   className="text-right text-sm leading-5 text-[#344054]"
                 >
+                  {item.preview_role === "agent" && (
+                    <Text className="font-semibold text-[#0B7A4B]">
+                      {item.handler_mode === "bot" ? "البوت: " : "أنت: "}
+                    </Text>
+                  )}
+                  {item.preview_role === "system" && (
+                    <Text className="font-semibold text-[#667085]">
+                      النظام:{" "}
+                    </Text>
+                  )}
                   {item.preview}
                 </Text>
               )}

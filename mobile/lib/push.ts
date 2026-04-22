@@ -35,6 +35,14 @@ export async function registerForPushNotificationsAsync(
       sound: "default",
       lightColor: "#25D366",
     });
+    // Marketing-template approval decisions (approved / rejected). Lower
+    // priority than ops channels — the manager wants a signal, not a siren.
+    await Notifications.setNotificationChannelAsync("templates", {
+      name: "Template approvals",
+      importance: Notifications.AndroidImportance.DEFAULT,
+      sound: "default",
+      lightColor: "#25D366",
+    });
   }
 
   const existing = await Notifications.getPermissionsAsync();

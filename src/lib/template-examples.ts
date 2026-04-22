@@ -6,19 +6,30 @@
  * template editor. Identifiers in `variables` become `{{1}}`, `{{2}}`, ... in
  * the body that is later submitted to Twilio's Content API.
  *
- * The shape intentionally mirrors the POST body accepted by
- * `/api/marketing/templates` so copying an example into the editor is a
- * straight structural mapping with no translation step.
+ * ── Meta / WhatsApp Cloud API rules these presets must satisfy ──
+ *   • Body ≤1024 chars, variables sequential {{1}}..{{n}}, never start/end a
+ *     body, never appear consecutively with nothing between them.
+ *   • Header text ≤60 chars, ≤1 variable; image header has no variables.
+ *   • Footer ≤60 chars, no variables, no formatting.
+ *   • Buttons: MAX 3 total AND a single KIND — either all QUICK_REPLY, or a
+ *     call-to-action set (up to 2 URL + 1 PHONE_NUMBER). **Mixing QR with
+ *     URL/PHONE is rejected by Meta.**
+ *   • AUTHENTICATION category requires the `whatsapp/authentication` content
+ *     type (OTP shape), NOT `whatsapp/card`. We don't ship AUTH presets here
+ *     — this file only carries MARKETING / UTILITY templates.
+ *
+ * The `sampleValues` array is what Meta reviewers SEE during approval as the
+ * realized message. Must be realistic filled-in text — passing raw parameter
+ * names like "customer_name" triggers Meta rejection for unclear examples.
  */
 
 import type { TemplateCategory, TemplateHeaderType } from "@/lib/types";
 
 export interface TemplateExampleButton {
-  type: "QUICK_REPLY" | "URL" | "PHONE_NUMBER" | "COPY_CODE";
+  type: "QUICK_REPLY" | "URL" | "PHONE_NUMBER";
   title: string;
   url?: string;
   phone?: string;
-  code?: string;
   id?: string;
 }
 
@@ -34,23 +45,27 @@ export interface TemplateExamplePreview {
 
 export interface TemplateExample {
   slug: string;
-  category: TemplateCategory;
+  /** Only MARKETING or UTILITY — AUTHENTICATION uses a different content type. */
+  category: Exclude<TemplateCategory, "AUTHENTICATION">;
   title: string;
   description: string;
-  /** Named placeholder labels (e.g. ["customer_name", "discount_percent"]). */
+  /** Human labels for {{1}}..{{n}} placeholders — used in the editor UI only. */
   variables: string[];
-  language: string; // "ar" | "en" — we ship both Arabic and English bases
+  /** Realistic sample values submitted to Twilio/Meta for approval review. */
+  sampleValues: string[];
+  language: string;
   preview: TemplateExamplePreview;
 }
 
 export const TEMPLATE_EXAMPLES: TemplateExample[] = [
   {
-    slug: "promotion-discount",
+    slug: "promotion_discount",
     category: "MARKETING",
     title: "عرض خصم",
     description:
       "عرض محدود بالوقت لجذب العملاء القدامى ومكافأة المشتركين الحاليين.",
     variables: ["customer_name", "discount_percent", "promo_code"],
+    sampleValues: ["أحمد", "٥٠", "SUMMER50"],
     language: "ar",
     preview: {
       body_template:
@@ -61,17 +76,18 @@ export const TEMPLATE_EXAMPLES: TemplateExample[] = [
       footer_text: "العرض ساري حتى نفاد الكمية.",
       buttons: [
         { type: "QUICK_REPLY", title: "اطلب الآن", id: "order_now" },
-        { type: "QUICK_REPLY", title: "لاحقاً", id: "remind_later" },
+        { type: "QUICK_REPLY", title: "ذكّرني لاحقاً", id: "remind_later" },
       ],
     },
   },
   {
-    slug: "welcome-back",
+    slug: "welcome_back",
     category: "MARKETING",
     title: "ترحيب بعميل قديم",
     description:
       "رسالة ودية لاستعادة العملاء الذين لم يطلبوا منذ فترة مع حافز للعودة.",
     variables: ["customer_name", "bonus_offer"],
+    sampleValues: ["سارة", "قهوة مجانية"],
     language: "ar",
     preview: {
       body_template:
@@ -86,18 +102,21 @@ export const TEMPLATE_EXAMPLES: TemplateExample[] = [
     },
   },
   {
-    slug: "order-status-update",
+    slug: "order_status_update",
     category: "UTILITY",
     title: "تحديث حالة الطلب",
     description:
       "إشعار شفاف بحالة الطلب (قيد التحضير، في الطريق، جاهز) مع رابط للتتبع.",
     variables: ["customer_name", "order_number", "status_text"],
+    sampleValues: ["محمد", "A-1042", "في الطريق"],
     language: "ar",
     preview: {
       body_template:
         "مرحباً {{1}}، طلبك رقم {{2}} الآن {{3}}. شكراً لاختيارك لنا.",
       header_type: "text",
       header_text: "تحديث طلبك",
+      // Single URL button — reuses body var {{2}} at the end of the URL,
+      // which Meta allows.
       buttons: [
         {
           type: "URL",
@@ -108,11 +127,12 @@ export const TEMPLATE_EXAMPLES: TemplateExample[] = [
     },
   },
   {
-    slug: "event-invite",
+    slug: "event_invite",
     category: "MARKETING",
     title: "دعوة لفعالية",
-    description: "دعوة عملائك لحدث خاص أو افتتاح فرع جديد مع تاريخ الحجز.",
+    description: "دعوة عملائك لحدث خاص أو افتتاح فرع جديد مع رابط الحجز.",
     variables: ["customer_name", "event_name", "event_date"],
+    sampleValues: ["ليان", "افتتاح فرع الخبر", "٢٠٢٦/٠٥/٠٣"],
     language: "ar",
     preview: {
       body_template:
@@ -121,22 +141,28 @@ export const TEMPLATE_EXAMPLES: TemplateExample[] = [
       image_prompt:
         "صورة احتفالية راقية، إضاءة دافئة، لقطة من داخل مطعم عصري جاهز لحدث خاص",
       footer_text: "احجز مكانك مبكراً لضمان الحضور.",
+      // All-URL CTA set — no QUICK_REPLY mixed in (Meta rejects mixed kinds).
       buttons: [
         {
           type: "URL",
           title: "احجز الآن",
           url: "https://example.com/rsvp",
         },
-        { type: "QUICK_REPLY", title: "لاحقاً", id: "remind_later" },
+        {
+          type: "URL",
+          title: "شاهد القائمة",
+          url: "https://example.com/menu",
+        },
       ],
     },
   },
   {
-    slug: "feedback-request",
+    slug: "feedback_request",
     category: "UTILITY",
     title: "طلب تقييم",
     description: "متابعة بعد الزيارة لجمع تقييم سريع بضغطة زر.",
     variables: ["customer_name", "visit_day"],
+    sampleValues: ["خالد", "الخميس"],
     language: "ar",
     preview: {
       body_template:
@@ -150,24 +176,21 @@ export const TEMPLATE_EXAMPLES: TemplateExample[] = [
     },
   },
   {
-    slug: "otp-auth-code",
-    category: "AUTHENTICATION",
-    title: "رمز التحقق",
-    description:
-      "رمز تحقق لمرة واحدة لتأكيد تسجيل الدخول أو تأكيد الطلب — فئة AUTHENTICATION.",
-    variables: ["auth_code"],
+    slug: "booking_reminder",
+    category: "UTILITY",
+    title: "تذكير بالحجز",
+    description: "تذكير قبل موعد الحجز مع إمكانية التأكيد أو إلغاء الحجز.",
+    variables: ["customer_name", "booking_time", "party_size"],
+    sampleValues: ["نورة", "الجمعة ٨ مساءً", "٤"],
     language: "ar",
     preview: {
       body_template:
-        "رمز التحقق الخاص بك هو {{1}}. لا تشاركه مع أي شخص. ينتهي خلال ١٠ دقائق.",
-      header_type: "none",
-      footer_text: "لم تطلب الرمز؟ تجاهل هذه الرسالة.",
+        "مرحباً {{1}}، نذكّرك بحجزك يوم {{2}} لعدد {{3}} أشخاص. نتطلع لاستقبالك.",
+      header_type: "text",
+      header_text: "تذكير بالحجز",
       buttons: [
-        {
-          type: "COPY_CODE",
-          title: "نسخ الرمز",
-          code: "{{1}}",
-        },
+        { type: "QUICK_REPLY", title: "مؤكد الحضور", id: "confirm_booking" },
+        { type: "QUICK_REPLY", title: "إلغاء الحجز", id: "cancel_booking" },
       ],
     },
   },

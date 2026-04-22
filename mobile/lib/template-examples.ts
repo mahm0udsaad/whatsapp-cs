@@ -6,17 +6,24 @@
  * Metro can't reach across the monorepo by default and the mobile app only
  * needs the data structurally to render preview cards, so we duplicate the
  * literal here. Keep these two files in sync if you add or edit examples.
+ *
+ * Meta/WhatsApp rules these presets must satisfy:
+ *   • Buttons are either all QUICK_REPLY, or a call-to-action set (up to 2
+ *     URL + 1 PHONE_NUMBER). Mixing QR with URL/PHONE is rejected by Meta.
+ *   • AUTHENTICATION uses `whatsapp/authentication` content type, not
+ *     `whatsapp/card` — so AUTH presets are intentionally absent here.
+ *   • `sampleValues` are what Meta sees as the realized message during
+ *     review — must be realistic filled-in text, not raw parameter names.
  */
 
-export type TemplateCategory = "MARKETING" | "UTILITY" | "AUTHENTICATION";
+export type TemplateCategory = "MARKETING" | "UTILITY";
 export type TemplateHeaderType = "none" | "text" | "image";
 
 export interface TemplateExampleButton {
-  type: "QUICK_REPLY" | "URL" | "PHONE_NUMBER" | "COPY_CODE";
+  type: "QUICK_REPLY" | "URL" | "PHONE_NUMBER";
   title: string;
   url?: string;
   phone?: string;
-  code?: string;
   id?: string;
 }
 
@@ -35,18 +42,20 @@ export interface TemplateExample {
   title: string;
   description: string;
   variables: string[];
+  sampleValues: string[];
   language: string;
   preview: TemplateExamplePreview;
 }
 
 export const TEMPLATE_EXAMPLES: TemplateExample[] = [
   {
-    slug: "promotion-discount",
+    slug: "promotion_discount",
     category: "MARKETING",
     title: "عرض خصم",
     description:
       "عرض محدود بالوقت لجذب العملاء القدامى ومكافأة المشتركين الحاليين.",
     variables: ["customer_name", "discount_percent", "promo_code"],
+    sampleValues: ["أحمد", "٥٠", "SUMMER50"],
     language: "ar",
     preview: {
       body_template:
@@ -57,17 +66,18 @@ export const TEMPLATE_EXAMPLES: TemplateExample[] = [
       footer_text: "العرض ساري حتى نفاد الكمية.",
       buttons: [
         { type: "QUICK_REPLY", title: "اطلب الآن", id: "order_now" },
-        { type: "QUICK_REPLY", title: "لاحقاً", id: "remind_later" },
+        { type: "QUICK_REPLY", title: "ذكّرني لاحقاً", id: "remind_later" },
       ],
     },
   },
   {
-    slug: "welcome-back",
+    slug: "welcome_back",
     category: "MARKETING",
     title: "ترحيب بعميل قديم",
     description:
       "رسالة ودية لاستعادة العملاء الذين لم يطلبوا منذ فترة مع حافز للعودة.",
     variables: ["customer_name", "bonus_offer"],
+    sampleValues: ["سارة", "قهوة مجانية"],
     language: "ar",
     preview: {
       body_template:
@@ -82,12 +92,13 @@ export const TEMPLATE_EXAMPLES: TemplateExample[] = [
     },
   },
   {
-    slug: "order-status-update",
+    slug: "order_status_update",
     category: "UTILITY",
     title: "تحديث حالة الطلب",
     description:
       "إشعار شفاف بحالة الطلب (قيد التحضير، في الطريق، جاهز) مع رابط للتتبع.",
     variables: ["customer_name", "order_number", "status_text"],
+    sampleValues: ["محمد", "A-1042", "في الطريق"],
     language: "ar",
     preview: {
       body_template:
@@ -104,11 +115,12 @@ export const TEMPLATE_EXAMPLES: TemplateExample[] = [
     },
   },
   {
-    slug: "event-invite",
+    slug: "event_invite",
     category: "MARKETING",
     title: "دعوة لفعالية",
-    description: "دعوة عملائك لحدث خاص أو افتتاح فرع جديد مع تاريخ الحجز.",
+    description: "دعوة عملائك لحدث خاص أو افتتاح فرع جديد مع رابط الحجز.",
     variables: ["customer_name", "event_name", "event_date"],
+    sampleValues: ["ليان", "افتتاح فرع الخبر", "٢٠٢٦/٠٥/٠٣"],
     language: "ar",
     preview: {
       body_template:
@@ -119,16 +131,17 @@ export const TEMPLATE_EXAMPLES: TemplateExample[] = [
       footer_text: "احجز مكانك مبكراً لضمان الحضور.",
       buttons: [
         { type: "URL", title: "احجز الآن", url: "https://example.com/rsvp" },
-        { type: "QUICK_REPLY", title: "لاحقاً", id: "remind_later" },
+        { type: "URL", title: "شاهد القائمة", url: "https://example.com/menu" },
       ],
     },
   },
   {
-    slug: "feedback-request",
+    slug: "feedback_request",
     category: "UTILITY",
     title: "طلب تقييم",
     description: "متابعة بعد الزيارة لجمع تقييم سريع بضغطة زر.",
     variables: ["customer_name", "visit_day"],
+    sampleValues: ["خالد", "الخميس"],
     language: "ar",
     preview: {
       body_template:
@@ -142,24 +155,21 @@ export const TEMPLATE_EXAMPLES: TemplateExample[] = [
     },
   },
   {
-    slug: "otp-auth-code",
-    category: "AUTHENTICATION",
-    title: "رمز التحقق",
-    description:
-      "رمز تحقق لمرة واحدة لتأكيد تسجيل الدخول أو تأكيد الطلب — فئة AUTHENTICATION.",
-    variables: ["auth_code"],
+    slug: "booking_reminder",
+    category: "UTILITY",
+    title: "تذكير بالحجز",
+    description: "تذكير قبل موعد الحجز مع إمكانية التأكيد أو إلغاء الحجز.",
+    variables: ["customer_name", "booking_time", "party_size"],
+    sampleValues: ["نورة", "الجمعة ٨ مساءً", "٤"],
     language: "ar",
     preview: {
       body_template:
-        "رمز التحقق الخاص بك هو {{1}}. لا تشاركه مع أي شخص. ينتهي خلال ١٠ دقائق.",
-      header_type: "none",
-      footer_text: "لم تطلب الرمز؟ تجاهل هذه الرسالة.",
+        "مرحباً {{1}}، نذكّرك بحجزك يوم {{2}} لعدد {{3}} أشخاص. نتطلع لاستقبالك.",
+      header_type: "text",
+      header_text: "تذكير بالحجز",
       buttons: [
-        {
-          type: "COPY_CODE",
-          title: "نسخ الرمز",
-          code: "{{1}}",
-        },
+        { type: "QUICK_REPLY", title: "مؤكد الحضور", id: "confirm_booking" },
+        { type: "QUICK_REPLY", title: "إلغاء الحجز", id: "cancel_booking" },
       ],
     },
   },

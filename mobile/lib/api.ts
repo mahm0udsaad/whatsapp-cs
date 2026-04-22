@@ -617,7 +617,11 @@ export interface MarketingTemplate {
   header_image_url: string | null;
   footer_text: string | null;
   approval_status: string;
+  rejection_reason?: string | null;
+  buttons?: Array<Record<string, unknown>> | null;
+  variables?: string[] | null;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface MarketingCustomer {
@@ -694,6 +698,58 @@ export type AudienceSelection =
 
 export async function listMarketingTemplates(): Promise<MarketingTemplate[]> {
   return apiFetch(`/api/mobile/marketing/templates`);
+}
+
+export async function listAllMarketingTemplates(): Promise<MarketingTemplate[]> {
+  return apiFetch(`/api/mobile/marketing/templates?status=all`);
+}
+
+export interface CreateMarketingTemplateInput {
+  name: string;
+  body_template: string;
+  language?: string;
+  category?: "MARKETING" | "UTILITY";
+  header_type?: "none" | "text" | "image";
+  header_text?: string | null;
+  header_image_url?: string | null;
+  footer_text?: string | null;
+  buttons?: Array<Record<string, unknown>> | null;
+  variables?: string[] | null;
+  /** Realistic filled-in values for {{1}}..{{n}} — shown to Meta reviewers. */
+  sample_values?: string[] | null;
+  submit?: boolean;
+}
+
+export async function createMarketingTemplate(
+  input: CreateMarketingTemplateInput
+): Promise<{ template: MarketingTemplate; submit_error?: string }> {
+  return apiFetch(`/api/mobile/marketing/templates`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function uploadTemplateImage(input: {
+  base64: string;
+  content_type: string;
+}): Promise<{ url: string; storage_path: string }> {
+  return apiFetch(`/api/mobile/marketing/templates/image`, {
+    method: "POST",
+    body: JSON.stringify({ mode: "upload", ...input }),
+    timeoutMs: 60_000,
+  });
+}
+
+export async function generateTemplateImage(input: {
+  prompt: string;
+  language?: "ar" | "en";
+  aspect_ratio?: "1:1" | "16:9" | "4:3";
+}): Promise<{ url: string; storage_path: string; description?: string }> {
+  return apiFetch(`/api/mobile/marketing/templates/image`, {
+    method: "POST",
+    body: JSON.stringify({ mode: "generate", ...input }),
+    timeoutMs: 90_000,
+  });
 }
 
 export async function listMarketingCustomers(

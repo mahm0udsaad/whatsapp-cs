@@ -38,6 +38,7 @@ type Row = {
   assigned_to: string | null;
   assignee_name: string | null;
   preview: string | null;
+  preview_role: "customer" | "agent" | "system" | null;
   is_expired: boolean;
 };
 
@@ -308,6 +309,14 @@ export function ConversationsInboxShell({
                     </div>
                     {r.preview && (
                       <p className="mt-1 line-clamp-1 text-xs text-slate-500">
+                        {r.preview_role === "agent" && (
+                          <span className="ml-1 font-medium text-emerald-600">
+                            {r.handler_mode === "bot" ? "البوت:" : "أنت:"}
+                          </span>
+                        )}
+                        {r.preview_role === "system" && (
+                          <span className="ml-1 font-medium text-slate-400">النظام:</span>
+                        )}
                         {r.preview}
                       </p>
                     )}

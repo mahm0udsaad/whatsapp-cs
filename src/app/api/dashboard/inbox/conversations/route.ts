@@ -128,15 +128,17 @@ export async function GET(request: NextRequest) {
       assigneeMap = new Map((members ?? []).map((m) => [m.id as string, (m.full_name as string) || ""]));
     }
 
-    // Latest inbound preview per conversation (bounded pull).
+    // Latest message preview per conversation (any role).
     const convIds = conversations.map((c) => c.id);
-    let previewMap = new Map<string, { content: string; created_at: string }>();
+    let previewMap = new Map<
+      string,
+      { content: string; created_at: string; role: "customer" | "agent" | "system" }
+    >();
     if (convIds.length > 0) {
       const { data: recent } = await adminSupabaseClient
         .from("messages")
         .select("conversation_id, content, created_at, role")
         .in("conversation_id", convIds)
-        .eq("role", "customer")
         .order("created_at", { ascending: false })
         .limit(convIds.length * 3);
       for (const m of recent ?? []) {
@@ -145,19 +147,24 @@ export async function GET(request: NextRequest) {
           previewMap.set(cid, {
             content: (m.content as string) || "",
             created_at: m.created_at as string,
+            role: m.role as "customer" | "agent" | "system",
           });
         }
       }
     }
 
-    const shaped = conversations.map((c) => ({
-      ...c,
-      assignee_name: c.assigned_to ? assigneeMap.get(c.assigned_to as string) ?? null : null,
-      preview: previewMap.get(c.id as string)?.content ?? null,
-      is_expired:
-        !!c.last_inbound_at &&
-        new Date(c.last_inbound_at as string).getTime() < Date.now() - DAY_MS,
-    }));
+    const shaped = conversations.map((c) => {
+      const p = previewMap.get(c.id as string);
+      return {
+        ...c,
+        assignee_name: c.assigned_to ? assigneeMap.get(c.assigned_to as string) ?? null : null,
+        preview: p?.content ?? null,
+        preview_role: p?.role ?? null,
+        is_expired:
+          !!c.last_inbound_at &&
+          new Date(c.last_inbound_at as string).getTime() < Date.now() - DAY_MS,
+      };
+    });
 
     return NextResponse.json({ conversations: shaped });
   } catch (err) {

@@ -391,12 +391,10 @@ async function getOrCreateCachedPrefix(
 export async function generateGeminiResponse(
   context: GeminiContext
 ): Promise<GeminiResponse> {
-  const userLanguage = detectLanguage(context.userMessage);
-
-  let responseLanguage: "ar" | "en" = userLanguage;
-  if (context.languagePreference !== "auto") {
-    responseLanguage = context.languagePreference;
-  }
+  // Business serves Saudi customers — always reply in Saudi Arabic, regardless
+  // of detected input language or agent preference. The Arabic response-format
+  // block in buildCustomerServiceSystemPrompt pins the dialect.
+  const responseLanguage: "ar" | "en" = "ar";
 
   const offTopic = await isOffTopic(context.userMessage, context.ragContext);
   if (offTopic) {
