@@ -3,6 +3,7 @@ import {
   triggerEscalationBroadcast,
   triggerReservationBroadcast,
 } from "@/lib/escalation-broadcaster";
+import { extractAndStoreOrderIntent } from "@/lib/extract-order-intent";
 
 export interface CreateOrderInput {
   restaurantId: string;
@@ -103,6 +104,18 @@ export async function createOrder(input: CreateOrderInput): Promise<string | nul
   } else if (input.type === "reservation") {
     void triggerReservationBroadcast(newId);
   }
+
+  // AI extraction: fill orders.extracted_intent in the background so the
+  // mobile approvals widget can render a structured summary (what the
+  // customer provided vs. what's missing) instead of the raw message.
+  // Non-fatal — if Gemini is unavailable or rate-limited the column stays
+  // null and the UI falls back to the plain message.
+  void extractAndStoreOrderIntent({
+    orderId: newId,
+    conversationId: input.conversationId,
+    fallbackMessage: input.details,
+    escalationReason: input.escalationReason ?? null,
+  });
 
   return newId;
 }

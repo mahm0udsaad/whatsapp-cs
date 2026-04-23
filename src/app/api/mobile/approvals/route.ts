@@ -18,7 +18,7 @@ export async function GET() {
   const { data, error } = await adminSupabaseClient
     .from("orders")
     .select(
-      "id, conversation_id, type, status, created_at, customer_phone, customer_name, details, escalation_reason, priority"
+      "id, conversation_id, type, status, created_at, customer_phone, customer_name, details, escalation_reason, priority, extracted_intent"
     )
     .eq("restaurant_id", restaurantId)
     .eq("type", "escalation")
@@ -51,6 +51,7 @@ export async function GET() {
     message: o.details ?? null,
     reasonCode: o.escalation_reason ?? null,
     summary: o.details ?? o.escalation_reason ?? null,
+    extracted_intent: o.extracted_intent ?? null,
   }));
 
   return NextResponse.json(rows);

@@ -1,4 +1,5 @@
-import { Redirect, Tabs, useSegments } from "expo-router";
+import { Redirect, Tabs, router, useSegments } from "expo-router";
+import { Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSessionStore } from "../../lib/session-store";
 import { isManager } from "../../lib/roles";
@@ -19,6 +20,22 @@ export default function AppLayout() {
   const manager = isManager(member);
   const isConversationDetail =
     segments[1] === "inbox" && segments[2] !== undefined;
+
+  const profileHeaderRight = () => (
+    <Pressable
+      onPress={() => router.push("/(app)/profile")}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel="حسابي"
+      style={{ paddingHorizontal: 14 }}
+    >
+      <Ionicons
+        name="person-circle-outline"
+        size={28}
+        color={managerColors.ink}
+      />
+    </Pressable>
+  );
 
   return (
     <Tabs
@@ -61,6 +78,7 @@ export default function AppLayout() {
               size={size}
             />
           ),
+          headerRight: profileHeaderRight,
         }}
       />
 
@@ -97,21 +115,13 @@ export default function AppLayout() {
         }}
       />
 
-      {/* Customers — manager-only directory of contactable customers. */}
+      {/* Customers — hidden from tab bar; linked from Campaigns screen. */}
       <Tabs.Screen
         name="customers"
         options={{
           title: "العملاء",
-          tabBarLabel: "العملاء",
-          href: manager ? "/customers" : null,
+          href: null,
           headerShown: false,
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name={focused ? "people-circle" : "people-circle-outline"}
-              color={color}
-              size={size}
-            />
-          ),
         }}
       />
 
@@ -133,6 +143,24 @@ export default function AppLayout() {
         }}
       />
 
+      {/* Approvals — manager-only, visible in tab bar as "الطلبات". */}
+      <Tabs.Screen
+        name="approvals"
+        options={{
+          title: "الطلبات",
+          tabBarLabel: "الطلبات",
+          href: manager ? "/approvals" : null,
+          headerShown: false,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? "shield-checkmark" : "shield-checkmark-outline"}
+              color={color}
+              size={size}
+            />
+          ),
+        }}
+      />
+
       {/* Shifts — agent-only; managers see shifts under Team */}
       <Tabs.Screen
         name="shifts"
@@ -147,31 +175,16 @@ export default function AppLayout() {
               size={size}
             />
           ),
+          headerRight: profileHeaderRight,
         }}
       />
 
+      {/* Profile — hidden from tab bar; linked from Overview header. */}
       <Tabs.Screen
         name="profile"
         options={{
           title: "حسابي",
-          tabBarLabel: "حسابي",
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name={focused ? "person-circle" : "person-circle-outline"}
-              color={color}
-              size={size}
-            />
-          ),
-        }}
-      />
-
-      {/* Approvals — manager-only, hidden from tab bar (linked from Overview) */}
-      <Tabs.Screen
-        name="approvals"
-        options={{
-          title: "في انتظار الموافقة",
           href: null,
-          headerShown: false,
         }}
       />
     </Tabs>

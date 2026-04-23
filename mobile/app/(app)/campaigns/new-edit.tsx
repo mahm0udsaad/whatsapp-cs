@@ -385,6 +385,43 @@ export default function CampaignNewEditScreen() {
           </ManagerCard>
         ) : null}
 
+        {/* Variable fill-ins — what Meta reviewers see as the realized
+            message. The body keeps the `{{n}}` placeholders; these values
+            are sent alongside as realistic sample data. */}
+        {isNewTemplate && draft.variables && draft.variables.length > 0 ? (
+          <ManagerCard className="mb-3">
+            <Text className="text-right text-xs font-bold text-gray-500">
+              املئي بيانات الاعتماد (مثال حقيقي)
+            </Text>
+            <Text className="mt-1 text-right text-[10px] text-gray-400">
+              قيم واقعية يراها مراجع واتساب أثناء الاعتماد. لا تؤثر على ما
+              سيُرسل لعملائك لاحقاً.
+            </Text>
+            <View className="mt-2 gap-2">
+              {draft.variables.map((label, idx) => (
+                <View key={`${label}-${idx}`}>
+                  <Text className="text-right text-[11px] font-semibold text-gray-600">
+                    {`{{${idx + 1}}} — ${label}`}
+                  </Text>
+                  <TextInput
+                    value={draft.sampleValues?.[idx] ?? ""}
+                    onChangeText={(v) => {
+                      const next = [...(draft.sampleValues ?? [])];
+                      while (next.length < (draft.variables?.length ?? 0)) {
+                        next.push("");
+                      }
+                      next[idx] = v;
+                      setDraft({ ...draft, sampleValues: next });
+                    }}
+                    textAlign="right"
+                    className="mt-1 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-950"
+                  />
+                </View>
+              ))}
+            </View>
+          </ManagerCard>
+        ) : null}
+
         {/* Image picker — only when header_type === 'image' and template is new */}
         {isNewTemplate && draft.headerType === "image" ? (
           <ManagerCard className="mb-3">
@@ -495,7 +532,7 @@ export default function CampaignNewEditScreen() {
               />
             ) : null}
             <Text className="text-right text-sm leading-6 text-gray-950">
-              {draft.body}
+              {renderBodyWithSamples(draft.body, draft.sampleValues)}
             </Text>
             {draft.footerText ? (
               <Text className="mt-2 text-right text-[10px] text-gray-500">
@@ -611,6 +648,18 @@ export default function CampaignNewEditScreen() {
       </View>
     </SafeAreaView>
   );
+}
+
+function renderBodyWithSamples(
+  body: string,
+  samples: string[] | null | undefined
+): string {
+  if (!samples || samples.length === 0) return body;
+  return body.replace(/\{\{(\d+)\}\}/g, (match, g1) => {
+    const i = Number(g1) - 1;
+    const v = samples[i];
+    return v && v.trim() ? v : match;
+  });
 }
 
 function Chip({

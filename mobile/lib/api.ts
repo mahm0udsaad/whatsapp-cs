@@ -572,6 +572,30 @@ export async function reassignConversation(input: {
   });
 }
 
+export type ExtractedIntentKind =
+  | "booking"
+  | "complaint"
+  | "question"
+  | "refund"
+  | "other";
+
+export interface ExtractedIntent {
+  kind: ExtractedIntentKind;
+  summary: string;
+  provided: {
+    customer_name?: string;
+    phone?: string;
+    party_size?: number;
+    date?: string;
+    time?: string;
+    notes?: string;
+  };
+  missing: string[];
+  suggested_action: string;
+  ready_to_act: boolean;
+  extracted_at: string;
+}
+
 export interface PendingApproval {
   id: string;
   conversation_id: string;
@@ -587,6 +611,8 @@ export interface PendingApproval {
   /** Back-compat alias. Prefer `message`. */
   summary: string | null;
   priority?: string | null;
+  /** AI-extracted structured context. Null until the extractor runs. */
+  extracted_intent: ExtractedIntent | null;
 }
 
 export async function getApprovals(): Promise<PendingApproval[]> {

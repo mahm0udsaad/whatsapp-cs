@@ -76,33 +76,58 @@ export default function CampaignsIndexScreen() {
             />
           }
           ListHeaderComponent={
-            rows.length > 0 ? (
-              <ManagerCard className="mb-3">
-                <Text className="text-right text-sm font-bold text-gray-950">
-                  إجمالي النشاط
-                </Text>
-                <View className="mt-3 flex-row-reverse gap-2">
-                  <ManagerMetric
-                    label="مُرسلة"
-                    value={totals.sent}
-                    tone="info"
-                    compact
-                  />
-                  <ManagerMetric
-                    label="تم التسليم"
-                    value={totals.delivered}
-                    tone="success"
-                    compact
-                  />
-                  <ManagerMetric
-                    label="مقروءة"
-                    value={totals.read}
-                    tone="success"
-                    compact
-                  />
+            <View>
+              <Pressable
+                onPress={() => router.push("/(app)/customers")}
+                className="mb-3 flex-row-reverse items-center justify-between rounded-lg border border-gray-200 bg-white p-3"
+              >
+                <View className="flex-row-reverse items-center gap-2.5">
+                  <View className="h-10 w-10 items-center justify-center rounded-lg bg-emerald-50">
+                    <Ionicons
+                      name="people-circle-outline"
+                      size={22}
+                      color="#047857"
+                    />
+                  </View>
+                  <View>
+                    <Text className="text-right text-sm font-bold text-gray-950">
+                      العملاء
+                    </Text>
+                    <Text className="mt-0.5 text-right text-xs text-gray-500">
+                      دفتر جهات الاتصال لاختيار مستلمي الحملات
+                    </Text>
+                  </View>
                 </View>
-              </ManagerCard>
-            ) : null
+                <Ionicons name="chevron-back" size={20} color="#667085" />
+              </Pressable>
+              {rows.length > 0 ? (
+                <ManagerCard className="mb-3">
+                  <Text className="text-right text-sm font-bold text-gray-950">
+                    إجمالي النشاط
+                  </Text>
+                  <View className="mt-3 flex-row-reverse gap-2">
+                    <ManagerMetric
+                      label="مُرسلة"
+                      value={totals.sent}
+                      tone="info"
+                      compact
+                    />
+                    <ManagerMetric
+                      label="تم التسليم"
+                      value={totals.delivered}
+                      tone="success"
+                      compact
+                    />
+                    <ManagerMetric
+                      label="مقروءة"
+                      value={totals.read}
+                      tone="success"
+                      compact
+                    />
+                  </View>
+                </ManagerCard>
+              ) : null}
+            </View>
           }
           ListEmptyComponent={
             <View className="items-center py-16">

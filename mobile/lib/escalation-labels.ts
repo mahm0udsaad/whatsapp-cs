@@ -13,16 +13,19 @@ interface Entry {
 
 const DICT: Record<string, Entry> = {
   // Emitted by the classifier today
-  customer_asked_human: { label: "طلب التحدث مع موظف", tone: "danger" },
-  sensitive: { label: "محادثة حساسة", tone: "danger" },
-  knowledge_gap: { label: "فجوة معرفية", tone: "warn" },
+  customer_asked_human: { label: "العميل طلب التحدث مع موظف", tone: "danger" },
+  sensitive: { label: "محادثة حساسة تحتاج مراجعتكِ", tone: "danger" },
+  knowledge_gap: {
+    label: "البوت لا يعرف الإجابة ويحتاج مساعدتكِ",
+    tone: "warn",
+  },
   // Emitted by other escalation paths (SLA sweep, AI orchestrator direct calls)
-  sla_breach: { label: "تأخر الرد", tone: "warn" },
+  sla_breach: { label: "الرد تأخر أكثر من اللازم", tone: "warn" },
   // Legacy / alternate synonyms kept for backwards compat with historical rows.
-  human_request: { label: "طلب التحدث مع موظف", tone: "danger" },
-  complaint: { label: "شكوى", tone: "danger" },
-  refund_request: { label: "طلب استرداد", tone: "danger" },
-  policy_required: { label: "يحتاج قرار إداري", tone: "info" },
+  human_request: { label: "العميل طلب التحدث مع موظف", tone: "danger" },
+  complaint: { label: "شكوى من العميل", tone: "danger" },
+  refund_request: { label: "طلب استرداد مبلغ", tone: "danger" },
+  policy_required: { label: "يحتاج قراراً من الإدارة", tone: "info" },
   safety: { label: "محتوى حساس", tone: "danger" },
 };
 

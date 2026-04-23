@@ -20,6 +20,7 @@ import {
   managerColors,
   softShadow,
 } from "../../components/manager-ui";
+import { ExtractedIntentCard } from "../../components/extracted-intent-card";
 import {
   escalationReasonLabel,
   escalationReasonTone,
@@ -86,23 +87,14 @@ function ApprovalsHeader({
   fetching: boolean;
 }) {
   return (
-    <View className="border-b border-[#E6E8EC] bg-white px-4 py-2">
+    <View className="border-b border-[#E6E8EC] bg-white px-4 pb-3 pt-2">
       <View className="flex-row-reverse items-center gap-3">
-        <Pressable
-          onPress={() => router.back()}
-          className="h-10 w-10 items-center justify-center rounded-lg bg-[#F6F7F9]"
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="رجوع"
-        >
-          <Ionicons name="arrow-forward" size={20} color="#344054" />
-        </Pressable>
         <View className="flex-1">
           <Text className="text-right text-lg font-bold text-gray-950">
-            في انتظار الموافقة
+            الطلبات
           </Text>
           <Text className="mt-0.5 text-right text-xs text-gray-500">
-            راجعي التصعيد وافتحي المحادثة لاتخاذ القرار
+            محادثات أوقفها البوت لأنه يحتاج قراركِ قبل الرد
           </Text>
         </View>
         <View className="h-10 min-w-10 items-center justify-center rounded-lg border border-red-100 bg-red-50 px-2.5">
@@ -154,24 +146,20 @@ function ApprovalCard({ approval }: { approval: PendingApproval }) {
     locale: ar,
   });
 
+  const accentBar =
+    reasonTone === "danger"
+      ? "bg-red-500"
+      : reasonTone === "warn"
+      ? "bg-amber-500"
+      : "bg-indigo-500";
+
   return (
-    <Pressable
-      onPress={() => router.push(`/(app)/inbox/${approval.conversation_id}`)}
+    <View
       className="mb-3 overflow-hidden rounded-lg border border-[#E6E8EC] bg-white"
       style={softShadow}
-      accessibilityRole="button"
-      accessibilityLabel={`فتح محادثة ${customerLabel}`}
     >
       <View className="flex-row-reverse">
-        <View
-          className={`w-1.5 ${
-            reasonTone === "danger"
-              ? "bg-red-500"
-              : reasonTone === "warn"
-              ? "bg-amber-500"
-              : "bg-indigo-500"
-          }`}
-        />
+        <View className={`w-1.5 ${accentBar}`} />
         <View className="flex-1 p-4">
           <View className="flex-row-reverse items-start gap-3">
             <View className="h-11 w-11 items-center justify-center rounded-lg bg-[#F1F5F3]">
@@ -192,41 +180,89 @@ function ApprovalCard({ approval }: { approval: PendingApproval }) {
                 </Text>
               </View>
               {showPhone ? (
-                <Text className="mt-0.5 text-right text-xs text-gray-500">
+                <Text
+                  className="mt-0.5 text-right text-xs text-gray-500"
+                  selectable
+                >
                   {approval.customer_phone}
                 </Text>
               ) : null}
             </View>
           </View>
 
-          <View className="mt-3 rounded-lg bg-[#F6F7F9] px-3 py-2.5">
-            <Text className="mb-1 text-right text-[11px] font-semibold text-gray-500">
-              رسالة العميل
-            </Text>
+          <View
+            className={`mt-3 rounded-lg border px-3 py-2.5 ${reasonClasses}`}
+          >
+            <View className="flex-row-reverse items-center gap-1.5">
+              <Ionicons
+                name="sparkles-outline"
+                size={14}
+                color={
+                  reasonTone === "danger"
+                    ? "#991B1B"
+                    : reasonTone === "warn"
+                    ? "#92400E"
+                    : "#312E81"
+                }
+              />
+              <Text
+                className={`text-right text-[11px] font-bold ${
+                  reasonTone === "danger"
+                    ? "text-red-800"
+                    : reasonTone === "warn"
+                    ? "text-amber-800"
+                    : "text-indigo-900"
+                }`}
+              >
+                لماذا يحتاج البوت مساعدتكِ؟
+              </Text>
+            </View>
             <Text
-              numberOfLines={3}
-              className="text-right text-sm leading-6 text-gray-950"
-            >
-              {body}
-            </Text>
-          </View>
-
-          <View className="mt-3 flex-row-reverse items-center gap-2">
-            <Text className="rounded-lg border border-red-100 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">
-              تصعيد
-            </Text>
-            <Text
-              className={`min-w-0 flex-1 rounded-lg border px-2.5 py-1 text-right text-xs font-semibold ${reasonClasses}`}
-              numberOfLines={1}
+              className={`mt-1 text-right text-sm font-semibold ${
+                reasonTone === "danger"
+                  ? "text-red-800"
+                  : reasonTone === "warn"
+                  ? "text-amber-800"
+                  : "text-indigo-900"
+              }`}
             >
               {reasonLabel}
             </Text>
-            <View className="h-10 w-10 items-center justify-center rounded-lg bg-[#F6F7F9]">
-              <Ionicons name="chevron-back" size={18} color="#667085" />
-            </View>
           </View>
+
+          {approval.extracted_intent ? (
+            <View className="mt-2">
+              <ExtractedIntentCard intent={approval.extracted_intent} />
+            </View>
+          ) : (
+            <View className="mt-2 rounded-lg bg-[#F6F7F9] px-3 py-2.5">
+              <Text className="mb-1 text-right text-[11px] font-semibold text-gray-500">
+                آخر رسالة من العميل
+              </Text>
+              <Text
+                numberOfLines={4}
+                className="text-right text-sm leading-6 text-gray-950"
+              >
+                {body}
+              </Text>
+            </View>
+          )}
+
+          <Pressable
+            onPress={() =>
+              router.push(`/(app)/inbox/${approval.conversation_id}`)
+            }
+            className="mt-3 flex-row-reverse items-center justify-center gap-2 rounded-lg bg-[#052E26] py-3"
+            accessibilityRole="button"
+            accessibilityLabel={`فتح محادثة ${customerLabel}`}
+          >
+            <Ionicons name="chatbubbles-outline" size={16} color="#fff" />
+            <Text className="text-sm font-bold text-white">
+              فتح المحادثة واتخاذ القرار
+            </Text>
+          </Pressable>
         </View>
       </View>
-    </Pressable>
+    </View>
   );
 }

@@ -33,6 +33,7 @@ import {
   SectionHeader,
   DashboardSkeleton,
 } from "../../components/manager-ui";
+import { ExtractedIntentCard } from "../../components/extracted-intent-card";
 
 export default function OverviewScreen() {
   const member = useSessionStore((s) => s.activeMember);
@@ -229,6 +230,8 @@ export default function OverviewScreen() {
           </View>
         </View>
 
+        <OrdersWidget approvals={approvals} />
+
         {hasAlerts && kpis ? (
           <View className="gap-2">
             {kpis.unassignedCount > 0 ? (
@@ -259,16 +262,6 @@ export default function OverviewScreen() {
                     params: { filter: "expired" },
                   })
                 }
-              />
-            ) : null}
-            {approvals.length > 0 ? (
-              <PriorityAction
-                title="طلبات موافقة"
-                description="قرارات تصعيد تنتظر المدير."
-                value={approvals.length}
-                tone="info"
-                icon="shield-checkmark-outline"
-                onPress={() => router.push("/(app)/approvals")}
               />
             ) : null}
           </View>
@@ -309,51 +302,6 @@ export default function OverviewScreen() {
 
         <WhatsAppHealthCard health={waHealth} />
 
-        <ManagerCard>
-          <SectionHeader
-            title="آخر طلبات الموافقة"
-            actionLabel={approvals.length > 0 ? "عرض الكل" : undefined}
-            onActionPress={() => router.push("/(app)/approvals")}
-          />
-          {approvals.length === 0 ? (
-            <Text className="mt-2 text-right text-sm text-gray-500">
-              لا توجد طلبات بانتظار الموافقة
-            </Text>
-          ) : (
-            approvals.slice(0, 5).map((a) => {
-              const body = a.message ?? a.summary ?? null;
-              return (
-                <Pressable
-                  key={a.id}
-                  onPress={() =>
-                    router.push(`/(app)/inbox/${a.conversation_id}`)
-                  }
-                  className="mt-3 rounded-lg border border-gray-100 bg-gray-50 p-3"
-                >
-                  <View className="flex-row-reverse items-center justify-between">
-                    <Text className="text-right text-sm font-semibold text-gray-950">
-                      {a.customer_name ?? a.customer_phone}
-                    </Text>
-                    {a.reasonCode ? (
-                      <Text className="rounded-lg bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-800">
-                        {escalationReasonLabel(a.reasonCode)}
-                      </Text>
-                    ) : null}
-                  </View>
-                  {body ? (
-                    <Text
-                      className="mt-1 text-right text-sm leading-5 text-gray-700"
-                      numberOfLines={2}
-                    >
-                      {body}
-                    </Text>
-                  ) : null}
-                </Pressable>
-              );
-            })
-          )}
-        </ManagerCard>
-
         {/* Open web dashboard */}
         <Pressable
           onPress={() => {
@@ -367,6 +315,115 @@ export default function OverviewScreen() {
         </Pressable>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Orders widget — prominent home-screen highlight for pending approvals.
+// When empty, shows a calm "all clear" state. When there are items, shows a
+// bold red-accented card with count, top preview, and a CTA.
+// ---------------------------------------------------------------------------
+function OrdersWidget({ approvals }: { approvals: PendingApproval[] }) {
+  const count = approvals.length;
+  const top = approvals[0];
+
+  if (count === 0) {
+    return (
+      <Pressable
+        onPress={() => router.push("/(app)/approvals")}
+        className="flex-row-reverse items-center justify-between rounded-lg border border-emerald-100 bg-emerald-50 p-4"
+      >
+        <View className="flex-row-reverse items-center gap-3">
+          <View className="h-11 w-11 items-center justify-center rounded-lg bg-white">
+            <Ionicons name="checkmark-done" size={22} color="#047857" />
+          </View>
+          <View>
+            <Text className="text-right text-sm font-bold text-emerald-900">
+              لا توجد طلبات تنتظر قراركِ
+            </Text>
+            <Text className="mt-0.5 text-right text-xs text-emerald-800">
+              البوت يتولى المحادثات حالياً
+            </Text>
+          </View>
+        </View>
+        <Ionicons name="chevron-back" size={20} color="#047857" />
+      </Pressable>
+    );
+  }
+
+  const topBody = top.message ?? top.summary ?? null;
+  const topCustomer = top.customer_name ?? top.customer_phone;
+
+  return (
+    <View className="overflow-hidden rounded-lg border-2 border-red-200 bg-white">
+      <View className="flex-row-reverse">
+        <View className="w-1.5 bg-red-500" />
+        <View className="flex-1 p-4">
+          <View className="flex-row-reverse items-center gap-3">
+            <View className="h-14 w-14 items-center justify-center rounded-lg bg-red-50">
+              <Text className="text-2xl font-bold text-red-700">{count}</Text>
+            </View>
+            <View className="flex-1">
+              <View className="flex-row-reverse items-center gap-1.5">
+                <Ionicons name="alert-circle" size={16} color="#B91C1C" />
+                <Text className="text-right text-sm font-bold text-red-800">
+                  {count === 1 ? "طلب ينتظر قراركِ" : "طلبات تنتظر قراركِ"}
+                </Text>
+              </View>
+              <Text className="mt-1 text-right text-xs text-gray-600">
+                البوت أوقف الرد على هذه المحادثات ويحتاج تدخلكِ
+              </Text>
+            </View>
+          </View>
+
+          <Pressable
+            onPress={() => router.push(`/(app)/inbox/${top.conversation_id}`)}
+            className="mt-3"
+          >
+            <View className="rounded-lg border border-gray-100 bg-[#F9FAFB] p-3">
+              <View className="flex-row-reverse items-center justify-between gap-2">
+                <Text
+                  className="flex-1 text-right text-sm font-semibold text-gray-950"
+                  numberOfLines={1}
+                >
+                  {topCustomer}
+                </Text>
+                {top.reasonCode ? (
+                  <Text className="rounded-lg bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-800">
+                    {escalationReasonLabel(top.reasonCode)}
+                  </Text>
+                ) : null}
+              </View>
+              {top.extracted_intent ? (
+                <View className="mt-2">
+                  <ExtractedIntentCard
+                    intent={top.extracted_intent}
+                    variant="compact"
+                  />
+                </View>
+              ) : topBody ? (
+                <Text
+                  className="mt-1 text-right text-sm leading-5 text-gray-700"
+                  numberOfLines={2}
+                >
+                  {topBody}
+                </Text>
+              ) : null}
+            </View>
+          </Pressable>
+
+          <Pressable
+            onPress={() => router.push("/(app)/approvals")}
+            className="mt-3 flex-row-reverse items-center justify-center gap-2 rounded-lg bg-red-600 py-3"
+          >
+            <Ionicons name="shield-checkmark" size={16} color="#fff" />
+            <Text className="text-sm font-bold text-white">
+              {count > 1 ? `عرض كل الطلبات (${count})` : "عرض الطلب"}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
   );
 }
 
