@@ -6,6 +6,12 @@
     "orientation": "portrait",
     "scheme": "whatsapp-cs-agent",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1e3a8a"
+    },
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.nehgz.nehgzbot",
@@ -20,7 +26,8 @@
     "android": {
       "package": "com.whatsappcs.agentconsole",
       "adaptiveIcon": {
-        "backgroundColor": "#25D366"
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#1e3a8a"
       }
     },
     "plugins": [

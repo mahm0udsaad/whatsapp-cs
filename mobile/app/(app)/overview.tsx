@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import {
   Alert,
+  Image,
   Linking,
   Pressable,
   RefreshControl,
@@ -182,9 +183,16 @@ export default function OverviewScreen() {
         <View className="rounded-lg bg-[#052E26] p-5">
           <View className="flex-row-reverse items-start justify-between gap-4">
             <View className="flex-1">
-              <Text className="text-right text-xs font-semibold text-emerald-300">
-                مركز الإدارة
-              </Text>
+              <View className="flex-row-reverse items-center gap-2">
+                <Image
+                  source={require("../../assets/logo.png")}
+                  style={{ width: 28, height: 28, borderRadius: 6 }}
+                  resizeMode="cover"
+                />
+                <Text className="text-right text-xs font-semibold text-emerald-300">
+                  Nehgz Bot
+                </Text>
+              </View>
               <Text className="mt-2 text-right text-2xl font-bold text-white">
                 {hasAlerts ? "يحتاج متابعة الآن" : "كل شيء تحت السيطرة"}
               </Text>

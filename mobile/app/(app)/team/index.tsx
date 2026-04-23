@@ -590,18 +590,15 @@ function PerformanceSegment({ restaurantId }: { restaurantId: string }) {
 
   const periodKeys: PeriodKey[] = ["today", "week", "month", "last_month"];
 
+  const hasAnyActivity =
+    totals.messages > 0 || totals.conversations > 0 || totals.breaches > 0;
+
   return (
     <View className="flex-1">
-      {/* Period chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: 12,
-          paddingBottom: 8,
-          gap: 8,
-          flexDirection: "row-reverse",
-        }}
+      {/* Period selector — compact row, fixed height, no huge ovals. */}
+      <View
+        className="flex-row-reverse gap-1.5 px-3 pb-2"
+        style={{ height: 36 }}
       >
         {periodKeys.map((k) => {
           const r = rangeFor(k);
@@ -610,23 +607,24 @@ function PerformanceSegment({ restaurantId }: { restaurantId: string }) {
             <Pressable
               key={k}
               onPress={() => setPeriodKey(k)}
-              className={`rounded-full border px-3 py-1.5 ${
+              className={`flex-1 items-center justify-center rounded-md border ${
                 active
                   ? "border-emerald-300 bg-emerald-50"
                   : "border-gray-200 bg-white"
               }`}
             >
               <Text
-                className={`text-xs font-semibold ${
+                className={`text-[12px] font-semibold ${
                   active ? "text-emerald-900" : "text-gray-700"
                 }`}
+                numberOfLines={1}
               >
                 {r.label}
               </Text>
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
 
       {perfQuery.isLoading ? (
         <View className="px-4 pt-3">
@@ -639,7 +637,7 @@ function PerformanceSegment({ restaurantId }: { restaurantId: string }) {
         <FlatList
           data={rows}
           keyExtractor={(r) => r.team_member_id}
-          contentContainerStyle={{ padding: 12 }}
+          contentContainerStyle={{ padding: 12, paddingBottom: 32 }}
           refreshControl={
             <RefreshControl
               refreshing={perfQuery.isFetching}
@@ -647,40 +645,24 @@ function PerformanceSegment({ restaurantId }: { restaurantId: string }) {
             />
           }
           ListEmptyComponent={
-            <View className="items-center py-16">
-              <Text className="text-gray-500">
+            <View className="items-center py-20">
+              <View className="h-14 w-14 items-center justify-center rounded-full bg-gray-100">
+                <Ionicons name="bar-chart-outline" size={26} color="#9CA3AF" />
+              </View>
+              <Text className="mt-3 text-center text-sm font-semibold text-gray-700">
                 لا توجد بيانات في هذه الفترة
+              </Text>
+              <Text className="mt-1 text-center text-xs text-gray-500">
+                جربي تغيير الفترة أو التحقق لاحقاً
               </Text>
             </View>
           }
           ListHeaderComponent={
-            rows.length > 0 ? (
-              <ManagerCard className="mb-3">
-                <Text className="text-right text-sm font-bold text-gray-950">
-                  إجمالي {rangeFor(periodKey).label}
-                </Text>
-                <View className="mt-3 flex-row-reverse gap-2">
-                  <ManagerMetric
-                    label="رسائل"
-                    value={totals.messages}
-                    tone="info"
-                    compact
-                  />
-                  <ManagerMetric
-                    label="محادثات"
-                    value={totals.conversations}
-                    tone="success"
-                    compact
-                  />
-                  <ManagerMetric
-                    label="تجاوز SLA"
-                    value={totals.breaches}
-                    tone={totals.breaches > 0 ? "warning" : "neutral"}
-                    compact
-                  />
-                </View>
-              </ManagerCard>
-            ) : null
+            <TotalsHeader
+              label={rangeFor(periodKey).label}
+              totals={totals}
+              isEmpty={!hasAnyActivity}
+            />
           }
           renderItem={({ item }) => (
             <PerformanceRow row={item} onPress={() => setSelected(item)} />
@@ -694,6 +676,80 @@ function PerformanceSegment({ restaurantId }: { restaurantId: string }) {
         range={range}
         onClose={() => setSelected(null)}
       />
+    </View>
+  );
+}
+
+function TotalsHeader({
+  label,
+  totals,
+  isEmpty,
+}: {
+  label: string;
+  totals: { messages: number; conversations: number; breaches: number };
+  isEmpty: boolean;
+}) {
+  const tiles: Array<{
+    key: string;
+    label: string;
+    value: number;
+    icon: keyof typeof Ionicons.glyphMap;
+    color: string;
+    bg: string;
+  }> = [
+    {
+      key: "messages",
+      label: "رسائل",
+      value: totals.messages,
+      icon: "chatbubbles",
+      color: "#3730A3",
+      bg: "#EEF2FF",
+    },
+    {
+      key: "conversations",
+      label: "محادثات",
+      value: totals.conversations,
+      icon: "people",
+      color: "#047857",
+      bg: "#ECFDF5",
+    },
+    {
+      key: "breaches",
+      label: "تجاوز SLA",
+      value: totals.breaches,
+      icon: "warning",
+      color: totals.breaches > 0 ? "#B45309" : "#6B7280",
+      bg: totals.breaches > 0 ? "#FFFBEB" : "#F3F4F6",
+    },
+  ];
+  return (
+    <View className="mb-3 rounded-lg border border-gray-200 bg-white p-4">
+      <View className="flex-row-reverse items-center justify-between">
+        <Text className="text-right text-sm font-bold text-gray-950">
+          إجمالي {label}
+        </Text>
+        {isEmpty ? (
+          <Text className="text-[11px] text-gray-500">لا يوجد نشاط بعد</Text>
+        ) : null}
+      </View>
+      <View className="mt-3 flex-row-reverse gap-2">
+        {tiles.map((t) => (
+          <View
+            key={t.key}
+            className="flex-1 items-center rounded-lg py-3"
+            style={{ backgroundColor: t.bg }}
+          >
+            <Ionicons name={t.icon} size={16} color={t.color} />
+            <Text
+              className="mt-1 text-lg font-bold"
+              style={{ color: t.color }}
+            >
+              {t.value}
+            </Text>
+            <Text className="text-[11px] text-gray-600">{t.label}</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
