@@ -21,6 +21,7 @@ interface Body {
   kind?: AudienceKind;
   since?: string;
   phones?: string[];
+  variable_values?: Record<string, string>;
 }
 
 export async function POST(
@@ -43,6 +44,10 @@ export async function POST(
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
   const kind = body.kind ?? "all";
+  const variableValues: Record<string, string> =
+    body.variable_values && typeof body.variable_values === "object"
+      ? body.variable_values
+      : {};
   if (!["all", "since", "custom"].includes(kind)) {
     return NextResponse.json({ error: "invalid kind" }, { status: 400 });
   }
@@ -135,7 +140,6 @@ export async function POST(
   }
 
   if (finalRows.length > 0) {
-    const now = new Date().toISOString();
     const CHUNK = 500;
     for (let i = 0; i < finalRows.length; i += CHUNK) {
       const chunk = finalRows.slice(i, i + CHUNK).map((r) => ({
@@ -143,7 +147,7 @@ export async function POST(
         phone_number: r.phone,
         name: r.name,
         status: "pending" as const,
-        created_at: now,
+        ...(Object.keys(variableValues).length > 0 ? { metadata: variableValues } : {}),
       }));
       const { error: insErr } = await adminSupabaseClient
         .from("campaign_recipients")

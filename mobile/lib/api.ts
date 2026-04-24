@@ -717,10 +717,11 @@ export interface MarketingCampaignDetail {
   recipients: CampaignRecipientRow[];
 }
 
-export type AudienceSelection =
+export type AudienceSelection = (
   | { kind: "all" }
   | { kind: "since"; since: string }
-  | { kind: "custom"; phones: string[] };
+  | { kind: "custom"; phones: string[] }
+) & { variable_values?: Record<string, string> };
 
 export async function listMarketingTemplates(): Promise<MarketingTemplate[]> {
   return apiFetch(`/api/mobile/marketing/templates`);

@@ -76,6 +76,7 @@ export default function CampaignNewEditScreen() {
     return phones && phones.length > 0 ? "selected" : "all";
   });
   const [scheduleKind, setScheduleKind] = useState<ScheduleKind>("now");
+  const [reuseVarValues, setReuseVarValues] = useState<string[]>([]);
 
   const selectedPhones = useMemo<string[]>(() => {
     const arr = (globalThis as unknown as Record<string, unknown>)[
@@ -282,12 +283,20 @@ export default function CampaignNewEditScreen() {
         scheduled_at: scheduledAt,
       });
 
-      const selection: AudienceSelection =
-        audienceKind === "selected"
+      const variableValues: Record<string, string> = {};
+      (draft.variables ?? []).forEach((_, idx) => {
+        const v = reuseVarValues[idx]?.trim();
+        if (v) variableValues[String(idx + 1)] = v;
+      });
+
+      const selection: AudienceSelection = {
+        ...(audienceKind === "selected"
           ? { kind: "custom", phones: selectedPhones }
           : audienceKind === "all"
             ? { kind: "all" }
-            : { kind: "since", since: since! };
+            : { kind: "since", since: since! }),
+        ...(Object.keys(variableValues).length > 0 ? { variable_values: variableValues } : {}),
+      };
 
       const aud = await setCampaignAudience(campaign.id, selection);
       return { campaign, aud };
@@ -532,7 +541,10 @@ export default function CampaignNewEditScreen() {
               />
             ) : null}
             <Text className="text-right text-sm leading-6 text-gray-950">
-              {renderBodyWithSamples(draft.body, draft.sampleValues)}
+              {renderBodyWithSamples(
+                draft.body,
+                isNewTemplate ? draft.sampleValues : reuseVarValues
+              )}
             </Text>
             {draft.footerText ? (
               <Text className="mt-2 text-right text-[10px] text-gray-500">
@@ -546,6 +558,42 @@ export default function CampaignNewEditScreen() {
             </Text>
           ) : null}
         </ManagerCard>
+
+        {/* Variable fill-ins for reuse path */}
+        {!isNewTemplate && draft.variables && draft.variables.length > 0 ? (
+          <ManagerCard className="mb-3">
+            <Text className="text-right text-xs font-bold text-gray-500">
+              متغيّرات الرسالة
+            </Text>
+            <Text className="mt-1 text-right text-[10px] text-gray-400">
+              {"ستُرسل هذه القيم لجميع العملاء. اسم العميل يُملأ تلقائياً في {{1}}."}
+            </Text>
+            <View className="mt-2 gap-2">
+              {draft.variables.map((label, idx) => {
+                if (idx === 0) return null;
+                return (
+                  <View key={`var-${idx}`}>
+                    <Text className="text-right text-[11px] font-semibold text-gray-600">
+                      {`{{${idx + 1}}} — ${label}`}
+                    </Text>
+                    <TextInput
+                      value={reuseVarValues[idx] ?? ""}
+                      onChangeText={(v) => {
+                        const next = [...reuseVarValues];
+                        while (next.length <= idx) next.push("");
+                        next[idx] = v;
+                        setReuseVarValues(next);
+                      }}
+                      textAlign="right"
+                      placeholderTextColor="#9CA3AF"
+                      className="mt-1 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-950"
+                    />
+                  </View>
+                );
+              })}
+            </View>
+          </ManagerCard>
+        ) : null}
 
         {/* Audience + schedule — only meaningful on reuse path */}
         {!isNewTemplate ? (
