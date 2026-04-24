@@ -4,14 +4,12 @@ import { cn } from "@/lib/utils";
 interface BrandLockupProps {
   className?: string;
   imageClassName?: string;
-  titleClassName?: string;
   subtitle?: string;
 }
 
 export function BrandLockup({
   className,
   imageClassName,
-  titleClassName,
   subtitle,
 }: BrandLockupProps) {
   return (
@@ -26,14 +24,9 @@ export function BrandLockup({
           className="h-auto w-full object-contain"
         />
       </div>
-      <div className="mt-4 space-y-1">
-        <h1 className={cn("text-2xl font-semibold text-[#172554]", titleClassName)}>
-          جهز بوت
-        </h1>
-        {subtitle ? (
-          <p className="text-sm leading-6 text-slate-600">{subtitle}</p>
-        ) : null}
-      </div>
+      {subtitle ? (
+        <p className="mt-4 text-sm leading-6 text-slate-600">{subtitle}</p>
+      ) : null}
     </div>
   );
 }

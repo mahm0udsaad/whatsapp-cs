@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
 
   // Lazy-refresh approval status for any `submitted` rows (free piggy-back
   // on every library load so the tabs stay fresh without a dedicated cron).
-  if (wantAll && (data ?? []).some((t) => t.approval_status === "submitted")) {
+  if (wantAll && (data ?? []).some((t) => t.approval_status === "submitted" || t.approval_status === "pending")) {
     processPendingTemplateApprovalPolls().catch((e) =>
       console.error("[mobile/templates] lazy poll error:", e)
     );
