@@ -246,7 +246,6 @@ export default function OnboardingPage() {
           <BrandLockup
             className="items-start text-right"
             imageClassName="w-32 self-start"
-            titleClassName="text-3xl"
             subtitle="انقل هوية متجرك نفسها من الإعداد إلى المساعد المباشر."
           />
           <div>
