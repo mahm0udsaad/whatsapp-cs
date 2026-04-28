@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Search,
   Trash2,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<PageSize>(25);
+  const [deleteTarget, setDeleteTarget] = useState<MenuItem | null>(null);
 
   useEffect(() => {
     setPage(1);
@@ -279,10 +281,11 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
 
           <div className="flex items-end gap-3">
             <div className="flex-1">
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label htmlFor="menu-url" className="mb-2 block text-sm font-medium text-gray-700">
                 رابط القائمة
               </label>
               <Input
+                id="menu-url"
                 value={menuUrl}
                 onChange={(event) => setMenuUrl(event.target.value)}
                 placeholder="https://yourrestaurant.com/menu"
@@ -369,7 +372,7 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
                       key={item.id}
                       item={item}
                       onEdit={() => handleEdit(item)}
-                      onDelete={() => handleDelete(item.id)}
+                      onDelete={() => setDeleteTarget(item)}
                     />
                   ))}
                   <PaginationBar
@@ -396,10 +399,11 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
+                <label htmlFor="menu-item-name" className="text-sm font-medium text-gray-700">
                   الاسم
                 </label>
                 <Input
+                  id="menu-item-name"
                   value={formData.name}
                   onChange={(event) =>
                     setFormData({ ...formData, name: event.target.value })
@@ -409,10 +413,11 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
+                <label htmlFor="menu-item-description" className="text-sm font-medium text-gray-700">
                   الوصف
                 </label>
                 <Input
+                  id="menu-item-description"
                   value={formData.description}
                   onChange={(event) =>
                     setFormData({
@@ -426,10 +431,11 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label htmlFor="menu-item-price" className="text-sm font-medium text-gray-700">
                     السعر
                   </label>
                   <Input
+                    id="menu-item-price"
                     type="number"
                     value={formData.price}
                     onChange={(event) =>
@@ -439,10 +445,11 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label htmlFor="menu-item-category" className="text-sm font-medium text-gray-700">
                     الفئة
                   </label>
                   <select
+                    id="menu-item-category"
                     value={formData.category}
                     onChange={(event) =>
                       setFormData({ ...formData, category: event.target.value })
@@ -498,6 +505,49 @@ export function MenuManager({ restaurant, initialItems }: MenuManagerProps) {
           </Card>
         </div>
       </div>
+
+      {deleteTarget ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setDeleteTarget(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+            dir="rtl"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-950">حذف عنصر القائمة</h3>
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="rounded-full p-1 text-slate-500 hover:bg-slate-100"
+                aria-label="إغلاق"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800">
+              سيتم حذف <strong>{deleteTarget.name_ar || deleteTarget.name_en || "هذا العنصر"}</strong> من القائمة نهائياً.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)}>
+                إلغاء
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={async () => {
+                  await handleDelete(deleteTarget.id);
+                  setDeleteTarget(null);
+                }}
+              >
+                حذف العنصر
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -625,6 +675,7 @@ function MenuItemCard({
             onClick={onEdit}
             className="p-2 text-gray-500 transition-colors hover:text-emerald-600"
             title="تعديل"
+            aria-label="تعديل"
           >
             <Edit2 size={16} />
           </button>
@@ -633,6 +684,7 @@ function MenuItemCard({
             onClick={onDelete}
             className="p-2 text-gray-500 transition-colors hover:text-red-600"
             title="حذف"
+            aria-label="حذف"
           >
             <Trash2 size={16} />
           </button>

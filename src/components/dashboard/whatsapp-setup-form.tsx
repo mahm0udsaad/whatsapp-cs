@@ -38,6 +38,7 @@ export function WhatsAppSetupForm({
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const isAlreadyActive = existingStatus === "active";
   const isPendingVerification =
@@ -76,13 +77,6 @@ export function WhatsAppSetupForm({
   }, [existingSenderSid, existingStatus, isAlreadyActive, router]);
 
   const handleDelete = async () => {
-    if (
-      !confirm(
-        "سيتم حذف مرسل واتساب الحالي من Twilio حتى تبدأ من جديد. هل تريد المتابعة؟"
-      )
-    ) {
-      return;
-    }
     setDeleting(true);
     setError(null);
     setSuccessMessage(null);
@@ -104,6 +98,7 @@ export function WhatsAppSetupForm({
       );
     } finally {
       setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -241,6 +236,7 @@ export function WhatsAppSetupForm({
   };
 
   return (
+    <>
     <div className="space-y-6">
       <Card className="border-amber-300/70 bg-amber-50/70">
         <CardHeader>
@@ -377,7 +373,7 @@ export function WhatsAppSetupForm({
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={handleDelete}
+                      onClick={() => setShowDeleteConfirm(true)}
                       disabled={deleting || verifying}
                       className="mt-2 border-rose-300 text-rose-700 hover:bg-rose-50"
                     >
@@ -401,7 +397,7 @@ export function WhatsAppSetupForm({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={handleDelete}
+                    onClick={() => setShowDeleteConfirm(true)}
                     disabled={deleting || submitting}
                     className="border-rose-300 text-rose-700 hover:bg-rose-50"
                   >
@@ -482,5 +478,53 @@ export function WhatsAppSetupForm({
         </CardContent>
       </Card>
     </div>
+      {showDeleteConfirm ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl" dir="rtl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-950">إعادة ربط واتساب</p>
+                <p className="mt-1 text-sm leading-6 text-slate-600">
+                  سيتم حذف مرسل واتساب الحالي من Twilio حتى تبدئي الربط من جديد.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => !deleting && setShowDeleteConfirm(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 disabled:opacity-50"
+                aria-label="إغلاق"
+                disabled={deleting}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800">
+              احذفي المرسل فقط إذا أردتِ بدء الإعداد من الصفر أو كان الربط الحالي عالقاً.
+            </div>
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+              >
+                إلغاء
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => void handleDelete()}
+                disabled={deleting}
+              >
+                {deleting ? <Loader2 size={14} className="animate-spin" /> : null}
+                حذف المرسل الحالي
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }

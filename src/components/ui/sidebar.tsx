@@ -205,14 +205,14 @@ export function Sidebar({
       <button
         onClick={() => setIsOpen((open) => !open)}
         className="fixed start-4 top-4 z-50 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/70 bg-white/80 text-slate-900 shadow-lg backdrop-blur-xl transition-colors hover:bg-white lg:hidden"
-        aria-label="Toggle navigation"
+        aria-label={isOpen ? "إغلاق التنقل" : "فتح التنقل"}
       >
         {isOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
 
       <aside
         className={cn(
-          "fixed inset-y-0 start-0 z-40 w-72 border-e border-white/10 bg-[#0e1713] text-white shadow-[0_24px_80px_-40px_rgba(0,0,0,0.65)] transition-transform duration-300 lg:translate-x-0",
+          "fixed inset-y-0 start-0 z-40 w-60 border-e border-white/10 bg-[#0e1713] text-white shadow-[0_24px_80px_-40px_rgba(0,0,0,0.65)] transition-transform duration-300 lg:translate-x-0",
           isOpen
             ? "translate-x-0"
             : "max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full"
@@ -260,7 +260,7 @@ export function Sidebar({
                       href={item.href}
                       onClick={() => setIsOpen(false)}
                       className={cn(
-                        "group relative flex items-start gap-3 rounded-3xl px-4 py-3 transition-all duration-200",
+                        "group relative flex items-center gap-3 rounded-3xl px-4 py-2.5 transition-all duration-200",
                         active
                           ? "bg-white text-slate-950 shadow-[0_20px_45px_-30px_rgba(255,255,255,0.7)]"
                           : "text-white/70 hover:bg-white/6 hover:text-white"
@@ -268,7 +268,7 @@ export function Sidebar({
                     >
                       <div
                         className={cn(
-                          "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition-colors",
+                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border transition-colors",
                           active
                             ? "border-slate-200 bg-emerald-50 text-emerald-700"
                             : "border-white/10 bg-white/6 text-white/75 group-hover:border-white/20"
@@ -276,30 +276,20 @@ export function Sidebar({
                       >
                         <Icon size={18} />
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold">{item.label}</p>
-                          {"badge" in item && typeof item.badge === "number" && item.badge > 0 ? (
-                            <span
-                              className={cn(
-                                "inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold",
-                                active
-                                  ? "bg-rose-600 text-white"
-                                  : "bg-rose-500 text-white shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"
-                              )}
-                            >
-                              {item.badge > 99 ? "99+" : item.badge}
-                            </span>
-                          ) : null}
-                        </div>
-                        <p
-                          className={cn(
-                            "mt-1 text-xs leading-5",
-                            active ? "text-slate-500" : "text-white/45"
-                          )}
-                        >
-                          {item.description}
-                        </p>
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <p className="truncate text-sm font-medium">{item.label}</p>
+                        {"badge" in item && typeof item.badge === "number" && item.badge > 0 ? (
+                          <span
+                            className={cn(
+                              "inline-flex h-4.5 min-w-[18px] shrink-0 items-center justify-center rounded-full px-1 text-[10px] font-bold",
+                              active
+                                ? "bg-rose-600 text-white"
+                                : "bg-rose-500 text-white shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"
+                            )}
+                          >
+                            {item.badge > 99 ? "99+" : item.badge}
+                          </span>
+                        ) : null}
                       </div>
                     </Link>
                   </li>

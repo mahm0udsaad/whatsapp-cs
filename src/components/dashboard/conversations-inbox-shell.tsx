@@ -19,6 +19,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeAuth } from "@/lib/supabase/use-realtime-auth";
 import { Badge } from "@/components/ui/badge";
@@ -82,8 +83,19 @@ export function ConversationsInboxShell({
 }) {
   const supabase = useMemo(() => createClient(), []);
   const { ready: realtimeReady } = useRealtimeAuth(supabase);
-  const [filter, setFilter] = useState<Filter>("open");
-  const [q, setQ] = useState("");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const initialFilter = searchParams.get("filter");
+  const initialQuery = searchParams.get("q") ?? "";
+  const [filter, setFilter] = useState<Filter>(
+    initialFilter === "expired" ||
+      initialFilter === "mine" ||
+      initialFilter === "unassigned"
+      ? initialFilter
+      : "open"
+  );
+  const [q, setQ] = useState(initialQuery);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -117,10 +129,31 @@ export function ConversationsInboxShell({
     // Reload whenever filter/q changes.
   }, [load]);
 
-  // Auto-select first row once loaded.
   useEffect(() => {
-    if (!selectedId && rows.length > 0) setSelectedId(rows[0].id);
+    setSelectedId((current) => {
+      if (rows.length === 0) return null;
+      if (current && rows.some((row) => row.id === current)) return current;
+      return rows[0].id;
+    });
   }, [rows, selectedId]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("filter", filter);
+    if (q.trim()) {
+      params.set("q", q.trim());
+    } else {
+      params.delete("q");
+    }
+    const next = `${pathname}?${params.toString()}`;
+    router.replace(next, { scroll: false });
+  }, [filter, pathname, q, router, searchParams]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timeout = window.setTimeout(() => setToast(null), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
 
   // Hold a stable ref to `load` so the realtime effect below doesn't
   // tear down the websocket subscription on every keystroke / filter change.
@@ -257,6 +290,7 @@ export function ConversationsInboxShell({
               <button
                 key={f.key}
                 onClick={() => setFilter(f.key)}
+                aria-pressed={filter === f.key}
                 className={`rounded-full px-3 py-1 text-xs font-medium transition ${
                   filter === f.key
                     ? "bg-slate-900 text-white"
@@ -267,10 +301,16 @@ export function ConversationsInboxShell({
               </button>
             ))}
           </div>
+          <label htmlFor="inbox-search" className="sr-only">
+            بحث بالاسم أو الرقم
+          </label>
           <Input
+            id="inbox-search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="بحث بالاسم أو الرقم"
+            name="conversation_search"
+            autoComplete="off"
           />
         </div>
         <ul className="max-h-[70vh] overflow-y-auto">
@@ -286,6 +326,7 @@ export function ConversationsInboxShell({
                 <li key={r.id}>
                   <button
                     onClick={() => setSelectedId(r.id)}
+                    aria-pressed={active}
                     className={`w-full border-b border-slate-100 p-3 text-right transition ${
                       active ? "bg-slate-50" : "hover:bg-slate-50/60"
                     }`}
@@ -414,8 +455,9 @@ export function ConversationsInboxShell({
 
       {toast && (
         <div
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 rounded-xl bg-slate-900 px-4 py-2 text-sm text-white shadow-lg"
-          onAnimationEnd={() => setToast(null)}
+          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-slate-900 px-4 py-2 text-sm text-white shadow-lg"
+          role="status"
+          aria-live="polite"
         >
           {toast}
         </div>

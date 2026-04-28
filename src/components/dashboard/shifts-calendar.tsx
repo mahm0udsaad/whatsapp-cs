@@ -190,6 +190,7 @@ export function ShiftsCalendar({
 
   const [copyBusy, setCopyBusy] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
+  const [showCopyConfirm, setShowCopyConfirm] = useState(false);
 
   const memberById = useMemo(() => {
     const m = new Map<string, TeamMember>();
@@ -490,9 +491,6 @@ export function ShiftsCalendar({
   };
 
   const copyLastWeek = async () => {
-    if (!confirm("سيتم نسخ دوامات الأسبوع الماضي إلى هذا الأسبوع. هل تريدين المتابعة؟")) {
-      return;
-    }
     setCopyBusy(true);
     try {
       const res = await fetch("/api/dashboard/shifts/copy-last-week", {
@@ -511,6 +509,7 @@ export function ShiftsCalendar({
       }
     } finally {
       setCopyBusy(false);
+      setShowCopyConfirm(false);
       setTimeout(() => setFlash(null), 3500);
     }
   };
@@ -642,7 +641,7 @@ export function ShiftsCalendar({
           <Button
             variant="outline"
             size="sm"
-            onClick={copyLastWeek}
+            onClick={() => setShowCopyConfirm(true)}
             disabled={copyBusy}
           >
             <Copy size={14} aria-hidden="true" />
@@ -871,6 +870,54 @@ export function ShiftsCalendar({
           onSave={saveEdit}
           onDelete={deleteEdit}
         />
+      ) : null}
+
+      {showCopyConfirm ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => {
+            if (!copyBusy) setShowCopyConfirm(false);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="copy-last-week-title"
+            className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl"
+            dir="rtl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h3 id="copy-last-week-title" className="text-lg font-bold text-slate-950">
+                نسخ دوامات الأسبوع الماضي
+              </h3>
+              <button
+                onClick={() => setShowCopyConfirm(false)}
+                disabled={copyBusy}
+                className="rounded-full p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+                aria-label="إغلاق"
+              >
+                <X size={18} aria-hidden="true" />
+              </button>
+            </div>
+            <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+              سيتم نسخ دوامات الأسبوع الماضي إلى هذا الأسبوع مع تخطّي الفترات الموجودة أو المتعارضة.
+            </p>
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowCopyConfirm(false)}
+                disabled={copyBusy}
+              >
+                إلغاء
+              </Button>
+              <Button type="button" onClick={() => void copyLastWeek()} disabled={copyBusy}>
+                {copyBusy ? "جارٍ النسخ…" : "نسخ الدوامات"}
+              </Button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );

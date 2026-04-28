@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
@@ -56,17 +56,29 @@ interface Props {
 
 export function CustomersTable({ initialRows, initialTotal, pageSize }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const initialPage = Number(searchParams.get("page") ?? "1");
+  const initialFilter = searchParams.get("status");
+  const initialQuery = searchParams.get("q") ?? "";
   const [rows, setRows] = useState<CustomerRow[]>(initialRows);
   const [total, setTotal] = useState<number>(initialTotal);
-  const [page, setPage] = useState<number>(1);
-  const [q, setQ] = useState<string>("");
-  const [debouncedQ, setDebouncedQ] = useState<string>("");
-  const [optedOutFilter, setOptedOutFilter] = useState<"all" | "active" | "opted_out">("all");
+  const [page, setPage] = useState<number>(
+    Number.isFinite(initialPage) && initialPage > 0 ? initialPage : 1
+  );
+  const [q, setQ] = useState<string>(initialQuery);
+  const [debouncedQ, setDebouncedQ] = useState<string>(initialQuery);
+  const [optedOutFilter, setOptedOutFilter] = useState<"all" | "active" | "opted_out">(
+    initialFilter === "active" || initialFilter === "opted_out"
+      ? initialFilter
+      : "all"
+  );
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [createOpen, setCreateOpen] = useState<boolean>(false);
   const [editTarget, setEditTarget] = useState<CustomerRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CustomerRow | null>(null);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
 
   // Debounce the search input.
@@ -79,6 +91,27 @@ export function CustomersTable({ initialRows, initialTotal, pageSize }: Props) {
   useEffect(() => {
     setPage(1);
   }, [debouncedQ, optedOutFilter]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (debouncedQ) {
+      params.set("q", debouncedQ);
+    } else {
+      params.delete("q");
+    }
+    if (optedOutFilter === "all") {
+      params.delete("status");
+    } else {
+      params.set("status", optedOutFilter);
+    }
+    if (page > 1) {
+      params.set("page", String(page));
+    } else {
+      params.delete("page");
+    }
+    const next = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.replace(next, { scroll: false });
+  }, [debouncedQ, optedOutFilter, page, pathname, router, searchParams]);
 
   const refetch = useCallback(
     async (opts: { silent?: boolean } = {}) => {
@@ -188,12 +221,6 @@ export function CustomersTable({ initialRows, initialTotal, pageSize }: Props) {
   };
 
   const deleteRow = async (row: CustomerRow) => {
-    if (
-      !confirm(
-        `حذف ${row.full_name ?? row.phone_number}؟ لا يمكن التراجع عن هذه العملية.`
-      )
-    )
-      return;
     setActionBusy(row.id);
     try {
       const res = await fetch(`/api/dashboard/customers/${row.id}`, {
@@ -238,11 +265,17 @@ export function CustomersTable({ initialRows, initialTotal, pageSize }: Props) {
               size={16}
               className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
             />
+            <label htmlFor="customers-search" className="sr-only">
+              ابحث بالاسم أو الرقم
+            </label>
             <Input
+              id="customers-search"
+              name="customers_search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="ابحث بالاسم أو الرقم"
               className="rounded-xl pe-9"
+              autoComplete="off"
             />
           </div>
 
@@ -431,7 +464,7 @@ export function CustomersTable({ initialRows, initialTotal, pageSize }: Props) {
                           </IconButton>
                           <IconButton
                             title="حذف"
-                            onClick={() => deleteRow(row)}
+                            onClick={() => setDeleteTarget(row)}
                             disabled={busy}
                             danger
                           >
@@ -498,6 +531,19 @@ export function CustomersTable({ initialRows, initialTotal, pageSize }: Props) {
           }}
         />
       )}
+      {deleteTarget && (
+        <ConfirmDeleteDialog
+          row={deleteTarget}
+          busy={actionBusy === deleteTarget.id}
+          onClose={() => {
+            if (actionBusy !== deleteTarget.id) setDeleteTarget(null);
+          }}
+          onConfirm={async () => {
+            await deleteRow(deleteTarget);
+            setDeleteTarget(null);
+          }}
+        />
+      )}
     </Card>
   );
 }
@@ -515,6 +561,7 @@ function FilterChip({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
         "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
         active
@@ -524,6 +571,56 @@ function FilterChip({
     >
       {label}
     </button>
+  );
+}
+
+function ConfirmDeleteDialog({
+  row,
+  busy,
+  onClose,
+  onConfirm,
+}: {
+  row: CustomerRow;
+  busy: boolean;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !busy) onClose();
+      }}
+    >
+      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" dir="rtl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-950">حذف عميل</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+            className="rounded-full p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+            aria-label="إغلاق"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800">
+          سيتم حذف <strong>{row.full_name ?? row.phone_number}</strong> نهائياً، ولا يمكن التراجع عن هذه العملية.
+        </p>
+
+        <div className="mt-5 flex items-center justify-end gap-2">
+          <Button variant="outline" onClick={onClose} disabled={busy}>
+            إلغاء
+          </Button>
+          <Button variant="destructive" onClick={() => void onConfirm()} disabled={busy}>
+            {busy ? <Loader2 size={14} className="animate-spin" /> : null}
+            حذف العميل
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 

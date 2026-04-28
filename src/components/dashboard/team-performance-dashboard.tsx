@@ -171,27 +171,26 @@ export function TeamPerformanceDashboard() {
   useEffect(() => {
     if (!range.from || !range.to) return;
     let cancelled = false;
-    setLoading(true);
-    setErr(null);
-    const q = new URLSearchParams({ from: range.from, to: range.to });
-    fetch(`/api/mobile/team/performance?${q.toString()}`)
-      .then(async (res) => {
+    const load = async () => {
+      setLoading(true);
+      setErr(null);
+      const q = new URLSearchParams({ from: range.from, to: range.to });
+      try {
+        const res = await fetch(`/api/mobile/team/performance?${q.toString()}`);
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
           throw new Error(j.error ?? `HTTP ${res.status}`);
         }
-        return res.json();
-      })
-      .then((j: TeamPerformanceResponse) => {
+        const j = (await res.json()) as TeamPerformanceResponse;
         if (!cancelled) setData(j);
-      })
-      .catch((e: unknown) => {
+      } catch (e: unknown) {
         if (!cancelled)
           setErr(e instanceof Error ? e.message : "تعذّر التحميل");
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    };
+    void load();
     return () => {
       cancelled = true;
     };
@@ -546,36 +545,41 @@ function AgentDetailDrawer({
   const [noteDraft, setNoteDraft] = useState("");
   const [goalFrt, setGoalFrt] = useState("");
   const [goalMpd, setGoalMpd] = useState("");
+  const [noteToDelete, setNoteToDelete] = useState<NoteRow | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setDetailLoading(true);
-    const q = new URLSearchParams({ from: range.from, to: range.to });
-    fetch(
-      `/api/mobile/team/performance/${row.team_member_id}?${q.toString()}`
-    )
-      .then((r) => r.json())
-      .then((j) => !cancelled && setDetail(j))
-      .finally(() => !cancelled && setDetailLoading(false));
+    const load = async () => {
+      setDetailLoading(true);
+      const q = new URLSearchParams({ from: range.from, to: range.to });
 
-    fetch(`/api/mobile/team/members/${row.team_member_id}/notes`)
-      .then((r) => r.json())
-      .then((j) => !cancelled && setNotes(Array.isArray(j) ? j : []));
+      const [detailRes, notesRes, goalsRes] = await Promise.all([
+        fetch(`/api/mobile/team/performance/${row.team_member_id}?${q.toString()}`),
+        fetch(`/api/mobile/team/members/${row.team_member_id}/notes`),
+        fetch(`/api/mobile/team/members/${row.team_member_id}/goals`),
+      ]);
 
-    fetch(`/api/mobile/team/members/${row.team_member_id}/goals`)
-      .then((r) => r.json())
-      .then((j: GoalsRow | null) => {
-        if (cancelled) return;
-        setGoals(j);
-        setGoalFrt(
-          j?.target_first_response_sec
-            ? String(j.target_first_response_sec)
-            : ""
-        );
-        setGoalMpd(
-          j?.target_messages_per_day ? String(j.target_messages_per_day) : ""
-        );
-      });
+      const detailJson = await detailRes.json();
+      const notesJson = await notesRes.json();
+      const goalsJson = (await goalsRes.json()) as GoalsRow | null;
+
+      if (cancelled) return;
+      setDetail(detailJson);
+      setNotes(Array.isArray(notesJson) ? notesJson : []);
+      setGoals(goalsJson);
+      setGoalFrt(
+        goalsJson?.target_first_response_sec
+          ? String(goalsJson.target_first_response_sec)
+          : ""
+      );
+      setGoalMpd(
+        goalsJson?.target_messages_per_day
+          ? String(goalsJson.target_messages_per_day)
+          : ""
+      );
+      setDetailLoading(false);
+    };
+    void load();
     return () => {
       cancelled = true;
     };
@@ -600,12 +604,14 @@ function AgentDetailDrawer({
   }
 
   async function deleteNote(id: string) {
-    if (!confirm("سيتم الحذف نهائياً. متابعة؟")) return;
     const res = await fetch(
       `/api/mobile/team/members/${row.team_member_id}/notes/${id}`,
       { method: "DELETE" }
     );
-    if (res.ok) setNotes((prev) => prev.filter((n) => n.id !== id));
+    if (res.ok) {
+      setNotes((prev) => prev.filter((n) => n.id !== id));
+      setNoteToDelete(null);
+    }
   }
 
   async function saveGoals() {
@@ -709,8 +715,9 @@ function AgentDetailDrawer({
           </p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[11px] text-gray-500">رد أولي (ثانية)</label>
+              <label htmlFor="goal-first-response" className="text-[11px] text-gray-500">رد أولي (ثانية)</label>
               <Input
+                id="goal-first-response"
                 type="number"
                 value={goalFrt}
                 onChange={(e) => setGoalFrt(e.target.value)}
@@ -719,8 +726,9 @@ function AgentDetailDrawer({
               />
             </div>
             <div>
-              <label className="text-[11px] text-gray-500">رسائل/يوم</label>
+              <label htmlFor="goal-messages-per-day" className="text-[11px] text-gray-500">رسائل/يوم</label>
               <Input
+                id="goal-messages-per-day"
                 type="number"
                 value={goalMpd}
                 onChange={(e) => setGoalMpd(e.target.value)}
@@ -778,8 +786,9 @@ function AgentDetailDrawer({
                     </p>
                   </div>
                   <button
-                    onClick={() => deleteNote(n.id)}
+                    onClick={() => setNoteToDelete(n)}
                     className="ms-2 rounded p-1 text-red-500 hover:bg-red-50"
+                    aria-label="حذف الملاحظة"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -788,6 +797,39 @@ function AgentDetailDrawer({
             )}
           </div>
         </section>
+
+        {noteToDelete ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setNoteToDelete(null)}
+          >
+            <div
+              className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+              dir="rtl"
+            >
+              <h3 className="text-lg font-semibold text-gray-900">حذف الملاحظة</h3>
+              <p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm leading-6 text-red-800">
+                سيتم حذف هذه الملاحظة نهائياً ولا يمكن التراجع عن العملية.
+              </p>
+              <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm whitespace-pre-wrap text-gray-700">
+                {noteToDelete.body}
+              </div>
+              <div className="mt-5 flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setNoteToDelete(null)}>
+                  إلغاء
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => void deleteNote(noteToDelete.id)}
+                >
+                  حذف الملاحظة
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
