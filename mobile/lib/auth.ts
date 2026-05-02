@@ -33,8 +33,12 @@ export async function loadTeamMemberships(userId: string): Promise<TeamMemberRow
     .eq("is_active", true);
 
   if (error) throw error;
-  return (data ?? []).map((row: any) => ({
+  type RestaurantRef = { id: string; name: string | null };
+  type Row = Omit<TeamMemberRow, "restaurant"> & {
+    restaurants: RestaurantRef | RestaurantRef[] | null;
+  };
+  return ((data ?? []) as Row[]).map(({ restaurants, ...row }) => ({
     ...row,
-    restaurant: Array.isArray(row.restaurants) ? row.restaurants[0] : row.restaurants,
+    restaurant: Array.isArray(restaurants) ? restaurants[0] : restaurants ?? undefined,
   }));
 }

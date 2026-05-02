@@ -43,6 +43,8 @@ import {
 } from "../../../lib/api";
 import { qk } from "../../../lib/query-keys";
 import { useSessionStore } from "../../../lib/session-store";
+import { captureMessage } from "../../../lib/observability";
+import { EmptyState, ErrorState } from "../../../components/list-state";
 import {
   CardSkeleton,
   ListSkeleton,
@@ -250,10 +252,16 @@ function PeopleSegment({
   );
   const rawData = query.data as unknown;
   if (rawData !== undefined && !Array.isArray(rawData)) {
-    console.warn(
-      "[team] /api/mobile/team/roster returned non-array shape:",
-      typeof rawData,
-      typeof rawData === "string" ? (rawData as string).slice(0, 80) : rawData
+    captureMessage(
+      "/api/mobile/team/roster returned non-array shape",
+      "warning",
+      {
+        shape: typeof rawData,
+        preview:
+          typeof rawData === "string"
+            ? (rawData as string).slice(0, 80)
+            : rawData,
+      }
     );
   }
   const isRefreshing = query.isFetching;
@@ -287,9 +295,15 @@ function PeopleSegment({
         <RefreshControl refreshing={isRefreshing} onRefresh={() => query.refetch()} />
       }
       ListEmptyComponent={
-        <View className="items-center py-20">
-          <Text className="text-gray-500">لا يوجد أعضاء في الفريق</Text>
-        </View>
+        query.isError ? (
+          <ErrorState onRetry={() => query.refetch()} />
+        ) : (
+          <EmptyState
+            icon="people-outline"
+            title="لا يوجد أعضاء في الفريق"
+            description="أضيفي أعضاء من لوحة الإدارة على الويب لتظهري بياناتهم هنا."
+          />
+        )
       }
       ListHeaderComponent={
         rows.length > 0 ? (
@@ -428,7 +442,7 @@ function ScheduleSegment({
       <View className="flex-row-reverse gap-2 px-3 pb-2">
         {days.map((d, idx) => (
           <Pressable
-            key={idx}
+            key={d.toISOString()}
             onPress={() => setSelectedDay(idx)}
             className={`flex-1 items-center rounded-lg border py-2 ${
               idx === selectedDay
@@ -467,9 +481,15 @@ function ScheduleSegment({
             />
           }
           ListEmptyComponent={
-            <View className="items-center py-16">
-              <Text className="text-gray-500">لا توجد مناوبات في هذا اليوم</Text>
-            </View>
+            query.isError ? (
+              <ErrorState onRetry={() => query.refetch()} />
+            ) : (
+              <View className="items-center py-16">
+                <Text className="text-gray-500">
+                  لا توجد مناوبات في هذا اليوم
+                </Text>
+              </View>
+            )
           }
           renderItem={({ item }) => (
             <View className="mb-2 rounded-lg border border-gray-200 bg-white p-3">
@@ -645,17 +665,15 @@ function PerformanceSegment({ restaurantId }: { restaurantId: string }) {
             />
           }
           ListEmptyComponent={
-            <View className="items-center py-20">
-              <View className="h-14 w-14 items-center justify-center rounded-full bg-gray-100">
-                <Ionicons name="bar-chart-outline" size={26} color="#9CA3AF" />
-              </View>
-              <Text className="mt-3 text-center text-sm font-semibold text-gray-700">
-                لا توجد بيانات في هذه الفترة
-              </Text>
-              <Text className="mt-1 text-center text-xs text-gray-500">
-                جربي تغيير الفترة أو التحقق لاحقاً
-              </Text>
-            </View>
+            perfQuery.isError ? (
+              <ErrorState onRetry={() => perfQuery.refetch()} />
+            ) : (
+              <EmptyState
+                icon="bar-chart-outline"
+                title="لا توجد بيانات في هذه الفترة"
+                description="جربي تغيير الفترة أو التحقق لاحقاً"
+              />
+            )
           }
           ListHeaderComponent={
             <TotalsHeader

@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { captureMessage } from "./observability";
 
 const BASE = process.env.EXPO_PUBLIC_APP_BASE_URL ?? "";
 
@@ -57,9 +58,12 @@ export async function apiFetch(
     clearTimeout(timer);
     if ((e as { name?: string })?.name === "AbortError") {
       const elapsed = Date.now() - startedAt;
-      console.warn(
-        `[api] ${fetchInit.method ?? "GET"} ${path} aborted after ${elapsed}ms (limit ${effectiveTimeout}ms)`
-      );
+      captureMessage("API request timed out", "warning", {
+        method: fetchInit.method ?? "GET",
+        path,
+        elapsedMs: elapsed,
+        limitMs: effectiveTimeout,
+      });
       throw new Error("انتهت مهلة الاتصال. حاولي مرة أخرى.");
     }
     throw e;

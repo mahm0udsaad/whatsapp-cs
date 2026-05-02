@@ -35,6 +35,7 @@ import {
   DashboardSkeleton,
 } from "../../components/manager-ui";
 import { ExtractedIntentCard } from "../../components/extracted-intent-card";
+import { captureMessage } from "../../lib/observability";
 
 export default function OverviewScreen() {
   const member = useSessionStore((s) => s.activeMember);
@@ -132,12 +133,16 @@ export default function OverviewScreen() {
     ? (approvalsRaw as PendingApproval[])
     : [];
   if (approvalsRaw !== undefined && !Array.isArray(approvalsRaw)) {
-    console.warn(
-      "[overview] /api/mobile/approvals returned non-array shape:",
-      typeof approvalsRaw,
-      typeof approvalsRaw === "string"
-        ? (approvalsRaw as string).slice(0, 80)
-        : approvalsRaw
+    captureMessage(
+      "/api/mobile/approvals returned non-array shape",
+      "warning",
+      {
+        shape: typeof approvalsRaw,
+        preview:
+          typeof approvalsRaw === "string"
+            ? (approvalsRaw as string).slice(0, 80)
+            : approvalsRaw,
+      }
     );
   }
 

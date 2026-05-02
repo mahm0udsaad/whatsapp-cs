@@ -52,6 +52,7 @@ import {
   escalationReasonTone,
 } from "../../../lib/escalation-labels";
 import { setActiveConv } from "../../../lib/active-conv";
+import { captureException } from "../../../lib/observability";
 
 type TwilioStatus =
   | "queued"
@@ -581,10 +582,9 @@ export default function ConversationDetail() {
           })
           .eq("id", id);
       } catch (err) {
-        console.warn("[chat] mark-read failed:", err);
-        // If the server call fails we just wait — the next scroll-to-bottom
-        // will retry, and the realtime stream will reconcile if another
-        // device/window owns this conversation.
+        // Non-fatal: the next scroll-to-bottom will retry, and the realtime
+        // stream reconciles if another device/window owns this conversation.
+        captureException(err, { source: "chat-mark-read", conversationId: id });
       }
     },
     [id, qc, queryKey, restaurantId, teamMemberId]

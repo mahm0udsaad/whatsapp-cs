@@ -1,6 +1,8 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Linking,
   Pressable,
   Text,
   TextInput,
@@ -15,6 +17,7 @@ import {
 } from "../../lib/session-store";
 import { registerForPushNotificationsAsync } from "../../lib/push";
 import type { TeamMemberRow } from "../../lib/supabase";
+import { captureException, captureMessage } from "../../lib/observability";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -59,10 +62,31 @@ export default function LoginScreen() {
         deviceId
       );
       if (result.status === "skipped") {
-        console.log("[login] push skipped:", result.reason);
+        captureMessage("Push registration skipped", "info", {
+          reason: result.reason,
+          teamMemberId: m.id,
+        });
+        if (result.reason === "permission-denied") {
+          // Push is the only way the agent learns about new conversations
+          // when the app is backgrounded — make this visible, not silent.
+          Alert.alert(
+            "الإشعارات معطّلة",
+            "لن تصلك تنبيهات بالمحادثات الجديدة. يمكنكِ تفعيل الإشعارات من إعدادات النظام.",
+            [
+              { text: "ليس الآن", style: "cancel" },
+              {
+                text: "فتح الإعدادات",
+                onPress: () => Linking.openSettings(),
+              },
+            ]
+          );
+        }
       }
     } catch (e) {
-      console.warn("[login] push registration failed", e);
+      captureException(e, {
+        source: "push-registration",
+        teamMemberId: m.id,
+      });
     }
     router.replace("/(app)/inbox");
   }

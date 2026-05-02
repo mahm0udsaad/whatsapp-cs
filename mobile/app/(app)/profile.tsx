@@ -22,6 +22,7 @@ import {
 import { isManager } from "../../lib/roles";
 import { qk } from "../../lib/query-keys";
 import { SkeletonBlock } from "../../components/manager-ui";
+import { captureException } from "../../lib/observability";
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -113,7 +114,7 @@ export default function ProfileScreen() {
           await disablePushToken(deviceId, memberSnapshot.restaurant_id);
         }
       } catch (e) {
-        console.warn("[logout] disablePushToken failed", e);
+        captureException(e, { source: "logout-disable-push" });
       }
       try {
         await Promise.race([
@@ -126,7 +127,7 @@ export default function ProfileScreen() {
           ),
         ]);
       } catch (e) {
-        console.warn("[logout] supabase signOut failed", e);
+        captureException(e, { source: "logout-supabase-signout" });
       }
     })();
   }

@@ -1,6 +1,6 @@
 {
   "name": "whatsapp-cs-agent",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
@@ -11,6 +11,7 @@
     "build:android:preview:cloud": "eas build --platform android --profile preview --no-wait",
     "build:android:preview:local": "sh scripts/eas-android-preview-local.sh",
     "lint": "ESLINT_USE_FLAT_CONFIG=false expo lint",
+    "test": "jest",
     "postinstall": "patch-package"
   },
   "dependencies": {
@@ -19,7 +20,6 @@
     "@tanstack/react-query": "^5.56.0",
     "date-fns": "^3.6.0",
     "expo": "~52.0.0",
-    "expo-av": "~15.0.0",
     "expo-constants": "~17.0.0",
     "expo-device": "~7.0.0",
     "expo-document-picker": "~13.0.3",
@@ -44,18 +44,38 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.0",
+    "@testing-library/react-native": "^12.7.2",
+    "@types/jest": "^29.5.12",
     "@types/react": "~18.3.0",
     "eslint": "^8.57.0",
     "eslint-config-expo": "~8.0.1",
+    "jest": "^29.7.0",
+    "jest-expo": "~52.0.0",
     "patch-package": "^8.0.1",
+    "react-test-renderer": "18.3.1",
     "typescript": "~5.3.0"
   },
   "expo": {
     "doctor": {
       "reactNativeDirectoryCheck": {
-        "exclude": ["expo-av"]
+        "exclude": []
       }
     }
+  },
+  "jest": {
+    "preset": "jest-expo",
+    "moduleNameMapper": {
+      "^@expo/vector-icons$": "<rootDir>/__mocks__/expo-vector-icons.js",
+      "^@expo/vector-icons/(.*)$": "<rootDir>/__mocks__/expo-vector-icons.js"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|expo-.*|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|nativewind|react-native-css-interop|@tanstack)/)"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/dist/",
+      "/.expo/"
+    ]
   },
   "overrides": {
     "metro": "0.81.5",

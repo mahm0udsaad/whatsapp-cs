@@ -205,6 +205,8 @@ function statusLabel(s: CampaignStatus): { label: string; tone: string } {
       return { label: "مكتملة جزئياً", tone: "bg-amber-50 text-amber-900" };
     case "failed":
       return { label: "فشلت", tone: "bg-red-50 text-red-900" };
+    default:
+      return { label: s ?? "غير معروف", tone: "bg-gray-100 text-gray-700" };
   }
 }
 

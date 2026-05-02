@@ -21,6 +21,7 @@ import {
   softShadow,
 } from "../../components/manager-ui";
 import { ExtractedIntentCard } from "../../components/extracted-intent-card";
+import { EmptyState, ErrorState } from "../../components/list-state";
 import {
   escalationReasonLabel,
   escalationReasonTone,
@@ -69,7 +70,17 @@ export default function ApprovalsScreen() {
               tintColor={managerColors.brand}
             />
           }
-          ListEmptyComponent={<EmptyApprovals />}
+          ListEmptyComponent={
+            query.isError ? (
+              <ErrorState onRetry={() => query.refetch()} />
+            ) : (
+              <EmptyState
+                icon="checkmark-done"
+                title="لا توجد طلبات الآن"
+                description="أي تصعيد جديد من البوت سيظهر هنا مع سبب التصعيد ورسالة العميل."
+              />
+            )
+          }
           renderItem={({ item }: { item: PendingApproval }) => (
             <ApprovalCard approval={item} />
           )}
@@ -106,22 +117,6 @@ function ApprovalsHeader({
           <Text className="text-[10px] font-semibold text-red-700">طلب</Text>
         </View>
       </View>
-    </View>
-  );
-}
-
-function EmptyApprovals() {
-  return (
-    <View className="items-center px-8 py-20">
-      <View className="h-14 w-14 items-center justify-center rounded-lg bg-emerald-50">
-        <Ionicons name="checkmark-done" size={26} color={managerColors.brand} />
-      </View>
-      <Text className="mt-4 text-center text-base font-bold text-gray-950">
-        لا توجد طلبات الآن
-      </Text>
-      <Text className="mt-1 text-center text-sm leading-6 text-gray-500">
-        أي تصعيد جديد من البوت سيظهر هنا مع سبب التصعيد ورسالة العميل.
-      </Text>
     </View>
   );
 }

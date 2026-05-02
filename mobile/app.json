@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Agent Console",
+    "name": "Nehgz Bot",
     "slug": "whatsapp-cs-agent",
-    "version": "0.3.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "whatsapp-cs-agent",
     "userInterfaceStyle": "automatic",
@@ -16,15 +16,17 @@
     "ios": {
       "bundleIdentifier": "com.nehgz.nehgzbot",
       "supportsTablet": false,
+      "buildNumber": "1",
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
         ],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "نحتاج إذنك للوصول إلى صورك حتى تتمكن من إرفاق الصور في محادثات الواتساب مع عملائك وفي حملاتك التسويقية."
       }
     },
     "android": {
-      "package": "com.whatsappcs.agentconsole",
+      "package": "com.nehgz.nehgzbot",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#1e3a8a"
@@ -38,6 +40,14 @@
         {
           "color": "#25D366",
           "defaultChannel": "escalations"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "نحتاج إذنك للوصول إلى صورك حتى تتمكن من إرفاق الصور في محادثات الواتساب مع عملائك.",
+          "cameraPermission": false,
+          "microphonePermission": false
         }
       ]
     ],

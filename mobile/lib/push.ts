@@ -4,6 +4,7 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 import { apiFetch } from "./api";
 import { getActiveConv } from "./active-conv";
+import { captureException } from "./observability";
 
 export type PushRegistrationResult =
   | { status: "ok"; token: string }
@@ -85,7 +86,11 @@ export async function disablePushToken(deviceId: string, restaurantId: string) {
       body: JSON.stringify({ deviceId, restaurantId }),
     });
   } catch (e) {
-    console.warn("[push] disable failed", e);
+    captureException(e, {
+      source: "push-token-disable",
+      deviceId,
+      restaurantId,
+    });
   }
 }
 
