@@ -2,82 +2,98 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Support — Nehgz",
-  description: "Get help with the Nehgz dashboard and the Nehgz Bot mobile app.",
+  title: "الدعم — نِهجز",
+  description: "تواصل معنا للمساعدة في إعداد نِهجز أو الحصول على إجابات للأسئلة الشائعة.",
 };
 
-const SUPPORT_EMAIL = "support@whatsapp-cs.vercel.app";
-const FEEDBACK_EMAIL = "feedback@whatsapp-cs.vercel.app";
+const SUPPORT_EMAIL = "support@nehgzbot.com";
+const WHATSAPP_NUMBER = "966554866685";
+const WA_MSG = encodeURIComponent("السلام عليكم، أحتاج مساعدة في نِهجز.");
+const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}?text=${WA_MSG}`;
 
 export default function SupportPage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
-      <h1 className="text-3xl font-bold text-gray-900">Support</h1>
-      <p className="mt-3 text-gray-600">
-        We want Nehgz to feel invisible when it&apos;s working and fast to fix when
-        it&apos;s not. Pick the channel that fits your situation.
+      <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900">الدعم الفني</h1>
+      <p className="mt-4 text-gray-600 leading-relaxed">
+        نبي نِهجز يشتغل بدون ما تحس فيه، ويتصلح بسرعة لما يحتاج. اختر القناة المناسبة لك:
       </p>
 
       <section className="mt-10 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900">General support</h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Questions about setup, billing, or day-to-day use.
+        <a
+          href={WHATSAPP_LINK}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6 hover:border-emerald-400 hover:bg-emerald-50 transition"
+        >
+          <div className="text-2xl">💬</div>
+          <h2 className="mt-3 font-bold text-gray-900">واتساب الدعم</h2>
+          <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+            أسرع طريقة للتواصل. ردنا خلال ساعات العمل.
           </p>
-          <a
-            href={`mailto:${SUPPORT_EMAIL}`}
-            className="mt-4 inline-flex items-center text-emerald-700 font-medium hover:text-emerald-800"
-          >
+          <p className="mt-3 text-emerald-700 font-semibold text-sm">6685 486 55 966+</p>
+        </a>
+        <a
+          href={`mailto:${SUPPORT_EMAIL}`}
+          className="rounded-2xl border border-gray-200 bg-white p-6 hover:border-gray-400 transition"
+        >
+          <div className="text-2xl">✉️</div>
+          <h2 className="mt-3 font-bold text-gray-900">البريد الإلكتروني</h2>
+          <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+            للاستفسارات التفصيلية أو إرفاق الملفات.
+          </p>
+          <p className="mt-3 text-emerald-700 font-semibold text-sm" dir="ltr">
             {SUPPORT_EMAIL}
-          </a>
-        </div>
-        <div className="rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900">TestFlight feedback</h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Bugs, ideas, and rough edges in the Nehgz Bot iOS beta.
           </p>
-          <a
-            href={`mailto:${FEEDBACK_EMAIL}`}
-            className="mt-4 inline-flex items-center text-emerald-700 font-medium hover:text-emerald-800"
-          >
-            {FEEDBACK_EMAIL}
-          </a>
-        </div>
+        </a>
       </section>
 
-      <section className="mt-12">
-        <h2 className="text-xl font-semibold text-gray-900">Common questions</h2>
-        <dl className="mt-5 space-y-6">
-          <div>
-            <dt className="font-medium text-gray-900">How do I connect my WhatsApp number?</dt>
-            <dd className="mt-1 text-sm text-gray-600">
-              Sign in and go to WhatsApp Setup in the dashboard. We walk you through
-              the Twilio / Meta sender provisioning flow step by step.
+      <section className="mt-14">
+        <h2 className="text-2xl font-bold text-gray-900">الأسئلة الشائعة</h2>
+        <dl className="mt-6 space-y-5">
+          <div className="rounded-xl border border-gray-200 p-5">
+            <dt className="font-bold text-gray-900">كيف أربط رقم الواتساب؟</dt>
+            <dd className="mt-2 text-sm text-gray-600 leading-relaxed">
+              بعد تسجيل الدخول للوحة التحكم، روح لقسم "إعداد الواتساب" وسنرشدك خطوة خطوة لربط رقمك
+              عبر منصة واتساب للأعمال.
             </dd>
           </div>
-          <div>
-            <dt className="font-medium text-gray-900">Does the AI reply in Arabic?</dt>
-            <dd className="mt-1 text-sm text-gray-600">
-              Yes. Nehgz replies in the customer&apos;s language. Arabic and English
-              are supported out of the box.
+          <div className="rounded-xl border border-gray-200 p-5">
+            <dt className="font-bold text-gray-900">هل المساعد يرد بالعربية السعودية؟</dt>
+            <dd className="mt-2 text-sm text-gray-600 leading-relaxed">
+              نعم، اللهجة الافتراضية سعودية طبيعية. تقدر تخصص شخصية المساعد ولهجته وأسلوبه من
+              لوحة التحكم.
             </dd>
           </div>
-          <div>
-            <dt className="font-medium text-gray-900">Can a human take over a conversation?</dt>
-            <dd className="mt-1 text-sm text-gray-600">
-              Yes. The Nehgz Bot mobile app surfaces any thread flagged for escalation.
-              One tap puts you in the conversation and pauses the AI.
+          <div className="rounded-xl border border-gray-200 p-5">
+            <dt className="font-bold text-gray-900">هل أقدر أتدخل وأرد بنفسي؟</dt>
+            <dd className="mt-2 text-sm text-gray-600 leading-relaxed">
+              بالتأكيد. تطبيق الجوّال يصلك إشعار لما عميل يحتاج رد بشري. بضغطة وحدة تستلم المحادثة
+              وتوقف رد المساعد.
             </dd>
           </div>
-          <div>
-            <dt className="font-medium text-gray-900">Is my menu private to my restaurant?</dt>
-            <dd className="mt-1 text-sm text-gray-600">
-              Yes. Each restaurant&apos;s menu, knowledge base, and conversations are
-              isolated. See our{" "}
+          <div className="rounded-xl border border-gray-200 p-5">
+            <dt className="font-bold text-gray-900">هل قاعدة معرفتي ومحادثاتي خاصة؟</dt>
+            <dd className="mt-2 text-sm text-gray-600 leading-relaxed">
+              نعم، كل عميل عنده بيئة معزولة تماماً. ما نشارك أي معرفة أو محادثات بين المتاجر.
+              تفاصيل أكثر في{" "}
               <Link href="/privacy" className="text-emerald-700 hover:underline">
-                Privacy Policy
-              </Link>{" "}
-              for details.
+                سياسة الخصوصية
+              </Link>
+              .
+            </dd>
+          </div>
+          <div className="rounded-xl border border-gray-200 p-5">
+            <dt className="font-bold text-gray-900">كم تستغرق عملية التركيب؟</dt>
+            <dd className="mt-2 text-sm text-gray-600 leading-relaxed">
+              غالباً 24 ساعة من توقيع الاتفاقية. نتولى الإعداد التقني الكامل ونسلّمك حساباً جاهزاً.
+            </dd>
+          </div>
+          <div className="rounded-xl border border-gray-200 p-5">
+            <dt className="font-bold text-gray-900">هل تكلفة واتساب من Meta مشمولة؟</dt>
+            <dd className="mt-2 text-sm text-gray-600 leading-relaxed">
+              لا. واتساب تحتسب رسوم على المحادثة (تختلف حسب نوعها) وهي منفصلة عن اشتراكك في نِهجز.
+              نوضح لك التكلفة المتوقعة قبل البداية.
             </dd>
           </div>
         </dl>

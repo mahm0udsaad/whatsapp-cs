@@ -67,7 +67,7 @@ export default async function ShiftsPage() {
   const shifts = (shiftsRes.data ?? []) as ShiftRow[];
 
   return (
-    <div className="flex-1 p-4 sm:p-6 lg:p-8">
+    <div className="flex-1 p-4 sm:p-6 lg:p-6">
       <div className="mb-5">
         <h1 className="text-3xl font-bold text-slate-950">الجدول</h1>
         <p className="mt-1 text-slate-600">

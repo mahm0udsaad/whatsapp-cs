@@ -151,7 +151,7 @@ export default async function MarketingHubPage() {
   ];
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
+    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-6">
       {/* Hero card */}
       <Card className="relative overflow-hidden border-0 bg-[#10221a] text-white shadow-[0_40px_120px_-56px_rgba(5,10,8,0.85)]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(66,196,140,0.28),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.12),transparent_34%)]" />

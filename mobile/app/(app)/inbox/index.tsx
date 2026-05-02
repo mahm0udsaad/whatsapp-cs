@@ -100,6 +100,14 @@ const FILTERS: { key: Filter; label: string }[] = [
 
 const EMPTY_ITEMS: ListItem[] = [];
 const INBOX_PAGE_SIZE = 30;
+const inboxTheme = {
+  screenBg: managerColors.bg,
+  heroBg: managerColors.brand,
+  heroBorder: "#3C53B8",
+  surface: managerColors.surface,
+  surfaceMuted: managerColors.surfaceTint,
+  border: managerColors.border,
+};
 
 function isExpired(lastInboundAt: string | null) {
   return (
@@ -416,12 +424,17 @@ export default function InboxScreen() {
             content: string | null;
             created_at: string;
             role: "customer" | "agent" | "system";
+            metadata?: Record<string, unknown> | null;
           };
           qc.setQueryData<ListItem[]>(inboxKey, (prev) => {
             if (!prev) return prev;
             const idx = prev.findIndex((c) => c.id === msg.conversation_id);
             if (idx === -1) return prev;
             const isCustomer = msg.role === "customer";
+            const isBotReply =
+              msg.role === "agent" &&
+              !((msg.metadata as { sent_by_team_member_id?: string } | null)?.sent_by_team_member_id);
+            const shouldIncrementUnread = isCustomer || isBotReply;
             const merged: ListItem = {
               ...prev[idx],
               preview: msg.content ?? prev[idx].preview,
@@ -431,8 +444,9 @@ export default function InboxScreen() {
                 ? msg.created_at
                 : prev[idx].last_inbound_at,
               is_expired: isCustomer ? false : prev[idx].is_expired,
-              // Only customer inbound messages bump unread — matches DB trigger.
-              unread_count: isCustomer
+              // Customer messages and bot replies count as unread until a
+              // human opens the thread. Manual agent sends do not.
+              unread_count: shouldIncrementUnread
                 ? (prev[idx].unread_count ?? 0) + 1
                 : prev[idx].unread_count,
             };
@@ -503,26 +517,52 @@ export default function InboxScreen() {
 
   const header = useMemo(
     () => (
-      <View className="border-b border-[#E6E8EC] bg-white">
+      <View
+        className="border-b"
+        style={{ borderColor: inboxTheme.border, backgroundColor: inboxTheme.surface }}
+      >
         <View className="px-4 pb-3 pt-3">
           <View
-            className="overflow-hidden rounded-lg bg-[#052E26] p-4"
-            style={premiumShadow}
+            className="overflow-hidden rounded-[28px] border p-5"
+            style={[
+              premiumShadow,
+              {
+                backgroundColor: inboxTheme.heroBg,
+                borderColor: inboxTheme.heroBorder,
+              },
+            ]}
           >
+            <View
+              className="absolute -right-8 -top-10 h-32 w-32 rounded-full"
+              style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+            />
+            <View
+              className="absolute -bottom-8 left-4 h-24 w-24 rounded-full"
+              style={{ backgroundColor: "rgba(255,201,40,0.22)" }}
+            />
             <View className="flex-row-reverse items-start justify-between gap-4">
               <View className="flex-1">
-                <Text className="text-right text-xs font-semibold text-emerald-100/80">
+                <Text
+                  className="text-right text-xs font-semibold"
+                  style={{ color: "rgba(255,255,255,0.82)" }}
+                >
                   مركز المحادثات
                 </Text>
                 <View className="mt-2 flex-row-reverse items-end gap-2">
                   <Text className="text-right text-4xl font-bold text-white">
                     {attentionCount}
                   </Text>
-                  <Text className="pb-1 text-right text-sm font-semibold text-emerald-100/80">
+                  <Text
+                    className="pb-1 text-right text-sm font-semibold"
+                    style={{ color: "rgba(255,255,255,0.88)" }}
+                  >
                     تحتاج إجراء
                   </Text>
                 </View>
-                <Text className="mt-2 text-right text-sm leading-6 text-white/80">
+                <Text
+                  className="mt-2 text-right text-sm leading-6"
+                  style={{ color: "rgba(255,255,255,0.82)" }}
+                >
                   {attentionCount > 0
                     ? "محادثات تحتاج تدخل قبل باقي القائمة."
                     : "لا توجد محادثات عاجلة الآن."}
@@ -530,12 +570,13 @@ export default function InboxScreen() {
               </View>
               <Pressable
                 onPress={() => setFilter(leadFilter)}
-                className="min-h-12 items-center justify-center rounded-lg bg-white px-4 py-3"
+                className="min-h-12 items-center justify-center rounded-[20px] border px-4 py-3"
+                style={{ borderColor: "#FFD34D", backgroundColor: "#FFC928" }}
               >
-                <Text className="text-xs font-semibold text-[#667085]">
+                <Text className="text-xs font-semibold text-[#273B9A]">
                   ابدأي من
                 </Text>
-                <Text className="mt-1 text-sm font-bold text-[#0B0F13]">
+                <Text className="mt-1 text-sm font-bold text-[#273B9A]">
                   {leadFilter === "unassigned"
                     ? "غير مستلمة"
                     : leadFilter === "expired"
@@ -580,7 +621,7 @@ export default function InboxScreen() {
                 onPress={() => setFilter(f.key)}
                 className={`min-h-11 rounded-lg border px-3 py-2 ${
                   active
-                    ? "border-[#0B0F13] bg-[#0B0F13]"
+                    ? "border-[#273B9A] bg-[#273B9A]"
                     : "border-[#E6E8EC] bg-white"
                 }`}
               >
@@ -648,7 +689,7 @@ export default function InboxScreen() {
               onChangeText={setSearch}
               placeholder="بحث بالاسم أو الرقم أو نص الرسالة..."
               placeholderTextColor="#98A2B3"
-              className="flex-1 py-2.5 text-right text-sm text-[#0B0F13]"
+              className="flex-1 py-2.5 text-right text-sm text-[#16245C]"
               returnKeyType="search"
             />
             {search.length > 0 ? (
@@ -668,7 +709,7 @@ export default function InboxScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["top", "bottom"]}>
+    <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["top"]}>
       {header}
       {query.isLoading ? (
         <ListSkeleton count={6} />
@@ -752,7 +793,7 @@ export default function InboxScreen() {
               <View className="mb-2 flex-row-reverse items-start justify-between gap-3">
                 <View className="flex-1">
                   <Text
-                    className="text-right text-base font-bold text-[#0B0F13]"
+                    className="text-right text-base font-bold text-[#16245C]"
                     numberOfLines={1}
                   >
                     {item.customer_name || item.customer_phone}
@@ -874,7 +915,7 @@ export default function InboxScreen() {
             onPress={(e) => e.stopPropagation()}
             className="rounded-t-lg bg-white p-4 pb-8"
           >
-            <Text className="text-right text-lg font-bold text-[#0B0F13]">
+            <Text className="text-right text-lg font-bold text-[#16245C]">
               إدارة المحادثة
             </Text>
             <Text className="mt-1 text-right text-xs text-[#667085]">
@@ -915,7 +956,7 @@ export default function InboxScreen() {
                                 : "bg-gray-300"
                             }`}
                           />
-                          <Text className="text-right text-sm font-semibold text-gray-950">
+                          <Text className="text-right text-sm font-semibold text-[#16245C]">
                             {m.full_name?.trim() ||
                               (m.role === "admin" ? "المدير" : "موظف")}
                           </Text>
@@ -960,7 +1001,7 @@ export default function InboxScreen() {
                     }
                     className="flex-row-reverse items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3"
                   >
-                    <Text className="text-right text-sm font-semibold text-gray-800">
+                    <Text className="text-right text-sm font-semibold text-[#16245C]">
                       إلغاء التعيين
                     </Text>
                     <Ionicons name="refresh" size={20} color="#374151" />

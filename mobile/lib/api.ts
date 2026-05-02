@@ -517,6 +517,7 @@ export interface OverviewSummary {
   humanActiveCount: number;
   botActiveCount: number;
   expiredCount: number;
+  unreadCount: number;
   ordersPendingCount: number;
   agentsOnShiftCount: number;
 }

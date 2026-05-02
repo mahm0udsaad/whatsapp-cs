@@ -18,7 +18,7 @@ export default async function RestaurantSettingsPage() {
   }
 
   return (
-    <div className="flex-1 space-y-8 p-4 sm:p-6 lg:p-8">
+    <div className="flex-1 space-y-8 p-4 sm:p-6 lg:p-6">
       <div>
         <h1 className="text-3xl font-bold text-slate-950">
           {t("restaurant.title")}

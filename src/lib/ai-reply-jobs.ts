@@ -16,7 +16,108 @@ import {
   classifyEscalation,
   isBookingRequest,
 } from "@/lib/escalation-classifier";
-import type { InteractiveReply } from "@/lib/types";
+import type { AvailableLabel, InteractiveReply } from "@/lib/types";
+
+const ALLOWED_LABEL_COLORS = new Set([
+  "slate",
+  "red",
+  "amber",
+  "emerald",
+  "blue",
+  "indigo",
+  "fuchsia",
+  "rose",
+]);
+
+async function loadAvailableLabels(
+  restaurantId: string
+): Promise<AvailableLabel[]> {
+  const { data, error } = await adminSupabaseClient
+    .from("conversation_labels")
+    .select("id, name, color")
+    .eq("restaurant_id", restaurantId)
+    .order("name", { ascending: true });
+  if (error || !data) return [];
+  return data as AvailableLabel[];
+}
+
+/**
+ * Apply labels chosen by the bot to the conversation. Best-effort: never
+ * throws into the reply pipeline — labeling failures shouldn't block a send.
+ *
+ * - `labelIds` must already be validated against the tenant's labels.
+ * - `newLabels` are created on the fly when they don't collide with an
+ *   existing name (unique (restaurant_id, name)); collisions are resolved
+ *   by attaching the existing label instead.
+ */
+async function applyBotSelectedLabels(params: {
+  conversationId: string;
+  restaurantId: string;
+  labelIds: string[];
+  newLabels: Array<{ name: string; color?: string }>;
+  existing: AvailableLabel[];
+}): Promise<void> {
+  const { conversationId, restaurantId, labelIds, newLabels, existing } = params;
+  try {
+    const finalIds = new Set<string>(labelIds);
+
+    if (newLabels.length > 0) {
+      const existingByName = new Map(
+        existing.map((l) => [l.name.toLowerCase(), l.id])
+      );
+      for (const proposal of newLabels) {
+        const key = proposal.name.toLowerCase();
+        const hit = existingByName.get(key);
+        if (hit) {
+          finalIds.add(hit);
+          continue;
+        }
+        const color =
+          proposal.color && ALLOWED_LABEL_COLORS.has(proposal.color)
+            ? proposal.color
+            : "slate";
+        const { data, error } = await adminSupabaseClient
+          .from("conversation_labels")
+          .insert({
+            restaurant_id: restaurantId,
+            name: proposal.name,
+            color,
+            created_by: null,
+          })
+          .select("id")
+          .single();
+        if (!error && data?.id) {
+          finalIds.add(data.id);
+        } else if (error?.code === "23505") {
+          // Race on unique (restaurant_id, name) — fetch the winner.
+          const { data: row } = await adminSupabaseClient
+            .from("conversation_labels")
+            .select("id")
+            .eq("restaurant_id", restaurantId)
+            .eq("name", proposal.name)
+            .maybeSingle();
+          if (row?.id) finalIds.add(row.id);
+        }
+      }
+    }
+
+    if (finalIds.size === 0) return;
+
+    const rows = Array.from(finalIds).map((label_id) => ({
+      conversation_id: conversationId,
+      label_id,
+      assigned_by: null,
+    }));
+    await adminSupabaseClient
+      .from("conversation_label_assignments")
+      .upsert(rows, { onConflict: "conversation_id,label_id", ignoreDuplicates: true });
+  } catch (err) {
+    console.warn(
+      "[ai-reply] applyBotSelectedLabels failed:",
+      err instanceof Error ? err.message : err
+    );
+  }
+}
 
 interface QueueAIReplyJobInput {
   restaurantId: string;
@@ -411,6 +512,7 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
         conversation,
         history,
         agentInstructionsRaw,
+        availableLabels,
       ] = await Promise.all([
         adminSupabaseClient
           .from("messages")
@@ -431,6 +533,7 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
         getConversationContext(job.conversation_id),
         getConversationHistory(job.conversation_id, 12),
         loadActiveAgentInstructions(job.restaurant_id),
+        loadAvailableLabels(job.restaurant_id),
       ]);
 
       const inboundMessage = inboundMessageRes.data;
@@ -542,6 +645,8 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
       let responseText: string;
       let reply: InteractiveReply;
       let aiUncertain = false;
+      let botLabelIds: string[] = [];
+      let botNewLabels: Array<{ name: string; color?: string }> = [];
 
       try {
         const result = await generateGeminiResponse({
@@ -556,6 +661,7 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
           ragContext,
           menuContext,
           agentInstructions,
+          availableLabels,
           conversationHistory: history.slice(0, -1),
           userMessage: inboundMessage.content,
           languagePreference:
@@ -570,6 +676,8 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
         responseText = result.content;
         reply = result.reply;
         aiUncertain = result.aiUncertain === true;
+        botLabelIds = result.labelIds ?? [];
+        botNewLabels = result.newLabels ?? [];
       } catch {
         responseText =
           userLanguage === "ar"
@@ -776,6 +884,16 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
         .from("conversations")
         .update({ last_message_at: new Date().toISOString() })
         .eq("id", job.conversation_id);
+
+      if (botLabelIds.length > 0 || botNewLabels.length > 0) {
+        await applyBotSelectedLabels({
+          conversationId: job.conversation_id,
+          restaurantId: job.restaurant_id,
+          labelIds: botLabelIds,
+          newLabels: botNewLabels,
+          existing: availableLabels,
+        });
+      }
 
       await adminSupabaseClient
         .from("ai_reply_jobs")

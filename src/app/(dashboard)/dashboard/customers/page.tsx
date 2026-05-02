@@ -27,7 +27,7 @@ export default async function CustomersPage() {
     .range(0, 24);
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
+    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-6">
       <div className="flex items-center gap-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
           <Users size={20} />

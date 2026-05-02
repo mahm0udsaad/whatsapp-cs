@@ -118,10 +118,16 @@ export default function CustomersListScreen() {
   const selectedCount = useMemo(() => selected.size, [selected]);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["bottom"]}>
+    <SafeAreaView className="flex-1" style={{ backgroundColor: managerColors.bg }} edges={["top"]}>
       {/* Search + filter bar */}
-      <View className="border-b border-gray-100 bg-white px-3 pb-2 pt-3">
-        <View className="flex-row-reverse items-center rounded-lg border border-gray-200 bg-gray-50 px-3">
+      <View
+        className="border-b px-3 pb-2 pt-3"
+        style={{ borderBottomColor: managerColors.border, backgroundColor: managerColors.surface }}
+      >
+        <View
+          className="flex-row-reverse items-center rounded-[18px] border px-3"
+          style={{ borderColor: managerColors.border, backgroundColor: managerColors.surfaceMuted }}
+        >
           <Ionicons name="search" size={16} color={managerColors.muted} />
           <TextInput
             value={q}
@@ -287,7 +293,8 @@ export default function CustomersListScreen() {
             </Text>
             <Pressable
               onPress={launchCampaign}
-              className="flex-row-reverse items-center gap-2 rounded-lg bg-[#00A884] px-4 py-3"
+              className="flex-row-reverse items-center gap-2 rounded-[16px] px-4 py-3"
+              style={{ backgroundColor: managerColors.brand }}
             >
               <Ionicons name="megaphone" size={16} color="#fff" />
               <Text className="font-bold text-white">إنشاء حملة لهم</Text>
@@ -297,12 +304,13 @@ export default function CustomersListScreen() {
       ) : (
         <Pressable
           onPress={() => router.push("/customers/new")}
-          className="absolute bottom-6 left-6 h-14 flex-row items-center gap-2 rounded-full bg-[#00A884] px-5"
+          className="absolute bottom-6 left-6 h-14 flex-row items-center gap-2 rounded-full px-5"
           style={{
-            shadowColor: "#000",
-            shadowOpacity: 0.15,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 4 },
+            backgroundColor: managerColors.brand,
+            shadowColor: managerColors.brandDark,
+            shadowOpacity: 0.18,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: 6 },
             elevation: 6,
           }}
         >

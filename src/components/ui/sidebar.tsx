@@ -39,6 +39,20 @@ interface SidebarProps {
   isOwner?: boolean;
 }
 
+interface NavItem {
+  href: string;
+  label: string;
+  description: string;
+  icon: React.ElementType;
+  exact?: boolean;
+  badge?: number;
+}
+
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
 export function Sidebar({
   restaurantName = "Store",
   restaurantLogo,
@@ -56,7 +70,6 @@ export function Sidebar({
   const locale = forcedLocale ?? getClientLocale();
   const t = createTranslator(locale);
 
-  // Live count of unclaimed escalations for the badge on the Inbox nav item.
   useEffect(() => {
     if (!restaurantId) return;
     const supabase = createClient();
@@ -97,98 +110,124 @@ export function Sidebar({
     };
   }, [restaurantId]);
 
-  const navItems = [
+  const navSections: NavSection[] = [
     {
-      href: "/dashboard/inbox",
-      label: "صندوق التصعيدات",
-      description: "الطلبات غير المستلمة للتدخل البشري",
-      icon: Inbox,
-      badge: unclaimedCount,
+      title: "العمليات",
+      items: [
+        {
+          href: "/dashboard/inbox",
+          label: "صندوق التصعيدات",
+          description: "طلبات تحتاج تدخلاً بشرياً",
+          icon: Inbox,
+          badge: unclaimedCount,
+        },
+        {
+          href: "/dashboard/orders",
+          label: "الطلبات",
+          description: "الحجوزات والحالات المفتوحة",
+          icon: ClipboardList,
+        },
+        {
+          href: "/dashboard/conversations",
+          label: t("nav.conversations"),
+          description: "سجل جميع المحادثات",
+          icon: MessageSquare,
+        },
+      ],
     },
     {
-      href: "/dashboard",
-      label: t("nav.overview"),
-      description: t("nav.overview.desc"),
-      icon: LayoutDashboard,
-      exact: true,
+      title: "الإعداد",
+      items: [
+        {
+          href: "/dashboard",
+          label: t("nav.overview"),
+          description: "نظرة عامة على الأداء",
+          icon: LayoutDashboard,
+          exact: true,
+        },
+        {
+          href: "/dashboard/restaurant",
+          label: t("nav.restaurant"),
+          description: "بيانات وإعدادات المطعم",
+          icon: Store,
+        },
+        {
+          href: "/dashboard/ai-agent",
+          label: t("nav.aiAgent"),
+          description: "إعدادات المساعد الذكي",
+          icon: Bot,
+        },
+        ...(isOwner
+          ? [
+              {
+                href: "/dashboard/ai-manager",
+                label: "مدرب الذكاء",
+                description: "درّب المساعد بتعليمات جديدة",
+                icon: Brain,
+              },
+            ]
+          : []),
+      ],
     },
     {
-      href: "/dashboard/restaurant",
-      label: t("nav.restaurant"),
-      description: t("nav.restaurant.desc"),
-      icon: Store,
+      title: "المحتوى",
+      items: [
+        {
+          href: "/dashboard/knowledge-base",
+          label: t("nav.knowledgeBase"),
+          description: "الأسئلة الشائعة والمعلومات",
+          icon: BookOpen,
+        },
+        {
+          href: "/dashboard/menu",
+          label: t("nav.menu"),
+          description: "الأصناف والأسعار",
+          icon: Package,
+        },
+      ],
     },
     {
-      href: "/dashboard/ai-agent",
-      label: t("nav.aiAgent"),
-      description: t("nav.aiAgent.desc"),
-      icon: Bot,
-    },
-    ...(isOwner
-      ? [
-          {
-            href: "/dashboard/ai-manager",
-            label: "مدرب الذكاء",
-            description: "درّب المساعد الذكي بتعليمات جديدة بالعربية",
-            icon: Brain,
-          },
-          {
-            href: "/dashboard/shifts",
-            label: "الجدول",
-            description: "جدول الموظفين ومن على الدوام الآن",
-            icon: CalendarClock,
-          },
-        ]
-      : []),
-    {
-      href: "/dashboard/knowledge-base",
-      label: t("nav.knowledgeBase"),
-      description: t("nav.knowledgeBase.desc"),
-      icon: BookOpen,
+      title: "التسويق",
+      items: [
+        {
+          href: "/dashboard/customers",
+          label: "العملاء",
+          description: "قاعدة بيانات العملاء",
+          icon: Users,
+        },
+        {
+          href: "/dashboard/marketing",
+          label: t("nav.marketing"),
+          description: "الحملات والقوالب",
+          icon: Megaphone,
+        },
+      ],
     },
     {
-      href: "/dashboard/menu",
-      label: t("nav.menu"),
-      description: t("nav.menu.desc"),
-      icon: Package,
+      title: "الفريق",
+      items: [
+        ...(isOwner
+          ? [
+              {
+                href: "/dashboard/shifts",
+                label: "الجدول",
+                description: "مواعيد الدوام والحضور",
+                icon: CalendarClock,
+              },
+            ]
+          : []),
+        {
+          href: "/dashboard/team",
+          label: t("nav.team"),
+          description: "الأعضاء والصلاحيات",
+          icon: Users,
+        },
+      ],
     },
-    {
-      href: "/dashboard/orders",
-      label: "الطلبات والتصعيدات",
-      description: "الحجوزات والحالات التي تحتاج متابعة",
-      icon: ClipboardList,
-    },
-    {
-      href: "/dashboard/conversations",
-      label: t("nav.conversations"),
-      description: t("nav.conversations.desc"),
-      icon: MessageSquare,
-    },
-    {
-      href: "/dashboard/customers",
-      label: "العملاء",
-      description: "قاعدة عملائك المؤهلين للتواصل والحملات",
-      icon: Users,
-    },
-    {
-      href: "/dashboard/marketing",
-      label: t("nav.marketing"),
-      description: t("nav.marketing.desc"),
-      icon: Megaphone,
-    },
-    {
-      href: "/dashboard/team",
-      label: t("nav.team"),
-      description: t("nav.team.desc"),
-      icon: Users,
-    },
-  ];
+  ].filter((section) => section.items.length > 0);
 
   const isActive = (href: string, exact?: boolean) => {
-    if (exact) {
-      return pathname === href;
-    }
-
+    if (exact) return pathname === href;
     return pathname.startsWith(href);
   };
 
@@ -219,91 +258,113 @@ export function Sidebar({
         )}
       >
         <div className="flex h-full flex-col">
-          <div className="border-b border-white/10 p-6">
-            <div className="rounded-[28px] border border-white/10 bg-white/5 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-              <div className="mb-5 inline-flex rounded-full border border-white/10 bg-white/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-200/85">
-                {t("sidebar.liveOps")}
-              </div>
-              <div className="flex items-center gap-3">
-                {restaurantLogo ? (
-                  <img
-                    src={restaurantLogo}
-                    alt={restaurantName}
-                    className="h-12 w-12 rounded-2xl object-cover"
-                  />
-                ) : (
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-200">
-                    <Store size={20} />
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-base font-semibold text-white">
-                    {restaurantName}
-                  </p>
-                  <p className="mt-1 text-sm text-white/62">
-                    {t("sidebar.serviceCenter")}
-                  </p>
+          {/* Header */}
+          <div className="border-b border-white/10 px-4 py-3">
+            <div className="flex items-center gap-3">
+              {restaurantLogo ? (
+                <img
+                  src={restaurantLogo}
+                  alt={restaurantName}
+                  className="h-9 w-9 rounded-xl object-cover"
+                />
+              ) : (
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-200">
+                  <Store size={16} />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-white">
+                  {restaurantName}
+                </p>
+                <div className="mt-0.5 inline-flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  <span className="text-[10px] text-emerald-400/80">
+                    {t("sidebar.liveOps")}
+                  </span>
                 </div>
               </div>
             </div>
           </div>
 
-          <nav className="flex-1 overflow-y-auto px-4 py-5">
-            <ul className="space-y-2">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item.href, item.exact);
+          {/* Nav */}
+          <nav className="flex-1 overflow-y-auto px-3 py-4">
+            <div className="space-y-5">
+              {navSections.map((section) => (
+                <div key={section.title}>
+                  <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-widest text-white/35">
+                    {section.title}
+                  </p>
+                  <ul className="space-y-0.5">
+                    {section.items.map((item) => {
+                      const Icon = item.icon;
+                      const active = isActive(item.href, item.exact);
 
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      onClick={() => setIsOpen(false)}
-                      className={cn(
-                        "group relative flex items-center gap-3 rounded-3xl px-4 py-2.5 transition-all duration-200",
-                        active
-                          ? "bg-white text-slate-950 shadow-[0_20px_45px_-30px_rgba(255,255,255,0.7)]"
-                          : "text-white/70 hover:bg-white/6 hover:text-white"
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border transition-colors",
-                          active
-                            ? "border-slate-200 bg-emerald-50 text-emerald-700"
-                            : "border-white/10 bg-white/6 text-white/75 group-hover:border-white/20"
-                        )}
-                      >
-                        <Icon size={18} />
-                      </div>
-                      <div className="flex min-w-0 flex-1 items-center gap-2">
-                        <p className="truncate text-sm font-medium">{item.label}</p>
-                        {"badge" in item && typeof item.badge === "number" && item.badge > 0 ? (
-                          <span
+                      return (
+                        <li key={item.href}>
+                          <Link
+                            href={item.href}
+                            onClick={() => setIsOpen(false)}
                             className={cn(
-                              "inline-flex h-4.5 min-w-[18px] shrink-0 items-center justify-center rounded-full px-1 text-[10px] font-bold",
+                              "group relative flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-all duration-200",
                               active
-                                ? "bg-rose-600 text-white"
-                                : "bg-rose-500 text-white shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"
+                                ? "bg-white text-slate-950 shadow-[0_8px_24px_-8px_rgba(255,255,255,0.4)]"
+                                : "text-white/70 hover:bg-white/6 hover:text-white"
                             )}
                           >
-                            {item.badge > 99 ? "99+" : item.badge}
-                          </span>
-                        ) : null}
-                      </div>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+                            <div
+                              className={cn(
+                                "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border transition-colors",
+                                active
+                                  ? "border-slate-200 bg-emerald-50 text-emerald-700"
+                                  : "border-white/10 bg-white/6 text-white/75 group-hover:border-white/20"
+                              )}
+                            >
+                              <Icon size={16} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="truncate text-sm font-medium leading-none">
+                                  {item.label}
+                                </p>
+                                {typeof item.badge === "number" && item.badge > 0 ? (
+                                  <span
+                                    className={cn(
+                                      "inline-flex h-4 min-w-[16px] shrink-0 items-center justify-center rounded-full px-1 text-[10px] font-bold",
+                                      active
+                                        ? "bg-rose-600 text-white"
+                                        : "bg-rose-500 text-white shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"
+                                    )}
+                                  >
+                                    {item.badge > 99 ? "99+" : item.badge}
+                                  </span>
+                                ) : null}
+                              </div>
+                              <p
+                                className={cn(
+                                  "mt-0.5 truncate text-[11px] leading-none transition-colors",
+                                  active ? "text-slate-500" : "text-white/40 group-hover:text-white/55"
+                                )}
+                              >
+                                {item.description}
+                              </p>
+                            </div>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
           </nav>
 
-          <div className="border-t border-white/10 p-4">
-            <div className="rounded-[28px] border border-white/10 bg-white/5 p-4">
+          {/* Footer */}
+          <div className="border-t border-white/10 p-3">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
               <div className="flex items-center gap-3">
-                <Avatar className="h-11 w-11 border border-white/10">
+                <Avatar className="h-9 w-9 border border-white/10">
                   <AvatarImage src={undefined} />
-                  <AvatarFallback className="bg-emerald-400/15 text-emerald-100">
+                  <AvatarFallback className="bg-emerald-400/15 text-sm text-emerald-100">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
@@ -311,21 +372,21 @@ export function Sidebar({
                   <p className="truncate text-sm font-semibold text-white">
                     {userName || "مستخدم"}
                   </p>
-                  <p className="truncate text-xs text-white/58">
+                  <p className="truncate text-[11px] text-white/45">
                     {userEmail || "user@example.com"}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-4 space-y-2">
+              <div className="mt-3 space-y-2">
                 {showLanguageSwitcher ? <LanguageSwitcher /> : null}
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={onLogout}
-                  className="w-full justify-start rounded-2xl border border-white/10 bg-white/6 px-4 text-white hover:bg-white/10"
+                  className="w-full justify-start rounded-xl border border-white/10 bg-white/6 px-3 text-white hover:bg-white/10"
                 >
-                  <LogOut size={16} />
+                  <LogOut size={15} />
                   {t("nav.logout")}
                 </Button>
               </div>

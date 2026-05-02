@@ -21,7 +21,7 @@ export default async function InboxPage() {
     .maybeSingle();
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8" dir="rtl">
+    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-6" dir="rtl">
       <div>
         <h1 className="text-3xl font-bold text-slate-950">صندوق المحادثات</h1>
         <p className="mt-1 text-slate-600">

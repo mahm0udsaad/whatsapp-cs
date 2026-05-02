@@ -90,7 +90,7 @@ export default async function CampaignsPage() {
   const completedCount = allCampaigns.filter((c) => c.status === "completed").length;
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
+    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

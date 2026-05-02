@@ -48,15 +48,15 @@ export default function AppLayout() {
           fontWeight: "700",
         },
         headerStyle: {
-          backgroundColor: managerColors.surface,
+          backgroundColor: managerColors.surfaceTint,
         },
         tabBarStyle: {
           display: isConversationDetail ? "none" : "flex",
-          backgroundColor: managerColors.surface,
+          backgroundColor: managerColors.surfaceTint,
           borderTopColor: managerColors.border,
-          height: 68,
+          height: 72,
           paddingBottom: 10,
-          paddingTop: 6,
+          paddingTop: 8,
         },
         tabBarLabelStyle: {
           fontSize: 12,

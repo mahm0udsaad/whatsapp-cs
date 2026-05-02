@@ -15,7 +15,10 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <View className="items-center px-8 py-20">
-      <View className="h-14 w-14 items-center justify-center rounded-lg bg-[#F1F5F3]">
+      <View
+        className="h-14 w-14 items-center justify-center rounded-[18px]"
+        style={{ backgroundColor: managerColors.brandSoft }}
+      >
         <Ionicons name={icon} size={26} color={managerColors.brand} />
       </View>
       <Text className="mt-4 text-center text-base font-bold text-gray-950">
@@ -61,7 +64,8 @@ export function ErrorState({
       {onRetry ? (
         <Pressable
           onPress={onRetry}
-          className="mt-4 rounded-lg bg-[#052E26] px-5 py-2.5"
+          className="mt-4 rounded-[16px] px-5 py-2.5"
+          style={{ backgroundColor: managerColors.brandDark }}
           accessibilityRole="button"
           accessibilityLabel={retryLabel}
         >

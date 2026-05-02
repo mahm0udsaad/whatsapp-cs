@@ -67,7 +67,7 @@ export default async function TemplatesPage() {
   const rejectedCount = allTemplates.filter((t) => t.approval_status === "rejected").length;
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
+    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

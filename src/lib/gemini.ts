@@ -7,7 +7,7 @@ import {
 } from "@google/generative-ai";
 import { GoogleAICacheManager } from "@google/generative-ai/server";
 import { buildCustomerServiceSystemPrompt } from "./customer-service";
-import type { GeminiResponse, InteractiveReply } from "./types";
+import type { AvailableLabel, GeminiResponse, InteractiveReply } from "./types";
 
 const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
 
@@ -38,6 +38,8 @@ interface GeminiContext {
   offTopicResponse: string;
   /** Versioned owner-authored rules (AI Manager output). Optional. */
   agentInstructions?: Array<{ title: string; body: string }> | null;
+  /** Labels the tenant has already created. The model picks from these. */
+  availableLabels?: AvailableLabel[];
 }
 
 /**
@@ -145,6 +147,30 @@ const REPLY_SCHEMA: Schema = {
       description:
         "Set true ONLY if the Knowledge Base Context / Menu Context / Business Profile do not contain enough information to answer the customer confidently. Do not set true for greetings, confirmations, choices, or simple clarifications.",
     },
+    label_ids: {
+      type: SchemaType.ARRAY,
+      description:
+        "IDs of EXISTING labels to attach to this conversation. Pick only from the 'Available Labels' list in the system prompt. Omit or leave empty when no existing label clearly fits.",
+      items: { type: SchemaType.STRING },
+    },
+    new_labels: {
+      type: SchemaType.ARRAY,
+      description:
+        "Optional. Propose new labels ONLY when no existing label fits AND the category is clearly useful (e.g. 'VIP', 'Complaint', 'Booking'). Keep name short (max 24 chars).",
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          name: { type: SchemaType.STRING, description: "Short label name." },
+          color: {
+            type: SchemaType.STRING,
+            format: "enum",
+            enum: ["slate", "red", "amber", "emerald", "blue", "indigo", "fuchsia", "rose"],
+            description: "Palette color. Default 'slate'.",
+          },
+        },
+        required: ["name"],
+      },
+    },
   },
   required: ["type"],
 };
@@ -171,13 +197,58 @@ If — and only if — the provided knowledge genuinely does not contain the ans
 interface ParsedReply {
   reply: InteractiveReply;
   aiUncertain: boolean;
+  labelIds: string[];
+  newLabels: Array<{ name: string; color?: string }>;
+}
+
+const ALLOWED_LABEL_COLORS = new Set([
+  "slate",
+  "red",
+  "amber",
+  "emerald",
+  "blue",
+  "indigo",
+  "fuchsia",
+  "rose",
+]);
+
+function extractLabels(
+  obj: Record<string, unknown>,
+  allowedIds: Set<string>
+): { labelIds: string[]; newLabels: Array<{ name: string; color?: string }> } {
+  const rawIds = Array.isArray(obj.label_ids) ? obj.label_ids : [];
+  const labelIds = rawIds
+    .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+    .filter((id) => allowedIds.size === 0 || allowedIds.has(id));
+
+  const rawNew = Array.isArray(obj.new_labels) ? obj.new_labels : [];
+  const newLabels = rawNew
+    .map((n) => {
+      if (!n || typeof n !== "object") return null;
+      const nn = n as Record<string, unknown>;
+      const name = typeof nn.name === "string" ? nn.name.trim().slice(0, 40) : "";
+      if (!name) return null;
+      const rawColor = typeof nn.color === "string" ? nn.color.trim() : undefined;
+      const color =
+        rawColor && ALLOWED_LABEL_COLORS.has(rawColor) ? rawColor : undefined;
+      return color ? { name, color } : { name };
+    })
+    .filter((n): n is { name: string; color?: string } => n !== null)
+    .slice(0, 3);
+
+  return { labelIds, newLabels };
 }
 
 /** Defensive parser — Gemini occasionally drifts from the schema. Falls back to text. */
-function parseInteractiveReply(raw: string): ParsedReply {
+function parseInteractiveReply(
+  raw: string,
+  allowedLabelIds: Set<string> = new Set()
+): ParsedReply {
   const fallback = (content: string): ParsedReply => ({
     reply: { type: "text", content },
     aiUncertain: false,
+    labelIds: [],
+    newLabels: [],
   });
 
   let parsed: unknown;
@@ -194,6 +265,7 @@ function parseInteractiveReply(raw: string): ParsedReply {
   const obj = parsed as Record<string, unknown>;
   const type = obj.type;
   const aiUncertain = obj.ai_uncertain === true;
+  const { labelIds, newLabels } = extractLabels(obj, allowedLabelIds);
 
   if (type === "quick_reply") {
     const rawBody = typeof obj.body === "string" ? obj.body.trim() : "";
@@ -213,7 +285,7 @@ function parseInteractiveReply(raw: string): ParsedReply {
     if (options.length >= 1) {
       // Body is required by WhatsApp; synthesize a neutral one if the model omitted it.
       const body = rawBody || "…";
-      return { reply: { type: "quick_reply", body, options }, aiUncertain };
+      return { reply: { type: "quick_reply", body, options }, aiUncertain, labelIds, newLabels };
     }
   }
 
@@ -241,7 +313,7 @@ function parseInteractiveReply(raw: string): ParsedReply {
       // Body is required by WhatsApp; fall back to the button label (or a neutral
       // placeholder) instead of dropping the whole list to a raw-JSON text reply.
       const body = rawBody || button || "…";
-      return { reply: { type: "list", body, button, items }, aiUncertain };
+      return { reply: { type: "list", body, button, items }, aiUncertain, labelIds, newLabels };
     }
   }
 
@@ -254,7 +326,7 @@ function parseInteractiveReply(raw: string): ParsedReply {
       : typeof obj.body === "string" && obj.body.trim()
         ? (obj.body as string)
         : "...";
-  return { reply: { type: "text", content }, aiUncertain };
+  return { reply: { type: "text", content }, aiUncertain, labelIds, newLabels };
 }
 
 /** Plain-text preview for storage / dashboard fallback. */
@@ -280,6 +352,28 @@ function previewOf(reply: InteractiveReply): string {
 //                   instruction.
 // ---------------------------------------------------------------------------
 
+function buildLabelBlock(labels: AvailableLabel[] | undefined): string {
+  if (!labels || labels.length === 0) {
+    return `
+Conversation Labels:
+- No labels have been created for this tenant yet.
+- You MAY propose up to 3 labels via the "new_labels" field when a clearly useful category applies (e.g. "VIP", "Complaint", "Booking", "Spam"). Keep names short and in English snake-or-title case.
+- Omit "new_labels" when no labeling is obviously useful — do NOT invent labels for every message.
+`.trim();
+  }
+
+  const list = labels.map((l) => `  - ${l.id} → "${l.name}" (${l.color})`).join("\n");
+  return `
+Conversation Labels:
+- The tenant has created the following labels. Attach any that clearly apply by putting their IDs in the "label_ids" field:
+${list}
+- Pick 0, 1, or at most 2 labels. Only attach a label when it clearly applies to the conversation (e.g. customer is complaining → "Complaint"; asking to book → "Booking"; wants callback → "Follow-up").
+- Do NOT attach speculative labels. If no existing label clearly fits, leave "label_ids" empty.
+- Use "new_labels" only when no existing label fits AND a new category is clearly useful. Prefer reusing existing labels.
+- Never mention labels to the customer — labels are internal metadata.
+`.trim();
+}
+
 function buildStaticPrefix(
   context: GeminiContext,
   responseLanguage: "ar" | "en"
@@ -304,7 +398,9 @@ function buildStaticPrefix(
     responseLanguage === "ar" ? "Arabic" : "English"
   );
 
-  return `${base}\n\nReply Format Rules:\n${rules}`;
+  const labelBlock = buildLabelBlock(context.availableLabels);
+
+  return `${base}\n\nReply Format Rules:\n${rules}\n\n${labelBlock}`;
 }
 
 function buildDynamicBlock(
@@ -403,8 +499,14 @@ export async function generateGeminiResponse(
       reply: { type: "text", content: context.offTopicResponse },
       language: responseLanguage,
       aiUncertain: false,
+      labelIds: [],
+      newLabels: [],
     };
   }
+
+  const allowedLabelIds = new Set(
+    (context.availableLabels ?? []).map((l) => l.id)
+  );
 
   const staticPrefix = buildStaticPrefix(context, responseLanguage);
   const dynamicBlock = buildDynamicBlock(context.ragContext, context.menuContext);
@@ -461,13 +563,15 @@ export async function generateGeminiResponse(
 
     const result = await chat.sendMessage(userMessageWithContext);
     const responseText = result.response.text();
-    const parsed = parseInteractiveReply(responseText);
+    const parsed = parseInteractiveReply(responseText, allowedLabelIds);
 
     return {
       content: previewOf(parsed.reply),
       reply: parsed.reply,
       language: responseLanguage,
       aiUncertain: parsed.aiUncertain,
+      labelIds: parsed.labelIds,
+      newLabels: parsed.newLabels,
     };
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
@@ -489,12 +593,14 @@ export async function generateGeminiResponse(
       const simplePrompt = `${staticPrefix}\n\n${dynamicBlock ? `${dynamicBlock}\n\n` : ""}${historyText ? `Conversation so far:\n${historyText}\n\n` : ""}Customer message: ${context.userMessage}`;
       const result = await model.generateContent(simplePrompt);
       const responseText = result.response.text();
-      const parsed = parseInteractiveReply(responseText);
+      const parsed = parseInteractiveReply(responseText, allowedLabelIds);
       return {
         content: previewOf(parsed.reply),
         reply: parsed.reply,
         language: responseLanguage,
         aiUncertain: parsed.aiUncertain,
+        labelIds: parsed.labelIds,
+        newLabels: parsed.newLabels,
       };
     } catch (retryError: unknown) {
       const retryMsg = retryError instanceof Error ? retryError.message : String(retryError);

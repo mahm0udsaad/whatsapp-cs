@@ -1,23 +1,5 @@
 "use client";
 
-/**
- * Unified conversations inbox for the dashboard.
- *
- * Tabs (left column):
- *   - Open       — last_inbound_at within 24h
- *   - Expired    — last_inbound_at older than 24h (WhatsApp session closed)
- *   - Mine       — assigned to the current team member
- *   - Unassigned — handler_mode = 'unassigned'
- *
- * Detail panel (right column):
- *   - Message thread.
- *   - If handler_mode === 'unassigned': two Arabic claim buttons calling
- *     /api/dashboard/inbox/claim with mode='human' or mode='bot'.
- *   - Otherwise: banner with current assignee + mode.
- *
- * Realtime: subscribes to conversations + messages filtered by restaurant.
- */
-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -61,7 +43,7 @@ const FILTERS: Array<{ key: Filter; label: string }> = [
 function modeBadge(mode: Row["handler_mode"]) {
   if (mode === "unassigned") return { text: "غير مستلمة", variant: "destructive" as const };
   if (mode === "human") return { text: "استلام يدوي", variant: "default" as const };
-  return { text: "بوت بتوكيل", variant: "secondary" as const };
+  return { text: "بوت", variant: "secondary" as const };
 }
 
 function formatTime(iso: string | null): string {
@@ -101,9 +83,21 @@ export function ConversationsInboxShell({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [claiming, setClaiming] = useState<"human" | "bot" | null>(null);
+  const [handingOff, setHandingOff] = useState<"bot" | "human" | "unassigned" | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [sending, setSending] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const selected = rows.find((r) => r.id === selectedId) || null;
+  const isMyConversation =
+    selected?.handler_mode === "human" && selected?.assigned_to === currentMemberId;
+
+  // Auto-scroll to bottom when messages change or conversation switches.
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, selectedId]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -115,8 +109,7 @@ export function ConversationsInboxShell({
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "Failed to load");
-      const next = (body.conversations as Row[]) ?? [];
-      setRows(next);
+      setRows((body.conversations as Row[]) ?? []);
     } catch (err) {
       setToast(err instanceof Error ? err.message : "تعذّر تحميل المحادثات");
     } finally {
@@ -126,7 +119,6 @@ export function ConversationsInboxShell({
 
   useEffect(() => {
     void load();
-    // Reload whenever filter/q changes.
   }, [load]);
 
   useEffect(() => {
@@ -135,7 +127,7 @@ export function ConversationsInboxShell({
       if (current && rows.some((row) => row.id === current)) return current;
       return rows[0].id;
     });
-  }, [rows, selectedId]);
+  }, [rows]);
 
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -145,54 +137,39 @@ export function ConversationsInboxShell({
     } else {
       params.delete("q");
     }
-    const next = `${pathname}?${params.toString()}`;
-    router.replace(next, { scroll: false });
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }, [filter, pathname, q, router, searchParams]);
 
   useEffect(() => {
     if (!toast) return;
-    const timeout = window.setTimeout(() => setToast(null), 3000);
-    return () => window.clearTimeout(timeout);
+    const t = window.setTimeout(() => setToast(null), 3000);
+    return () => window.clearTimeout(t);
   }, [toast]);
 
-  // Hold a stable ref to `load` so the realtime effect below doesn't
-  // tear down the websocket subscription on every keystroke / filter change.
   const loadRef = useRef(load);
   useEffect(() => {
     loadRef.current = load;
   }, [load]);
 
-  // Realtime — reload list on any conversation change in this tenant.
+  // Realtime — reload list on any conversation change.
   useEffect(() => {
     if (!realtimeReady) return;
     const ch = supabase
       .channel(`inbox-conversations:${restaurantId}`)
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "conversations",
-          filter: `restaurant_id=eq.${restaurantId}`,
-        },
-        () => {
-          void loadRef.current();
-        }
+        { event: "*", schema: "public", table: "conversations", filter: `restaurant_id=eq.${restaurantId}` },
+        () => { void loadRef.current(); }
       )
       .subscribe((status, err) => {
         if (err) console.warn("[inbox-conversations] channel error", status, err);
       });
-    return () => {
-      void supabase.removeChannel(ch);
-    };
+    return () => { void supabase.removeChannel(ch); };
   }, [supabase, restaurantId, realtimeReady]);
 
-  // Load messages when a conversation is selected; subscribe to new ones.
+  // Load messages + subscribe when a conversation is selected.
   useEffect(() => {
-    if (!selectedId) {
-      setMessages([]);
-      return;
-    }
+    if (!selectedId) { setMessages([]); return; }
     let cancelled = false;
     (async () => {
       const { data } = await supabase
@@ -204,35 +181,22 @@ export function ConversationsInboxShell({
       if (!cancelled) setMessages((data as MessageRow[]) ?? []);
     })();
 
-    if (!realtimeReady) {
-      return () => {
-        cancelled = true;
-      };
-    }
+    if (!realtimeReady) return () => { cancelled = true; };
 
     const ch = supabase
       .channel(`inbox-msgs:${selectedId}`)
       .on(
         "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `conversation_id=eq.${selectedId}`,
-        },
-        (payload) => {
-          setMessages((prev) => [...prev, payload.new as MessageRow]);
-        }
+        { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${selectedId}` },
+        (payload) => { setMessages((prev) => [...prev, payload.new as MessageRow]); }
       )
       .subscribe((status, err) => {
         if (err) console.warn("[inbox-msgs] channel error", status, err);
       });
-    return () => {
-      cancelled = true;
-      void supabase.removeChannel(ch);
-    };
+    return () => { cancelled = true; void supabase.removeChannel(ch); };
   }, [supabase, selectedId, realtimeReady]);
 
+  // Claim an unassigned conversation.
   const onClaim = useCallback(
     async (mode: "human" | "bot") => {
       if (!selected) return;
@@ -245,31 +209,16 @@ export function ConversationsInboxShell({
         });
         const body = await res.json();
         if (!res.ok) throw new Error(body.error || "Claim failed");
-        setToast(
-          mode === "human"
-            ? "تم الاستلام — يمكنك الرد الآن"
-            : "تم التوكيل للبوت"
-        );
-        // Optimistic update so the right pane reflects the new handler_mode
-        // immediately — no waiting for the refetch round trip.
+        setToast(mode === "human" ? "تم الاستلام — يمكنك الرد الآن" : "تم التوكيل للبوت");
         const claimedId = selected.id;
         setRows((prev) =>
           prev.map((r) =>
             r.id === claimedId
-              ? {
-                  ...r,
-                  handler_mode: mode,
-                  assigned_to: currentMemberId ?? r.assigned_to,
-                }
+              ? { ...r, handler_mode: mode, assigned_to: currentMemberId ?? r.assigned_to }
               : r
           )
         );
-        // Switch to a tab where the claimed conversation will stay visible,
-        // so the user sees clear confirmation instead of the row vanishing
-        // from the `unassigned` list.
-        if (filter === "unassigned") {
-          setFilter(mode === "human" ? "mine" : "open");
-        }
+        if (filter === "unassigned") setFilter(mode === "human" ? "mine" : "open");
         await load();
       } catch (err) {
         setToast(err instanceof Error ? err.message : "تعذّر الاستلام");
@@ -280,9 +229,82 @@ export function ConversationsInboxShell({
     [selected, load, filter, currentMemberId]
   );
 
+  // Handoff an already-claimed conversation (stop bot / hand to bot / release).
+  const onHandoff = useCallback(
+    async (mode: "bot" | "human" | "unassigned") => {
+      if (!selected) return;
+      setHandingOff(mode);
+      try {
+        const res = await fetch(`/api/dashboard/inbox/conversations/${selected.id}/handoff`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode }),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || "Handoff failed");
+        const labels: Record<string, string> = {
+          bot: "تم التوكيل للبوت",
+          human: "تم الاستلام — يمكنك الرد الآن",
+          unassigned: "تم الإفراج عن المحادثة",
+        };
+        setToast(labels[mode]);
+        setRows((prev) =>
+          prev.map((r) =>
+            r.id === selected.id
+              ? {
+                  ...r,
+                  handler_mode: mode,
+                  assigned_to: mode === "human" ? (currentMemberId ?? r.assigned_to) : mode === "unassigned" ? null : r.assigned_to,
+                }
+              : r
+          )
+        );
+        await load();
+      } catch (err) {
+        setToast(err instanceof Error ? err.message : "تعذّر تغيير الوضع");
+      } finally {
+        setHandingOff(null);
+      }
+    },
+    [selected, load, currentMemberId]
+  );
+
+  // Send a reply.
+  const onSend = useCallback(async () => {
+    if (!selected || !replyText.trim() || sending) return;
+    const text = replyText.trim();
+    setSending(true);
+    setReplyText("");
+    try {
+      const res = await fetch(`/api/dashboard/inbox/conversations/${selected.id}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Send failed");
+    } catch (err) {
+      setToast(err instanceof Error ? err.message : "تعذّر إرسال الرسالة");
+      setReplyText(text);
+    } finally {
+      setSending(false);
+      textareaRef.current?.focus();
+    }
+  }, [selected, replyText, sending]);
+
+  const onKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        void onSend();
+      }
+    },
+    [onSend]
+  );
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-[320px_minmax(0,1fr)]" dir="rtl">
-      {/* Left — list */}
+      {/* Left — conversation list */}
       <aside className="rounded-2xl border border-slate-200 bg-white">
         <div className="border-b border-slate-100 p-3 space-y-2">
           <div className="flex flex-wrap gap-1">
@@ -301,9 +323,7 @@ export function ConversationsInboxShell({
               </button>
             ))}
           </div>
-          <label htmlFor="inbox-search" className="sr-only">
-            بحث بالاسم أو الرقم
-          </label>
+          <label htmlFor="inbox-search" className="sr-only">بحث بالاسم أو الرقم</label>
           <Input
             id="inbox-search"
             value={q}
@@ -343,9 +363,7 @@ export function ConversationsInboxShell({
                       <Badge variant={mb.variant}>{mb.text}</Badge>
                       {r.is_expired && <Badge variant="outline">منتهية</Badge>}
                       {r.assignee_name && (
-                        <span className="truncate text-[11px] text-slate-500">
-                          {r.assignee_name}
-                        </span>
+                        <span className="truncate text-[11px] text-slate-500">{r.assignee_name}</span>
                       )}
                     </div>
                     {r.preview && (
@@ -369,15 +387,16 @@ export function ConversationsInboxShell({
         </ul>
       </aside>
 
-      {/* Right — detail */}
-      <section className="flex flex-col rounded-2xl border border-slate-200 bg-white">
+      {/* Right — detail panel */}
+      <section className="flex flex-col rounded-2xl border border-slate-200 bg-white overflow-hidden" style={{ maxHeight: "calc(100vh - 10rem)" }}>
         {!selected ? (
           <div className="flex flex-1 items-center justify-center p-8 text-sm text-slate-500">
             اختر محادثة من القائمة
           </div>
         ) : (
           <>
-            <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 p-4">
+            {/* Header */}
+            <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 p-4 shrink-0">
               <div>
                 <div className="text-base font-semibold text-slate-900">
                   {selected.customer_name || selected.customer_phone}
@@ -395,8 +414,12 @@ export function ConversationsInboxShell({
               </div>
             </header>
 
+            {/* Message thread */}
             <div className="flex-1 overflow-y-auto p-4">
               <ul className="space-y-2">
+                {messages.length === 0 && (
+                  <li className="mt-8 text-center text-sm text-slate-400">لا توجد رسائل بعد</li>
+                )}
                 {messages.map((m) => (
                   <li
                     key={m.id}
@@ -416,11 +439,14 @@ export function ConversationsInboxShell({
                     </div>
                   </li>
                 ))}
+                <div ref={messagesEndRef} />
               </ul>
             </div>
 
-            <footer className="border-t border-slate-100 p-4">
-              {selected.handler_mode === "unassigned" ? (
+            {/* Footer — actions */}
+            <footer className="border-t border-slate-100 p-4 shrink-0 space-y-3">
+              {/* Unassigned: claim buttons */}
+              {selected.handler_mode === "unassigned" && (
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Button
                     className="flex-1"
@@ -438,14 +464,88 @@ export function ConversationsInboxShell({
                     {claiming === "bot" ? "جارٍ…" : "استلام وتوكيل البوت"}
                   </Button>
                 </div>
-              ) : (
-                <div className="text-xs text-slate-500">
-                  {selected.handler_mode === "human"
-                    ? `مستلمة من ${selected.assignee_name ?? "موظف"} — الرد يدوي`
-                    : `موكلة للبوت عبر ${selected.assignee_name ?? "موظف"}`}
-                  {selected.assigned_to === currentMemberId && selected.handler_mode === "human" && (
-                    <span className="ms-2 text-emerald-700">— أنتِ المسؤولة</span>
-                  )}
+              )}
+
+              {/* Bot mode: stop bot button */}
+              {selected.handler_mode === "bot" && (
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    className="flex-1"
+                    disabled={handingOff !== null}
+                    onClick={() => onHandoff("human")}
+                  >
+                    {handingOff === "human" ? "جارٍ…" : "إيقاف البوت والرد بنفسي"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    disabled={handingOff !== null}
+                    onClick={() => onHandoff("unassigned")}
+                  >
+                    {handingOff === "unassigned" ? "جارٍ…" : "إرجاع للقائمة"}
+                  </Button>
+                </div>
+              )}
+
+              {/* Human mode: reply composer (if this is my conversation) */}
+              {selected.handler_mode === "human" && isMyConversation && (
+                <>
+                  <div className="flex gap-2 items-end">
+                    <textarea
+                      ref={textareaRef}
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      onKeyDown={onKeyDown}
+                      placeholder="اكتب ردك هنا… (Enter للإرسال، Shift+Enter لسطر جديد)"
+                      rows={2}
+                      disabled={sending}
+                      className="flex-1 resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
+                    />
+                    <Button
+                      onClick={() => void onSend()}
+                      disabled={sending || !replyText.trim()}
+                      className="shrink-0"
+                    >
+                      {sending ? "…" : "إرسال"}
+                    </Button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-xs"
+                      disabled={handingOff !== null}
+                      onClick={() => onHandoff("bot")}
+                    >
+                      {handingOff === "bot" ? "جارٍ…" : "تسليم للبوت"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1 text-xs text-slate-500"
+                      disabled={handingOff !== null}
+                      onClick={() => onHandoff("unassigned")}
+                    >
+                      {handingOff === "unassigned" ? "جارٍ…" : "إرجاع للقائمة"}
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              {/* Human mode: read-only info if assigned to someone else */}
+              {selected.handler_mode === "human" && !isMyConversation && (
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-slate-500">
+                    مستلمة من {selected.assignee_name ?? "موظف"} — الرد يدوي
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={handingOff !== null}
+                    onClick={() => onHandoff("human")}
+                  >
+                    {handingOff === "human" ? "جارٍ…" : "استلام مني"}
+                  </Button>
                 </div>
               )}
             </footer>

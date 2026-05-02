@@ -24,6 +24,7 @@ import {
   ListSkeleton,
   ManagerCard,
   ManagerMetric,
+  managerColors,
 } from "../../../components/manager-ui";
 
 export default function CampaignsIndexScreen() {
@@ -56,7 +57,7 @@ export default function CampaignsIndexScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["bottom"]}>
+    <SafeAreaView className="flex-1" style={{ backgroundColor: managerColors.bg }} edges={["top"]}>
       {campaignsQuery.isLoading ? (
         <View className="flex-1">
           <View className="px-4 pt-3">
@@ -79,7 +80,11 @@ export default function CampaignsIndexScreen() {
             <View>
               <Pressable
                 onPress={() => router.push("/(app)/customers")}
-                className="mb-3 flex-row-reverse items-center justify-between rounded-lg border border-gray-200 bg-white p-3"
+                className="mb-3 flex-row-reverse items-center justify-between rounded-[20px] border p-3"
+                style={{
+                  borderColor: managerColors.border,
+                  backgroundColor: managerColors.surface,
+                }}
               >
                 <View className="flex-row-reverse items-center gap-2.5">
                   <View className="h-10 w-10 items-center justify-center rounded-lg bg-emerald-50">
@@ -159,12 +164,13 @@ export default function CampaignsIndexScreen() {
       {/* FAB — New campaign */}
       <Pressable
         onPress={() => router.push("/campaigns/new")}
-        className="absolute bottom-6 left-6 h-14 flex-row items-center gap-2 rounded-full bg-[#00A884] px-5"
+        className="absolute bottom-6 left-6 h-14 flex-row items-center gap-2 rounded-full px-5"
         style={{
-          shadowColor: "#000",
-          shadowOpacity: 0.15,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 4 },
+          backgroundColor: managerColors.brand,
+          shadowColor: managerColors.brandDark,
+          shadowOpacity: 0.18,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 6 },
           elevation: 6,
         }}
       >
@@ -175,9 +181,11 @@ export default function CampaignsIndexScreen() {
       {/* Secondary FAB — Templates library */}
       <Pressable
         onPress={() => router.push("/campaigns/templates")}
-        className="absolute bottom-6 right-6 h-12 flex-row items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4"
+        className="absolute bottom-6 right-6 h-12 flex-row items-center gap-1.5 rounded-full border px-4"
         style={{
-          shadowColor: "#000",
+          borderColor: managerColors.border,
+          backgroundColor: managerColors.surface,
+          shadowColor: managerColors.brandDark,
           shadowOpacity: 0.08,
           shadowRadius: 6,
           shadowOffset: { width: 0, height: 2 },
@@ -225,7 +233,11 @@ function CampaignCard({
   return (
     <Pressable
       onPress={onPress}
-      className="mb-2 rounded-lg border border-gray-200 bg-white p-3"
+      className="mb-2 rounded-[20px] border p-3"
+      style={{
+        borderColor: managerColors.border,
+        backgroundColor: managerColors.surface,
+      }}
     >
       <View className="flex-row-reverse items-start justify-between gap-2">
         <Text className="flex-1 text-right text-base font-semibold text-gray-950">

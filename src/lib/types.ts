@@ -336,6 +336,23 @@ export interface GeminiResponse {
    * provided knowledge. Consumed by the escalation classifier.
    */
   aiUncertain?: boolean;
+  /**
+   * Labels the bot chose to attach to this conversation. The caller is
+   * responsible for upserting into `conversation_label_assignments`.
+   *
+   * `labelIds` are ids the model picked from the existing-labels list
+   * injected into the prompt. `newLabels` are labels the model proposed
+   * creating (name + color) when no existing label fit — the caller may
+   * choose to create them on the fly.
+   */
+  labelIds?: string[];
+  newLabels?: Array<{ name: string; color?: string }>;
+}
+
+export interface AvailableLabel {
+  id: string;
+  name: string;
+  color: string;
 }
 
 export interface MenuCrawlRequest {

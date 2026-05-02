@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  ActionSheetIOS,
   Alert,
   FlatList,
+  Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -68,8 +71,18 @@ type Msg = {
   role: "customer" | "agent" | "system";
   content: string;
   message_type: string;
+  metadata?: Record<string, unknown> | null;
   created_at: string;
   delivery_status: TwilioStatus;
+};
+
+type MediaSlot = {
+  storage_path: string | null;
+  content_type: string;
+  size_bytes: number | null;
+  original_filename: string | null;
+  delivery_status?: "stored" | "too_large" | "failed";
+  error?: string;
 };
 
 type ConvRow = {
@@ -98,6 +111,22 @@ type ConvPayload = {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const EMPTY_MESSAGES: Msg[] = [];
+const chatTheme = {
+  screenBg: managerColors.bg,
+  headerBg: managerColors.brand,
+  headerSoft: "#3147AA",
+  headerBorder: "#3C53B8",
+  composerBg: managerColors.surface,
+  line: managerColors.border,
+  agentBubble: managerColors.brand,
+  agentBubbleEdge: "#FFD34D",
+  customerBubble: "#FFFFFF",
+  customerBubbleText: "#10214F",
+  subtleSurface: managerColors.surfaceTint,
+  subtleText: managerColors.muted,
+};
+const WHATSAPP_MEDIA_BUCKET = "whatsapp-media";
+const URL_RE = /(https?:\/\/[^\s]+)/gi;
 
 function getWindowState(lastInboundAt: string | null) {
   if (!lastInboundAt) {
@@ -281,6 +310,95 @@ export default function ConversationDetail() {
 
   const queryKey = useMemo(() => ["conv", id], [id]);
 
+  const openAssignToMemberSheet = useCallback(async () => {
+    const loaded =
+      asArray<TeamMemberRosterRow>(rosterQuery.data).filter((m) => m.is_active);
+    const members =
+      loaded.length > 0
+        ? loaded
+        : asArray<TeamMemberRosterRow>((await rosterQuery.refetch()).data).filter(
+            (m) => m.is_active
+          );
+
+    if (members.length === 0) {
+      Alert.alert("لا يوجد أعضاء متاحون", "تعذّر تحميل قائمة الفريق.");
+      return;
+    }
+
+    const options = [...members.map((m) => m.full_name ?? "—"), "إلغاء"];
+    const cancelButtonIndex = options.length - 1;
+
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex,
+        userInterfaceStyle: "light",
+      },
+      (buttonIndex) => {
+        if (buttonIndex === cancelButtonIndex) return;
+        const member = members[buttonIndex];
+        if (!member || !id) return;
+        reassignMutation.mutate({
+          conversationId: id as string,
+          assignToTeamMemberId: member.id,
+        });
+      }
+    );
+  }, [id, reassignMutation, rosterQuery]);
+
+  const openManageActionSheet = useCallback(() => {
+    if (Platform.OS !== "ios") {
+      setReassignOpen(true);
+      return;
+    }
+    const archiveLabel = conv?.archived_at ? "إلغاء الأرشفة" : "أرشفة المحادثة";
+    const options = [
+      "نقل إلى موظف",
+      "إرجاع للبوت",
+      "إلغاء التعيين",
+      "إدارة التسميات",
+      archiveLabel,
+      "إلغاء",
+    ];
+    const cancelButtonIndex = options.length - 1;
+
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex,
+        userInterfaceStyle: "light",
+      },
+      (buttonIndex) => {
+        if (buttonIndex === cancelButtonIndex || !id) return;
+        if (buttonIndex === 0) {
+          void openAssignToMemberSheet();
+          return;
+        }
+        if (buttonIndex === 1) {
+          reassignMutation.mutate({
+            conversationId: id as string,
+            forceBot: true,
+          });
+          return;
+        }
+        if (buttonIndex === 2) {
+          reassignMutation.mutate({
+            conversationId: id as string,
+            unassign: true,
+          });
+          return;
+        }
+        if (buttonIndex === 3) {
+          setLabelsOpen(true);
+          return;
+        }
+        if (buttonIndex === 4) {
+          setReassignOpen(true);
+        }
+      }
+    );
+  }, [conv?.archived_at, id, openAssignToMemberSheet, reassignMutation]);
+
   const query = useQuery({
     queryKey,
     enabled: !!id,
@@ -298,7 +416,7 @@ export default function ConversationDetail() {
       const [msgsRes, assigneeRes, escalationRes] = await Promise.all([
         supabase
           .from("messages")
-          .select("id, role, content, message_type, created_at, delivery_status")
+          .select("id, role, content, message_type, metadata, created_at, delivery_status")
           .eq("conversation_id", id!)
           .order("created_at", { ascending: true })
           .limit(200),
@@ -828,102 +946,135 @@ export default function ConversationDetail() {
   const expired = windowState.expired;
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["top", "bottom"]}>
-      <View className="border-b border-[#E6E8EC] bg-white px-3 pb-2 pt-2 z-10">
+    <SafeAreaView
+      className="flex-1"
+      edges={["top", "bottom"]}
+      style={{ backgroundColor: chatTheme.screenBg }}
+    >
+      <View
+        className="border-b px-3 pb-2 pt-2 z-10"
+        style={{
+          borderColor: chatTheme.headerBorder,
+          backgroundColor: chatTheme.headerBg,
+        }}
+      >
         <View
-          className="flex-row-reverse items-center gap-2 rounded-lg bg-[#052E26] px-2 py-2"
-          style={premiumShadow}
+          className="flex-row-reverse items-center gap-2 px-1 py-1"
         >
           <Pressable
             onPress={() => router.back()}
             hitSlop={12}
-            className="h-9 w-9 items-center justify-center rounded-lg bg-white/10"
+            className="h-10 w-10 items-center justify-center rounded-full"
+            style={{ backgroundColor: "rgba(255,255,255,0.14)" }}
           >
             <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
           </Pressable>
-          <View className="h-9 w-9 items-center justify-center rounded-lg bg-white/12">
-            <Ionicons name="person" size={18} color="#B7F7D8" />
+          <View
+            className="h-10 w-10 items-center justify-center rounded-full"
+            style={{ backgroundColor: managerColors.bot }}
+          >
+            <Ionicons name="person" size={19} color={managerColors.brandDark} />
           </View>
           <View className="flex-1 justify-center">
             <Text
-              className="text-right text-sm font-bold text-white"
+              className="text-right text-base font-bold text-white"
               numberOfLines={1}
             >
               {conv.customer_name || conv.customer_phone}
             </Text>
             {conv.customer_name ? (
-              <Text className="mt-0.5 text-right text-[10px] text-emerald-100/80" selectable>
+              <Text
+                className="mt-0.5 text-right text-[11px]"
+                style={{ color: "rgba(255,255,255,0.82)" }}
+                selectable
+              >
                 {conv.customer_phone}
               </Text>
             ) : null}
           </View>
           {manager ? (
             <Pressable
-              onPress={() => setReassignOpen(true)}
+              onPress={openManageActionSheet}
               hitSlop={12}
-              className="h-9 w-9 items-center justify-center rounded-lg bg-white/10"
+              className="h-10 w-10 items-center justify-center rounded-full"
+              style={{ backgroundColor: "rgba(255,255,255,0.14)" }}
             >
               <Ionicons name="ellipsis-horizontal" size={20} color="#FFFFFF" />
             </Pressable>
           ) : null}
         </View>
-        <View
-          className={`mt-1.5 rounded-lg border px-2 py-1.5 ${
-            windowState.tone === "danger"
-              ? "border-red-200 bg-red-50"
-              : windowState.tone === "warning"
-              ? "border-amber-200 bg-amber-50"
-              : windowState.tone === "success"
-              ? "border-emerald-200 bg-emerald-50"
-              : "border-[#E6E8EC] bg-[#F6F7F9]"
-          }`}
-        >
-          <View className="flex-row-reverse items-center gap-2">
-            <Ionicons
-              name={
-                windowState.tone === "success"
-                  ? "checkmark-circle"
-                  : windowState.tone === "neutral"
-                  ? "information-circle"
-                  : "time"
-              }
-              size={16}
-              color={
-                windowState.tone === "danger"
-                  ? managerColors.danger
-                  : windowState.tone === "warning"
-                  ? managerColors.warning
-                  : windowState.tone === "success"
-                  ? managerColors.brand
-                  : managerColors.muted
-              }
-            />
-            <Text
-              className={`flex-1 text-right text-xs font-semibold ${
-                windowState.tone === "danger"
-                  ? "text-red-800"
-                  : windowState.tone === "warning"
-                  ? "text-amber-800"
-                  : windowState.tone === "success"
-                  ? "text-emerald-900"
-                  : "text-[#344054]"
-              }`}
-              numberOfLines={1}
-            >
-              {windowState.title}
-            </Text>
-            <Text
-              className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                conv.handler_mode === "unassigned"
-                  ? "bg-red-100 text-red-800"
-                  : conv.handler_mode === "bot"
-                  ? "bg-indigo-100 text-indigo-800"
-                  : "bg-emerald-100 text-emerald-900"
-              }`}
-            >
-              {getOwnerLabel(conv)}
-            </Text>
+        <View className="mt-2 flex-row-reverse items-center gap-2">
+          <View
+            className={`flex-1 rounded-full border px-3 py-2 ${
+              windowState.tone === "danger"
+                ? "border-red-400 bg-red-600"
+                : windowState.tone === "warning"
+                ? "border-amber-400 bg-amber-600"
+                : "border-[#D6DDF8] bg-[#3147AA]"
+            }`}
+            style={[
+              {
+                backgroundColor:
+                  windowState.tone === "danger"
+                    ? "#DC2626"
+                    : windowState.tone === "warning"
+                    ? "#FFC928"
+                    : "#3147AA",
+              },
+            ]}
+          >
+            <View className="flex-row-reverse items-center gap-2">
+              <Ionicons
+                name={
+                  windowState.tone === "success"
+                    ? "checkmark-circle"
+                    : windowState.tone === "neutral"
+                    ? "information-circle"
+                    : "time"
+                }
+                size={16}
+                color={
+                  windowState.tone === "danger"
+                    ? "#FFFFFF"
+                    : windowState.tone === "warning"
+                    ? "#273B9A"
+                    : managerColors.brand
+                }
+              />
+              <Text
+                className={`flex-1 text-right text-xs font-semibold ${
+                  windowState.tone === "danger"
+                    ? "text-white"
+                    : windowState.tone === "warning"
+                    ? "text-[#273B9A]"
+                    : "text-white"
+                }`}
+                numberOfLines={1}
+              >
+                {windowState.title}
+              </Text>
+            </View>
           </View>
+          <Text
+            className={`rounded-full px-3 py-2 text-[10px] font-semibold ${
+              conv.handler_mode === "unassigned"
+                ? "text-white"
+                : conv.handler_mode === "bot"
+                ? "text-[#273B9A]"
+                : "text-white"
+            }`}
+            style={
+              conv.handler_mode === "unassigned"
+                ? { backgroundColor: "#DC2626" }
+                : conv.handler_mode === "bot"
+                ? { backgroundColor: "#FFC928" }
+                : conv.handler_mode === "human"
+                ? { backgroundColor: "rgba(255,255,255,0.14)" }
+                : undefined
+            }
+          >
+            {getOwnerLabel(conv)}
+          </Text>
         </View>
         <EscalationBanner escalation={pendingEscalation} />
       </View>
@@ -938,6 +1089,7 @@ export default function ConversationDetail() {
           inverted
           keyExtractor={(m) => m.id}
           contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
+          style={{ backgroundColor: chatTheme.screenBg }}
           onLayout={() => {
             listLaidOutRef.current = true;
             tryInitialScrollToLatest();
@@ -975,10 +1127,10 @@ export default function ConversationDetail() {
           }}
           ListEmptyComponent={
             <View className="items-center px-8 py-20">
-              <Text className="text-center text-base font-semibold text-gray-700">
+              <Text className="text-center text-base font-semibold text-[#16245C]">
                 لا توجد رسائل بعد
               </Text>
-              <Text className="mt-2 text-center text-sm text-gray-500">
+              <Text className="mt-2 text-center text-sm text-[#5E6A99]">
                 عند وصول أول رسالة من العميل ستظهر هنا.
               </Text>
             </View>
@@ -1018,7 +1170,7 @@ export default function ConversationDetail() {
             onPress={(e) => e.stopPropagation()}
             className="rounded-t-lg bg-white p-4 pb-8"
           >
-            <Text className="text-right text-lg font-bold text-[#0B0F13]">
+            <Text className="text-right text-lg font-bold text-[#16245C]">
               إدارة المحادثة
             </Text>
             <View className="mt-4">
@@ -1054,7 +1206,7 @@ export default function ConversationDetail() {
                                 : "bg-gray-300"
                             }`}
                           />
-                          <Text className="text-right text-sm font-semibold text-gray-950">
+                          <Text className="text-right text-sm font-semibold text-[#16245C]">
                             {m.full_name ?? "—"}
                           </Text>
                         </View>
@@ -1099,7 +1251,7 @@ export default function ConversationDetail() {
                 }
                 className="flex-row-reverse items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3"
               >
-                <Text className="text-right text-sm font-semibold text-gray-800">
+                <Text className="text-right text-sm font-semibold text-[#16245C]">
                   إلغاء التعيين
                 </Text>
                 <Ionicons name="refresh" size={20} color="#374151" />
@@ -1148,8 +1300,18 @@ export default function ConversationDetail() {
 
 function ChatSkeleton() {
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["top", "bottom"]}>
-      <View className="border-b border-[#E6E8EC] bg-white px-3 pb-2 pt-2 z-10">
+    <SafeAreaView
+      className="flex-1"
+      edges={["top", "bottom"]}
+      style={{ backgroundColor: chatTheme.screenBg }}
+    >
+      <View
+        className="border-b px-3 pb-3 pt-2 z-10"
+        style={{
+          borderColor: chatTheme.headerBorder,
+          backgroundColor: chatTheme.headerBg,
+        }}
+      >
         <View className="flex-row-reverse items-center gap-2">
           <SkeletonBlock className="h-9 w-9 rounded-lg" />
           <SkeletonBlock className="h-9 w-9 rounded-lg" />
@@ -1159,7 +1321,13 @@ function ChatSkeleton() {
           </View>
           <SkeletonBlock className="h-9 w-9 rounded-lg" />
         </View>
-        <View className="mt-1.5 rounded-lg border border-[#E6E8EC] bg-[#F6F7F9] px-2 py-2">
+        <View
+          className="mt-2 rounded-[18px] border px-3 py-2"
+          style={{
+            borderColor: "rgba(255,255,255,0.16)",
+            backgroundColor: "rgba(255,255,255,0.1)",
+          }}
+        >
           <View className="flex-row-reverse items-center gap-2">
             <SkeletonBlock className="h-4 w-4 rounded-lg" />
             <SkeletonBlock className="h-3 w-40 rounded-lg" />
@@ -1169,7 +1337,7 @@ function ChatSkeleton() {
         </View>
       </View>
 
-      <View className="flex-1 px-4 py-4">
+      <View className="flex-1 px-4 py-4" style={{ backgroundColor: chatTheme.screenBg }}>
         <View className="mb-5 items-center">
           <SkeletonBlock className="h-6 w-28 rounded-lg bg-white" />
         </View>
@@ -1195,7 +1363,10 @@ function ChatSkeleton() {
         </View>
       </View>
 
-      <View className="border-t border-[#E6E8EC] bg-white px-3 pb-4 pt-3">
+      <View
+        className="border-t px-3 pb-4 pt-3"
+        style={{ borderColor: chatTheme.line, backgroundColor: chatTheme.composerBg }}
+      >
         <View className="flex-row-reverse items-end gap-2">
           <SkeletonBlock className="h-11 w-11 rounded-lg" />
           <SkeletonBlock className="h-11 w-11 rounded-lg" />
@@ -1210,8 +1381,14 @@ function ChatSkeleton() {
 function DateSeparator({ date }: { date: string }) {
   return (
     <View className="my-3 items-center">
-      <View className="rounded-lg bg-gray-200/60 px-3 py-1">
-        <Text className="text-[11px] font-semibold text-gray-500">
+      <View
+        className="rounded-full border px-3 py-1"
+        style={{
+          backgroundColor: "rgba(255,255,255,0.72)",
+          borderColor: chatTheme.line,
+        }}
+      >
+        <Text className="text-[11px] font-semibold text-[#5E6A99]">
           {format(new Date(date), "EEEE d MMMM", { locale: ar })}
         </Text>
       </View>
@@ -1219,9 +1396,201 @@ function DateSeparator({ date }: { date: string }) {
   );
 }
 
+function formatBytes(bytes: number | null | undefined): string {
+  if (!bytes || bytes <= 0) return "";
+  if (bytes < 1024) return `${bytes.toLocaleString("ar")} بايت`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} ك.ب`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} م.ب`;
+}
+
+function messageMediaSlots(message: Msg): MediaSlot[] {
+  const raw = (message.metadata as { media?: MediaSlot[] } | null)?.media;
+  return Array.isArray(raw) ? raw : [];
+}
+
+function MessageText({
+  content,
+  isCustomer,
+}: {
+  content: string;
+  isCustomer: boolean;
+}) {
+  if (!content) return null;
+  const parts = content.split(URL_RE);
+  return (
+    <Text
+      className={`text-right text-sm leading-5 ${
+        isCustomer ? "text-[#10214F]" : "text-white"
+      }`}
+      selectable
+    >
+      {parts.map((part, index) => {
+        const isUrl = /^https?:\/\//i.test(part);
+        if (!isUrl) return <Text key={`${index}:${part}`}>{part}</Text>;
+        return (
+          <Text
+            key={`${index}:${part}`}
+            onPress={() => Linking.openURL(part)}
+            className={isCustomer ? "text-[#273B9A] underline" : "text-[#FDE68A] underline"}
+          >
+            {part}
+          </Text>
+        );
+      })}
+    </Text>
+  );
+}
+
+function MediaAttachment({
+  slot,
+  messageType,
+  bubbleTone,
+}: {
+  slot: MediaSlot;
+  messageType: string;
+  bubbleTone: "customer" | "agent";
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!slot.storage_path) return;
+    (async () => {
+      const { data, error } = await supabase.storage
+        .from(WHATSAPP_MEDIA_BUCKET)
+        .createSignedUrl(slot.storage_path, 60 * 60);
+      if (cancelled) return;
+      if (error || !data?.signedUrl) {
+        setError(error?.message ?? "تعذّر تحميل الملف");
+        return;
+      }
+      setUrl(data.signedUrl);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [slot.storage_path]);
+
+  if (slot.delivery_status === "too_large") {
+    return (
+      <View className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2">
+        <Text className="text-right text-xs text-amber-800">
+          الملف كبير ولم يتم حفظه. {formatBytes(slot.size_bytes)}
+        </Text>
+      </View>
+    );
+  }
+
+  if (!slot.storage_path) {
+    return (
+      <View className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2">
+        <Text className="text-right text-xs text-rose-800">
+          تعذّر تحميل الملف.
+        </Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2">
+        <Text className="text-right text-xs text-rose-800">{error}</Text>
+      </View>
+    );
+  }
+
+  if (!url) {
+    return (
+      <View className="flex-row-reverse items-center gap-2 rounded-2xl px-3 py-2">
+        <ActivityIndicator size="small" color={bubbleTone === "customer" ? managerColors.brand : "#FFFFFF"} />
+        <Text className={`text-xs ${bubbleTone === "customer" ? "text-[#5E6A99]" : "text-white/80"}`}>
+          جارٍ تحميل الملف...
+        </Text>
+      </View>
+    );
+  }
+
+  if (messageType === "image") {
+    return (
+      <>
+        <Pressable onPress={() => setPreviewOpen(true)}>
+          <Image
+            source={{ uri: url }}
+            className="h-56 w-full rounded-[18px]"
+            resizeMode="cover"
+          />
+        </Pressable>
+        <Modal
+          visible={previewOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setPreviewOpen(false)}
+        >
+          <Pressable
+            className="flex-1 items-center justify-center bg-black/92 px-4"
+            onPress={() => setPreviewOpen(false)}
+          >
+            <Image
+              source={{ uri: url }}
+              className="h-[80%] w-full"
+              resizeMode="contain"
+            />
+            <Text className="mt-4 text-sm text-white/78">
+              اضغطي لإغلاق الصورة
+            </Text>
+          </Pressable>
+        </Modal>
+      </>
+    );
+  }
+
+  return (
+    <Pressable
+      onPress={() => Linking.openURL(url)}
+      className={`flex-row-reverse items-center gap-2 rounded-[18px] border px-3 py-2 ${
+        bubbleTone === "customer"
+          ? "border-[#D6DDF8] bg-[#F5F7FF]"
+          : "border-[#FFD34D] bg-white/10"
+      }`}
+    >
+      <Ionicons
+        name={messageType === "video" ? "videocam-outline" : "document-outline"}
+        size={18}
+        color={bubbleTone === "customer" ? managerColors.brand : "#FFFFFF"}
+      />
+      <View className="flex-1">
+        <Text
+          className={`text-right text-xs font-semibold ${
+            bubbleTone === "customer" ? "text-[#16245C]" : "text-white"
+          }`}
+          numberOfLines={1}
+        >
+          {slot.original_filename || "ملف مرفق"}
+        </Text>
+        <Text
+          className={`mt-0.5 text-right text-[11px] ${
+            bubbleTone === "customer" ? "text-[#5E6A99]" : "text-white/72"
+          }`}
+          numberOfLines={1}
+        >
+          {[slot.content_type, formatBytes(slot.size_bytes)].filter(Boolean).join(" • ")}
+        </Text>
+      </View>
+      <Ionicons
+        name="open-outline"
+        size={16}
+        color={bubbleTone === "customer" ? managerColors.brand : "#FFFFFF"}
+      />
+    </Pressable>
+  );
+}
+
 function MessageBubble({ message }: { message: Msg }) {
   const isCustomer = message.role === "customer";
   const isSystem = message.role === "system";
+  const slots = messageMediaSlots(message);
   if (isSystem) {
     return (
       <View className="my-2 items-center">
@@ -1238,25 +1607,45 @@ function MessageBubble({ message }: { message: Msg }) {
   return (
     <View className={`my-1 flex ${isCustomer ? "items-start" : "items-end"}`}>
       <View
-        className={`max-w-[84%] px-3 py-2 ${
+        className={`max-w-[84%] border px-3 py-2 ${
           isCustomer
-            ? "rounded-2xl rounded-tl-md border border-[#E6E8EC] bg-white"
-            : "rounded-2xl rounded-tr-md bg-[#00A884]"
+            ? "rounded-[22px] rounded-tl-md"
+            : "rounded-[22px] rounded-tr-md"
         }`}
-        style={isCustomer ? softShadow : premiumShadow}
+        style={[
+          isCustomer
+            ? {
+                borderColor: chatTheme.line,
+                backgroundColor: chatTheme.customerBubble,
+              }
+            : {
+                borderColor: chatTheme.agentBubbleEdge,
+                backgroundColor: chatTheme.agentBubble,
+              },
+          isCustomer ? softShadow : premiumShadow,
+        ]}
       >
-        <Text
-          className={`text-right text-sm leading-5 ${
-            isCustomer ? "text-[#0B0F13]" : "text-white"
-          }`}
-          selectable
-        >
-          {message.content}
-        </Text>
+        {slots.length > 0 ? (
+          <View className="gap-2">
+            {slots.map((slot, index) => (
+              <MediaAttachment
+                key={`${message.id}:${slot.storage_path ?? index}`}
+                slot={slot}
+                messageType={message.message_type}
+                bubbleTone={isCustomer ? "customer" : "agent"}
+              />
+            ))}
+            {message.content ? (
+              <MessageText content={message.content} isCustomer={isCustomer} />
+            ) : null}
+          </View>
+        ) : (
+          <MessageText content={message.content} isCustomer={isCustomer} />
+        )}
         <View className="mt-1 flex-row-reverse items-center gap-1.5">
           <Text
             className={`text-[10px] ${
-              isCustomer ? "text-[#98A2B3]" : "text-emerald-100"
+              isCustomer ? "text-[#7A88B8]" : "text-white/72"
             }`}
           >
             {format(new Date(message.created_at), "HH:mm")}
@@ -1331,16 +1720,16 @@ function DeliveryTicks({ status }: { status: TwilioStatus }) {
     return <Ionicons name="alert-circle" size={13} color="#FCA5A5" />;
   }
   if (status === "read") {
-    return <Ionicons name="checkmark-done" size={14} color="#7DD3FC" />;
+    return <Ionicons name="checkmark-done" size={14} color="#FDE68A" />;
   }
   if (status === "delivered") {
-    return <Ionicons name="checkmark-done" size={14} color="#D1FAE5" />;
+    return <Ionicons name="checkmark-done" size={14} color="#E5ECFF" />;
   }
   if (status === "sent") {
-    return <Ionicons name="checkmark" size={13} color="#D1FAE5" />;
+    return <Ionicons name="checkmark" size={13} color="#E5ECFF" />;
   }
   // queued, sending, null → pending
-  return <Ionicons name="time-outline" size={12} color="#A7F3D0" />;
+  return <Ionicons name="time-outline" size={12} color="#D6DDF8" />;
 }
 
 function Footer({
@@ -1381,7 +1770,10 @@ function Footer({
 }) {
   if (mode === "unassigned") {
     return (
-      <View className="border-t border-[#E6E8EC] bg-white px-3 pb-4 pt-3">
+      <View
+        className="border-t px-3 pb-4 pt-3"
+        style={{ borderColor: chatTheme.line, backgroundColor: chatTheme.composerBg }}
+      >
         <View className="mb-3 flex-row-reverse items-center justify-center gap-1.5">
           <Ionicons name="hand-left-outline" size={16} color={managerColors.danger} />
           <Text className="text-right text-xs text-[#667085]">
@@ -1392,8 +1784,8 @@ function Footer({
           <Pressable
             onPress={() => onClaim("human")}
             disabled={claiming !== null}
-            className="h-10 flex-1 items-center justify-center rounded-lg bg-[#00A884] px-3"
-            style={premiumShadow}
+            className="h-11 flex-1 items-center justify-center rounded-2xl px-3"
+            style={[premiumShadow, { backgroundColor: managerColors.brand }]}
           >
             {claiming === "human" ? (
               <ActivityIndicator color="#fff" size="small" />
@@ -1404,12 +1796,13 @@ function Footer({
           <Pressable
             onPress={() => onClaim("bot")}
             disabled={claiming !== null}
-            className="h-10 flex-1 items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 px-3"
+            className="h-11 flex-1 items-center justify-center rounded-2xl border px-3"
+            style={{ borderColor: "#FFD34D", backgroundColor: "#FFFBEF" }}
           >
             {claiming === "bot" ? (
               <ActivityIndicator size="small" />
             ) : (
-              <Text className="font-semibold text-sm text-indigo-800">توكيل للبوت</Text>
+              <Text className="font-semibold text-sm text-[#8A5E00]">توكيل للبوت</Text>
             )}
           </Pressable>
         </View>
@@ -1421,7 +1814,10 @@ function Footer({
     const canSend = !!pendingFile || text.trim().length > 0;
     const isImage = pendingFile?.type.startsWith("image/");
     return (
-      <View className="border-t border-[#E6E8EC] bg-white px-3 pb-4 pt-3">
+      <View
+        className="border-t px-3 pb-4 pt-3"
+        style={{ borderColor: chatTheme.line, backgroundColor: chatTheme.composerBg }}
+      >
         {expired && (
           <View className="mb-2 flex-row-reverse items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
             <Ionicons name="warning-outline" size={17} color={managerColors.warning} />
@@ -1431,7 +1827,10 @@ function Footer({
           </View>
         )}
         {pendingFile && (
-          <View className="mb-2 flex-row-reverse items-center gap-2 rounded-lg border border-[#E6E8EC] bg-[#F6F7F9] px-3 py-2">
+          <View
+            className="mb-2 flex-row-reverse items-center gap-2 rounded-[18px] border px-3 py-2"
+            style={{ borderColor: chatTheme.line, backgroundColor: chatTheme.subtleSurface }}
+          >
             <Ionicons
               name={isImage ? "image-outline" : "document-outline"}
               size={18}
@@ -1457,7 +1856,8 @@ function Footer({
             onPress={onPickImage}
             disabled={sending || !!pendingFile}
             hitSlop={6}
-            className="h-12 w-12 items-center justify-center rounded-lg bg-[#F2F4F7]"
+            className="h-12 w-12 items-center justify-center rounded-2xl"
+            style={{ backgroundColor: chatTheme.subtleSurface }}
           >
             <Ionicons
               name="image-outline"
@@ -1469,7 +1869,8 @@ function Footer({
             onPress={onPickDocument}
             disabled={sending || !!pendingFile}
             hitSlop={6}
-            className="h-12 w-12 items-center justify-center rounded-lg bg-[#F2F4F7]"
+            className="h-12 w-12 items-center justify-center rounded-2xl"
+            style={{ backgroundColor: chatTheme.subtleSurface }}
           >
             <Ionicons
               name="attach-outline"
@@ -1482,16 +1883,19 @@ function Footer({
             onChangeText={setText}
             placeholder={pendingFile ? "أضيفي تعليقًا (اختياري)..." : "اكتبي ردك..."}
             placeholderTextColor="#98A2B3"
-            className="min-h-12 max-h-28 flex-1 rounded-lg border border-[#E6E8EC] bg-[#F6F7F9] px-3 py-2 text-right text-[#0B0F13]"
+            className="min-h-12 max-h-28 flex-1 rounded-[22px] border px-4 py-3 text-right text-[#16245C]"
+            style={{ borderColor: chatTheme.line, backgroundColor: chatTheme.subtleSurface }}
             multiline
           />
           <Pressable
             onPress={onSend}
             disabled={sending || !canSend}
-            className={`h-12 min-w-16 items-center justify-center rounded-lg px-4 ${
-              sending || !canSend ? "bg-[#D0D5DD]" : "bg-[#00A884]"
-            }`}
-            style={!sending && canSend ? premiumShadow : undefined}
+            className="h-12 min-w-16 items-center justify-center rounded-2xl px-4"
+            style={
+              sending || !canSend
+                ? { backgroundColor: "#D0D5DD" }
+                : [premiumShadow, { backgroundColor: managerColors.brand }]
+            }
           >
             {sending ? (
               <ActivityIndicator color="#fff" />
@@ -1508,23 +1912,29 @@ function Footer({
 
   if (mode === "bot") {
     return (
-      <View className="border-t border-[#E6E8EC] bg-white px-3 pb-4 pt-3 flex-row-reverse items-center gap-3">
-        <View className="flex-1">
+      <View
+        className="border-t flex-row-reverse items-center gap-3 px-3 pb-4 pt-3"
+        style={{ borderColor: chatTheme.line, backgroundColor: chatTheme.composerBg }}
+      >
+        <View
+          className="flex-1 rounded-[20px] border px-3 py-3"
+          style={{ borderColor: chatTheme.line, backgroundColor: "#FFFFFF" }}
+        >
           <View className="flex-row-reverse items-center gap-1.5">
             <Ionicons name="hardware-chip-outline" size={16} color={managerColors.bot} />
-            <Text className="text-right text-sm font-bold text-[#0B0F13]">
+            <Text className="text-right text-sm font-bold text-[#16245C]">
               البوت يدير المحادثة
             </Text>
           </View>
-          <Text className="mt-0.5 text-right text-xs text-[#667085]">
+          <Text className="mt-0.5 text-right text-xs leading-5 text-[#5E6A99]">
             استلميها يدويًا للرد على العميل.
           </Text>
         </View>
         <Pressable
           onPress={() => onClaim("human")}
           disabled={claiming !== null}
-          className="h-10 px-4 items-center justify-center rounded-lg bg-[#00A884]"
-          style={premiumShadow}
+          className="h-11 px-4 items-center justify-center rounded-2xl"
+          style={[premiumShadow, { backgroundColor: managerColors.brand }]}
         >
           {claiming === "human" ? (
             <ActivityIndicator color="#fff" size="small" />
@@ -1537,8 +1947,14 @@ function Footer({
   }
 
   return (
-    <View className="border-t border-[#E6E8EC] bg-white px-3 pb-4 pt-3">
-      <View className="flex-row-reverse items-center gap-2 rounded-lg bg-[#F6F7F9] px-3 py-3">
+    <View
+      className="border-t px-3 pb-4 pt-3"
+      style={{ borderColor: chatTheme.line, backgroundColor: chatTheme.composerBg }}
+    >
+      <View
+        className="flex-row-reverse items-center gap-2 rounded-[18px] px-3 py-3"
+        style={{ backgroundColor: chatTheme.subtleSurface }}
+      >
         <Ionicons name="lock-closed-outline" size={18} color={managerColors.muted} />
         <Text className="flex-1 text-right text-xs leading-5 text-[#667085]">
           هذه المحادثة مستلمة من موظف آخر. يمكنك المتابعة للقراءة فقط.
@@ -1726,7 +2142,7 @@ function LabelsPickerModal({
           onPress={(e) => e.stopPropagation()}
           className="rounded-t-lg bg-white p-4 pb-8"
         >
-          <Text className="text-right text-lg font-bold text-[#0B0F13]">
+          <Text className="text-right text-lg font-bold text-[#16245C]">
             التسميات
           </Text>
           <Text className="mt-1 text-right text-xs text-[#667085]">
@@ -1766,7 +2182,7 @@ function LabelsPickerModal({
                           <View
                             className={`h-3 w-3 rounded-full ${cls.bg} border ${cls.border}`}
                           />
-                          <Text className="text-right text-sm font-semibold text-gray-950">
+                          <Text className="text-right text-sm font-semibold text-[#16245C]">
                             {l.name}
                           </Text>
                         </View>
@@ -1795,7 +2211,7 @@ function LabelsPickerModal({
                 placeholder="مثال: بانتظار الدفع"
                 maxLength={40}
                 textAlign="right"
-                className="mt-1 rounded-md border border-gray-200 bg-white px-3 py-2 text-right text-sm text-gray-950"
+                className="mt-1 rounded-md border border-gray-200 bg-white px-3 py-2 text-right text-sm text-[#16245C]"
               />
               <Text className="mt-3 text-right text-xs text-[#667085]">
                 اللون

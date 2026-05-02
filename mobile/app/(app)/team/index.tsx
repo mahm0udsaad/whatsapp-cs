@@ -50,6 +50,7 @@ import {
   ListSkeleton,
   ManagerCard,
   ManagerMetric,
+  managerColors,
 } from "../../../components/manager-ui";
 
 type Segment = "people" | "schedule" | "performance";
@@ -104,18 +105,18 @@ export default function TeamScreen() {
 
   if (!restaurantId) {
     return (
-      <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["bottom"]}>
+      <View className="flex-1" style={{ backgroundColor: managerColors.bg }}>
         <View className="flex-row-reverse gap-2 px-3 pt-3 pb-2">
           <CardSkeleton rows={1} className="flex-1" />
           <CardSkeleton rows={1} className="flex-1" />
         </View>
         <ListSkeleton count={5} showAvatar />
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["bottom"]}>
+    <View className="flex-1" style={{ backgroundColor: managerColors.bg }}>
       {/* Segmented control */}
       <View className="flex-row-reverse gap-2 px-3 pt-3 pb-2">
         <SegButton
@@ -163,7 +164,8 @@ export default function TeamScreen() {
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            className="rounded-t-lg bg-white p-4 pb-8"
+            className="rounded-t-[28px] p-4 pb-8"
+            style={{ backgroundColor: managerColors.surface }}
           >
             <Text className="text-right text-lg font-bold text-gray-950">
               {selectedMember?.full_name ?? "موظف"}
@@ -205,7 +207,7 @@ export default function TeamScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 

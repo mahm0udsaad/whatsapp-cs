@@ -1,45 +1,37 @@
 import { redirect } from "next/navigation";
-import { ConversationsInbox } from "@/components/dashboard/conversations-inbox";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 import { getCurrentUser, getRestaurantForUserId } from "@/lib/tenant";
-import { Conversation } from "@/lib/types";
-import { createTranslator } from "@/lib/i18n";
+import { ConversationsInboxShell } from "@/components/dashboard/conversations-inbox-shell";
+
+export const dynamic = "force-dynamic";
 
 export default async function ConversationsPage() {
-  const t = createTranslator("ar");
   const user = await getCurrentUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  if (!user) redirect("/login");
 
   const restaurant = await getRestaurantForUserId(user.id);
+  if (!restaurant) redirect("/onboarding");
 
-  if (!restaurant) {
-    redirect("/onboarding");
-  }
-
-  const { data } = await adminSupabaseClient
-    .from("conversations")
-    .select("*")
+  const { data: member } = await adminSupabaseClient
+    .from("team_members")
+    .select("id, role, is_active")
+    .eq("user_id", user.id)
     .eq("restaurant_id", restaurant.id)
-    .order("last_message_at", { ascending: false })
-    .limit(50);
+    .eq("is_active", true)
+    .maybeSingle();
 
   return (
-    <div className="flex-1 space-y-8 p-4 sm:p-6 lg:p-8">
+    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-6" dir="rtl">
       <div>
-        <h1 className="text-3xl font-bold text-slate-950">
-          {t("conversations.title")}
-        </h1>
+        <h1 className="text-3xl font-bold text-slate-950">المحادثات</h1>
         <p className="mt-1 text-slate-600">
-          {t("conversations.subtitle")}
+          رسائل العملاء الواردة. استلم المحادثة للرد يدوياً أو وكّل البوت للرد نيابةً عنك.
         </p>
       </div>
 
-      <ConversationsInbox
+      <ConversationsInboxShell
         restaurantId={restaurant.id}
-        initialConversations={(data || []) as Conversation[]}
+        currentMemberId={member?.id ?? null}
       />
     </div>
   );

@@ -21,7 +21,7 @@ export default async function OrdersPage() {
   const pendingCount = (orders || []).filter((o) => o.status === "pending").length;
 
   return (
-    <div className="flex-1 space-y-8 p-4 sm:p-6 lg:p-8">
+    <div className="flex-1 space-y-8 p-4 sm:p-6 lg:p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-slate-950">

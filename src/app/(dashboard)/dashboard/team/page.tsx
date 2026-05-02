@@ -29,7 +29,7 @@ export default async function TeamPage() {
 
   if (session.memberId) {
     return (
-      <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-6">
         <Card>
           <CardHeader>
             <CardDescription>{t("team.title")}</CardDescription>
@@ -85,7 +85,7 @@ export default async function TeamPage() {
   }));
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8" dir="rtl">
+    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-6" dir="rtl">
       <Card>
         <CardHeader className="flex-row items-start justify-between gap-4">
           <div>

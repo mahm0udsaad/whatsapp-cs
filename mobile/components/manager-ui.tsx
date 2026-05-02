@@ -5,41 +5,43 @@ import { Pressable, Text, View } from "react-native";
 type Tone = "neutral" | "success" | "warning" | "danger" | "info";
 
 export const managerColors = {
-  bg: "#F6F7F9",
-  surface: "#FFFFFF",
-  surfaceMuted: "#F1F5F3",
-  ink: "#0B0F13",
-  muted: "#667085",
-  border: "#E6E8EC",
-  brand: "#00A884",
-  brandDark: "#052E26",
-  bot: "#4F46E5",
+  bg: "#EFF3FF",
+  surface: "#FCFEFC",
+  surfaceMuted: "#F5F7FF",
+  surfaceTint: "#E8EEFF",
+  ink: "#16245C",
+  muted: "#5E6A99",
+  border: "#D6DDF8",
+  brand: "#273B9A",
+  brandDark: "#1A2A78",
+  brandSoft: "#E2E8FF",
+  bot: "#FFC928",
   danger: "#E11D48",
-  warning: "#D97706",
+  warning: "#C98500",
 };
 
 export const premiumShadow = {
-  boxShadow: "0 12px 30px rgba(15, 23, 42, 0.08)",
+  boxShadow: "0 18px 40px rgba(39, 59, 154, 0.14)",
 } as const;
 
 export const softShadow = {
-  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.06)",
+  boxShadow: "0 10px 24px rgba(39, 59, 154, 0.08)",
 } as const;
 
 const toneClasses: Record<Tone, { card: string; text: string; icon: string }> = {
   neutral: {
-    card: "border-[#E6E8EC] bg-white",
-    text: "text-[#0B0F13]",
+    card: "border-[#D6DDF8] bg-[#FCFEFC]",
+    text: "text-[#16245C]",
     icon: managerColors.muted,
   },
   success: {
-    card: "border-emerald-100 bg-emerald-50",
-    text: "text-emerald-950",
+    card: "border-[#D6DDF8] bg-[#EDF2FF]",
+    text: "text-[#1A2A78]",
     icon: managerColors.brand,
   },
   warning: {
-    card: "border-amber-200 bg-amber-50",
-    text: "text-amber-900",
+    card: "border-[#F4D774] bg-[#FFF7D8]",
+    text: "text-[#8A5E00]",
     icon: managerColors.warning,
   },
   danger: {
@@ -48,8 +50,8 @@ const toneClasses: Record<Tone, { card: string; text: string; icon: string }> = 
     icon: managerColors.danger,
   },
   info: {
-    card: "border-indigo-100 bg-indigo-50",
-    text: "text-indigo-950",
+    card: "border-[#F4D774] bg-[#FFF7D8]",
+    text: "text-[#8A5E00]",
     icon: managerColors.bot,
   },
 };
@@ -63,7 +65,7 @@ export function ManagerCard({
 }) {
   return (
     <View
-      className={`rounded-lg border border-[#E6E8EC] bg-white p-4 ${className}`}
+      className={`rounded-[24px] border border-[#D6DDF8] bg-[#FCFEFC] p-4 ${className}`}
       style={softShadow}
     >
       {children}
@@ -85,7 +87,7 @@ export function ManagerMetric({
   const classes = toneClasses[tone];
   return (
     <View
-      className={`flex-1 rounded-lg border ${classes.card} ${
+      className={`flex-1 rounded-[18px] border ${classes.card} ${
         compact ? "p-3" : "p-4"
       }`}
     >
@@ -93,7 +95,7 @@ export function ManagerMetric({
         {value}
       </Text>
       <Text
-        className="mt-1 text-right text-xs font-medium text-[#667085]"
+        className="mt-1 text-right text-xs font-medium text-[#5E6A99]"
         numberOfLines={1}
         adjustsFontSizeToFit
       >
@@ -122,17 +124,17 @@ export function PriorityAction({
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-row-reverse items-center gap-3 rounded-lg border p-3 ${classes.card}`}
+      className={`flex-row-reverse items-center gap-3 rounded-[20px] border p-3.5 ${classes.card}`}
       style={tone === "danger" ? premiumShadow : undefined}
     >
-      <View className="h-11 w-11 items-center justify-center rounded-lg bg-white/90">
+      <View className="h-11 w-11 items-center justify-center rounded-2xl bg-white/90">
         <Ionicons name={icon} size={21} color={classes.icon} />
       </View>
       <View className="flex-1">
         <Text className={`text-right text-sm font-bold ${classes.text}`}>
           {title}
         </Text>
-        <Text className="mt-0.5 text-right text-xs leading-5 text-[#667085]">
+        <Text className="mt-0.5 text-right text-xs leading-5 text-[#5E6A99]">
           {description}
         </Text>
       </View>
@@ -150,7 +152,7 @@ export function StatusPill({
 }) {
   const classes = toneClasses[tone];
   return (
-    <View className={`rounded-lg border px-2.5 py-1 ${classes.card}`}>
+    <View className={`rounded-full border px-2.5 py-1 ${classes.card}`}>
       <Text className={`text-xs font-semibold ${classes.text}`}>{label}</Text>
     </View>
   );
@@ -167,10 +169,10 @@ export function SectionHeader({
 }) {
   return (
     <View className="flex-row-reverse items-center justify-between">
-      <Text className="text-right text-base font-bold text-[#0B0F13]">{title}</Text>
+      <Text className="text-right text-base font-bold text-[#16245C]">{title}</Text>
       {actionLabel && onActionPress ? (
         <Pressable onPress={onActionPress} hitSlop={8}>
-          <Text className="text-sm font-semibold text-[#00A884]">
+          <Text className="text-sm font-semibold text-[#273B9A]">
             {actionLabel}
           </Text>
         </Pressable>
@@ -191,7 +193,7 @@ export function CardSkeleton({
   className?: string;
 }) {
   return (
-    <View className={`rounded-lg border border-[#E6E8EC] bg-white p-4 ${className}`}>
+    <View className={`rounded-[24px] border border-[#D6DDF8] bg-[#FCFEFC] p-4 ${className}`}>
       <View className="items-end gap-2">
         <SkeletonBlock className="h-4 w-32 rounded-lg" />
         {Array.from({ length: rows }).map((_, index) => (
@@ -217,7 +219,7 @@ export function ListSkeleton({
       {Array.from({ length: count }).map((_, index) => (
         <View
           key={index}
-          className="mb-2 flex-row-reverse items-center gap-3 rounded-lg border border-[#E6E8EC] bg-white p-4"
+          className="mb-2 flex-row-reverse items-center gap-3 rounded-[20px] border border-[#D6DDF8] bg-[#FCFEFC] p-4"
         >
           {showAvatar ? <SkeletonBlock className="h-11 w-11 rounded-full" /> : null}
           <View className="flex-1 items-end gap-2">
@@ -236,18 +238,18 @@ export function ListSkeleton({
 export function DashboardSkeleton() {
   return (
     <View className="gap-3 p-4">
-      <View className="rounded-lg bg-gray-950 p-5">
+      <View className="rounded-[28px] bg-[#1A2A78] p-5">
         <View className="flex-row-reverse items-start justify-between gap-4">
           <View className="flex-1 items-end gap-3">
-            <SkeletonBlock className="h-3 w-24 rounded-lg bg-gray-700" />
-            <SkeletonBlock className="h-6 w-44 rounded-lg bg-gray-700" />
-            <SkeletonBlock className="h-4 w-56 rounded-lg bg-gray-700" />
+            <SkeletonBlock className="h-3 w-24 rounded-lg bg-[#4157B4]" />
+            <SkeletonBlock className="h-6 w-44 rounded-lg bg-[#4157B4]" />
+            <SkeletonBlock className="h-4 w-56 rounded-lg bg-[#4157B4]" />
           </View>
-          <SkeletonBlock className="h-20 w-20 rounded-lg bg-gray-700" />
+          <SkeletonBlock className="h-20 w-20 rounded-[20px] bg-[#4157B4]" />
         </View>
         <View className="mt-5 flex-row-reverse gap-2">
-          <SkeletonBlock className="h-11 flex-1 rounded-lg bg-gray-700" />
-          <SkeletonBlock className="h-11 flex-1 rounded-lg bg-gray-700" />
+          <SkeletonBlock className="h-11 flex-1 rounded-[18px] bg-[#4157B4]" />
+          <SkeletonBlock className="h-11 flex-1 rounded-[18px] bg-[#4157B4]" />
         </View>
       </View>
       <CardSkeleton rows={3} />

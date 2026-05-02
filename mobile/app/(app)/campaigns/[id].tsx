@@ -25,6 +25,7 @@ import {
   CardSkeleton,
   ManagerCard,
   ManagerMetric,
+  managerColors,
 } from "../../../components/manager-ui";
 
 export default function CampaignDetailScreen() {
@@ -83,7 +84,7 @@ export default function CampaignDetailScreen() {
 
   if (detailQuery.isLoading || !campaign) {
     return (
-      <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["bottom"]}>
+      <SafeAreaView className="flex-1" style={{ backgroundColor: managerColors.bg }} edges={["bottom"]}>
         <View className="p-4">
           <CardSkeleton rows={4} />
         </View>
@@ -101,7 +102,7 @@ export default function CampaignDetailScreen() {
       : 0;
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["bottom"]}>
+    <SafeAreaView className="flex-1" style={{ backgroundColor: managerColors.bg }} edges={["bottom"]}>
       <FlatList
         data={recipients}
         keyExtractor={(r) => r.id}
@@ -187,8 +188,14 @@ export default function CampaignDetailScreen() {
                   className={`mt-4 items-center rounded-lg py-3 ${
                     campaign.total_recipients === 0
                       ? "bg-[#B6E5D6]"
-                      : "bg-[#00A884]"
+                      : ""
                   }`}
+                  style={{
+                    backgroundColor:
+                      campaign.total_recipients === 0
+                        ? "#B6E5D6"
+                        : managerColors.brand,
+                  }}
                 >
                   <Text className="font-bold text-white">
                     {sendMutation.isPending ? "جار الإرسال..." : "إرسال الآن"}
@@ -218,7 +225,11 @@ export default function CampaignDetailScreen() {
             </Text>
             <Pressable
               onPress={() => router.back()}
-              className="mt-3 rounded-md border border-gray-200 bg-white px-4 py-2"
+              className="mt-3 rounded-md border px-4 py-2"
+              style={{
+                borderColor: managerColors.border,
+                backgroundColor: managerColors.surface,
+              }}
             >
               <Text className="text-sm text-gray-700">رجوع</Text>
             </Pressable>

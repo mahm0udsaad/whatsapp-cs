@@ -248,7 +248,7 @@ export default function NewCampaignEditPage() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
+    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-6">
       <div className="flex items-center gap-4">
         <Link
           href="/dashboard/marketing/campaigns/new"

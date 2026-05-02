@@ -79,7 +79,7 @@ export default async function InspectorPage({ params }: InspectorPageProps) {
     (member && order.assigned_to && order.assigned_to === member.id);
 
   return (
-    <div className="flex-1 p-4 sm:p-6 lg:p-8" dir="rtl">
+    <div className="flex-1 p-4 sm:p-6 lg:p-6" dir="rtl">
       <div className="mb-4 flex items-center justify-between">
         <Link
           href="/dashboard/inbox"

@@ -1,141 +1,115 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — Nehgz",
-  description:
-    "Terms governing use of the Nehgz web dashboard and Nehgz Bot mobile app.",
+  title: "شروط الاستخدام — نِهجز",
+  description: "الشروط التي تحكم استخدام لوحة نِهجز وتطبيق نِهجز بوت.",
 };
 
-const EFFECTIVE_DATE = "April 18, 2026";
-const CONTACT_EMAIL = "support@whatsapp-cs.vercel.app";
+const EFFECTIVE_DATE = "28 أبريل 2026";
+const CONTACT_EMAIL = "support@nehgzbot.com";
 
 export default function TermsPage() {
   return (
-    <article className="mx-auto max-w-3xl px-6 py-16 text-gray-700 leading-relaxed [&_h2]:mt-10 [&_h2]:mb-3 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-gray-900 [&_p]:mt-4 [&_ul]:mt-4 [&_ul]:list-disc [&_ul]:pl-6 [&_li]:mt-1 [&_a]:text-emerald-700 [&_a]:underline hover:[&_a]:text-emerald-800">
-      <h1 className="text-3xl font-bold text-gray-900">Terms of Service</h1>
-      <p className="text-sm text-gray-500">Effective date: {EFFECTIVE_DATE}</p>
+    <article className="mx-auto max-w-3xl px-6 py-16 text-gray-700 leading-loose [&_h2]:mt-10 [&_h2]:mb-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-gray-900 [&_p]:mt-4 [&_ul]:mt-4 [&_ul]:list-disc [&_ul]:pr-6 [&_li]:mt-1 [&_a]:text-emerald-700 [&_a]:underline hover:[&_a]:text-emerald-800">
+      <h1 className="text-3xl font-extrabold text-gray-900">شروط الاستخدام</h1>
+      <p className="text-sm text-gray-500">تاريخ السريان: {EFFECTIVE_DATE}</p>
 
       <p>
-        These Terms of Service (“Terms”) govern your access to and use of the Nehgz
-        web dashboard at{" "}
-        <a href="https://whatsapp-cs.vercel.app">whatsapp-cs.vercel.app</a> and the
-        Nehgz Bot iOS app (together, the “Service”). By creating an account or using
-        the Service, you agree to these Terms.
+        تحكم هذه الشروط ("الشروط") وصولك واستخدامك للوحة <strong>نِهجز</strong> على الويب
+        وتطبيق نِهجز بوت على الآيفون والأندرويد (يُشار إليهما معاً بـ "الخدمة"). بإنشاء حساب أو
+        استخدام الخدمة فإنك توافق على هذه الشروط.
       </p>
 
-      <h2>1. The Service</h2>
+      <h2>1. الخدمة</h2>
       <p>
-        Nehgz provides restaurants with a WhatsApp AI assistant, an operator dashboard,
-        a mobile app for operators, and related tooling. Nehgz relies on third-party
-        platforms (including Meta WhatsApp Business, Twilio, Supabase, Google, and
-        Apple). Availability of the Service depends on the availability of those
-        platforms.
+        يوفر نِهجز للمتاجر مساعداً ذكياً للواتساب، ولوحة تحكم، وتطبيق جوّال للموظفين، وأدوات
+        تشغيلية مرتبطة. يعتمد نِهجز على منصات خارجية (منها Meta WhatsApp Business، Supabase،
+        Google، Apple)، وتوفر الخدمة مرتبط بتوفر تلك المنصات.
       </p>
 
-      <h2>2. Accounts</h2>
+      <h2>2. الحسابات</h2>
       <p>
-        You must provide accurate information when creating an account and keep your
-        credentials secure. You are responsible for everything that happens under your
-        account. Each restaurant account is intended for a single restaurant or group
-        of restaurants under common ownership.
+        يجب أن تقدم معلومات صحيحة عند إنشاء الحساب وتحافظ على سرية بيانات الدخول. أنت مسؤول
+        عن كل ما يحدث تحت حسابك. كل حساب مخصص لمتجر واحد أو مجموعة متاجر تحت ملكية واحدة.
       </p>
 
-      <h2>3. Acceptable use</h2>
+      <h2>3. الاستخدام المقبول</h2>
       <ul>
-        <li>Do not use the Service to send spam or unsolicited messages.</li>
-        <li>
-          Do not configure the AI assistant to impersonate another business or to
-          deceive customers.
-        </li>
-        <li>
-          Do not use the Service to send content that is illegal, harassing, or
-          violates Meta&apos;s WhatsApp Business Messaging Policy.
-        </li>
-        <li>Do not attempt to bypass rate limits, tenant boundaries, or authentication.</li>
-        <li>Do not upload menus or content you do not have the right to use.</li>
+        <li>لا تستخدم الخدمة لإرسال رسائل سبام أو رسائل غير مرغوبة.</li>
+        <li>لا تستخدم المساعد لانتحال هوية متجر آخر أو خداع العملاء.</li>
+        <li>لا ترسل محتوى مخالف للأنظمة أو لسياسات Meta للرسائل التجارية.</li>
+        <li>لا تحاول تجاوز حدود الاستخدام أو حدود العزل بين المتاجر أو المصادقة.</li>
+        <li>لا ترفع منتجات أو محتوى ليس عندك حق استخدامه.</li>
       </ul>
       <p>
-        We may suspend or terminate accounts that violate these rules or that put the
-        health of the platform at risk.
+        يحق لنا إيقاف أو إنهاء الحسابات التي تخالف هذه الشروط أو تشكّل خطراً على سلامة المنصة.
       </p>
 
-      <h2>4. Your content</h2>
+      <h2>4. محتواك</h2>
       <p>
-        You keep ownership of menus, knowledge-base articles, messages, and other
-        content you or your customers submit. You grant Nehgz a limited license to
-        store, process, and display this content solely to operate the Service for you.
+        تحتفظ بملكية المنتجات وقواعد المعرفة والرسائل والمحتوى الذي ترفعه أنت أو يرسله عملاؤك.
+        تمنحنا ترخيصاً محدوداً لتخزين هذا المحتوى ومعالجته وعرضه لتشغيل الخدمة لك فقط.
       </p>
 
-      <h2>5. Customer messages</h2>
+      <h2>5. رسائل العملاء</h2>
       <p>
-        You are responsible for complying with local law and with WhatsApp&apos;s own
-        policies in your communications with end-customers, including obtaining any
-        required consent before messaging them.
+        أنت مسؤول عن الالتزام بالأنظمة المحلية وسياسات واتساب في تواصلك مع عملائك النهائيين، بما
+        في ذلك الحصول على أي موافقة مطلوبة قبل مراسلتهم.
       </p>
 
-      <h2>6. Fees</h2>
+      <h2>6. الرسوم</h2>
       <p>
-        Some plans may be free during the pilot period. Paid plans, when offered, will
-        be billed according to the pricing presented at checkout. You are responsible
-        for any taxes and for any usage-based charges imposed by Meta or Twilio for
-        WhatsApp messaging.
+        قد تكون بعض الباقات مجانية خلال الفترة التجريبية. الباقات المدفوعة تُحاسب وفقاً للسعر
+        المعروض عند الاشتراك. أنت مسؤول عن أي ضرائب وعن أي رسوم مرتبطة بالاستخدام تفرضها Meta
+        لخدمات الواتساب.
       </p>
 
-      <h2>7. AI output</h2>
+      <h2>7. مخرجات الذكاء الاصطناعي</h2>
       <p>
-        The AI assistant generates replies based on your configuration and may
-        occasionally produce inaccurate or unexpected output. You are responsible for
-        reviewing the configuration and for any reply sent from your restaurant&apos;s
-        account. Nehgz does not guarantee that AI output will be error-free.
+        المساعد يولّد ردوده بناءً على إعداداتك وقاعدة معرفتك، وقد ينتج أحياناً ردوداً غير دقيقة أو
+        غير متوقعة. أنت مسؤول عن مراجعة الإعدادات وعن أي رد يُرسل من حساب متجرك. لا يضمن نِهجز
+        أن مخرجات الذكاء الاصطناعي خالية من الأخطاء.
       </p>
 
-      <h2>8. Beta features and TestFlight</h2>
+      <h2>8. الميزات التجريبية</h2>
       <p>
-        Features marked as beta — including access through Apple TestFlight — are
-        provided as-is for evaluation. They may change, break, or be withdrawn without
-        notice. Feedback submitted through TestFlight or by email helps us improve the
-        Service.
+        الميزات الموسومة كتجريبية — بما فيها الوصول عبر TestFlight أو القنوات التجريبية — تُقدّم
+        كما هي للتقييم. قد تتغير أو تتوقف أو تُسحب دون إشعار. ملاحظاتك تساعدنا على تحسين الخدمة.
       </p>
 
-      <h2>9. Disclaimers</h2>
+      <h2>9. إخلاء المسؤولية</h2>
       <p>
-        THE SERVICE IS PROVIDED “AS IS” AND “AS AVAILABLE” WITHOUT WARRANTIES OF ANY
-        KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
-        MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+        تُقدّم الخدمة "كما هي" و"حسب توافرها" دون أي ضمانات صريحة أو ضمنية، بما في ذلك ضمانات
+        القابلية للتسويق، أو الملاءمة لغرض معين، أو عدم الانتهاك.
       </p>
 
-      <h2>10. Limitation of liability</h2>
+      <h2>10. حدود المسؤولية</h2>
       <p>
-        TO THE MAXIMUM EXTENT PERMITTED BY LAW, NEHGZ WILL NOT BE LIABLE FOR ANY
-        INDIRECT, INCIDENTAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR
-        RELATED TO YOUR USE OF THE SERVICE. OUR AGGREGATE LIABILITY WILL NOT EXCEED THE
-        FEES YOU PAID US IN THE 3 MONTHS PRECEDING THE EVENT GIVING RISE TO THE CLAIM,
-        OR 100 USD IF GREATER.
+        إلى أقصى حد يسمح به النظام، لن يكون نِهجز مسؤولاً عن أي أضرار غير مباشرة أو عرضية أو
+        تبعية أو عقابية ناتجة عن استخدامك للخدمة. لن يتجاوز إجمالي مسؤوليتنا ما دفعته لنا خلال
+        الثلاثة أشهر السابقة للحادث، أو 100 دولار أمريكي أيّهما أكبر.
       </p>
 
-      <h2>11. Termination</h2>
+      <h2>11. إنهاء الخدمة</h2>
       <p>
-        You can stop using the Service at any time by deleting your account. We may
-        terminate or suspend accounts that violate these Terms, that threaten the
-        Service, or that remain inactive for an extended period.
+        تستطيع التوقف عن استخدام الخدمة في أي وقت بحذف حسابك. ويحق لنا إيقاف أو إنهاء الحسابات
+        المخالفة لهذه الشروط أو التي تهدد سلامة الخدمة أو تظل خاملة لفترة طويلة.
       </p>
 
-      <h2>12. Changes to these Terms</h2>
+      <h2>12. تغييرات على الشروط</h2>
       <p>
-        We may update these Terms. If changes are material we will give reasonable
-        notice. Continued use after the effective date of an update constitutes
-        acceptance.
+        قد نحدّث هذه الشروط. سنقوم بإشعار معقول إذا كانت التغييرات جوهرية. استمرار استخدامك للخدمة
+        بعد تاريخ السريان يُعتبر موافقة على النسخة المحدّثة.
       </p>
 
-      <h2>13. Governing law</h2>
+      <h2>13. الأنظمة الحاكمة</h2>
       <p>
-        These Terms are governed by the laws of the Kingdom of Saudi Arabia, without
-        regard to its conflict-of-laws rules.
+        تخضع هذه الشروط لأنظمة المملكة العربية السعودية، دون النظر إلى قواعد تنازع القوانين.
       </p>
 
-      <h2>14. Contact</h2>
+      <h2>14. التواصل</h2>
       <p>
-        For questions about these Terms, email{" "}
+        لأي استفسار عن هذه الشروط، راسلنا على{" "}
         <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
       </p>
     </article>
