@@ -58,6 +58,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
             <ul className="space-y-2">
               <li><Link href="/privacy" className="hover:text-gray-900">سياسة الخصوصية</Link></li>
               <li><Link href="/terms" className="hover:text-gray-900">شروط الاستخدام</Link></li>
+              <li><Link href="/delete-account" className="hover:text-gray-900">حذف الحساب</Link></li>
               <li>
                 <a href={WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" className="hover:text-gray-900">
                   واتساب: 6685 486 55 966+

@@ -16,6 +16,9 @@ const notoSansArabic = Noto_Sans_Arabic({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://nehgzbot.com"
+  ),
   title: "لوحة خدمة عملاء واتساب الذكية",
   description: "إدارة مساعد خدمة العملاء الذكي على واتساب لمتجرك",
   icons: {
