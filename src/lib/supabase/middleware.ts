@@ -2,7 +2,22 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getMemberSessionFromRequest } from "@/lib/member-auth";
 
-const publicRoutes = ["/login", "/signup", "/auth/callback"];
+// Routes that bounce logged-in users back to the dashboard
+// (so they don't see the login/signup screens again).
+const authEntryRoutes = ["/login", "/signup", "/auth/callback"];
+
+// Marketing & legal pages under the (public) route group.
+// Reachable for everyone — logged-in OR not — because Google Play's reviewer
+// reads /privacy and /delete-account, and a logged-in manager who clicks
+// "Privacy" in the footer should actually see the policy, not the dashboard.
+const publicMarketingRoutes = [
+  "/privacy",
+  "/terms",
+  "/support",
+  "/delete-account",
+];
+
+const publicRoutes = [...authEntryRoutes, ...publicMarketingRoutes];
 const publicPrefixes = [
   "/api/webhooks/",
   "/api/internal/",
@@ -54,7 +69,9 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  if (isAuthenticated && publicRoutes.includes(pathname)) {
+  // Logged-in users on /login, /signup, or /auth/callback — bounce to the
+  // dashboard. Marketing & legal pages stay reachable for everyone.
+  if (isAuthenticated && authEntryRoutes.includes(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
