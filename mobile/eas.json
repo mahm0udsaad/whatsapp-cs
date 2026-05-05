@@ -20,13 +20,17 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_APP_BASE_URL": "https://whatsapp-cs.vercel.app"
+        "EXPO_PUBLIC_APP_BASE_URL": "https://nehgzbot.com"
       }
     },
     "production": {
       "channel": "production",
+      "autoIncrement": true,
+      "ios": {
+        "image": "latest"
+      },
       "env": {
-        "EXPO_PUBLIC_APP_BASE_URL": "https://whatsapp-cs.vercel.app"
+        "EXPO_PUBLIC_APP_BASE_URL": "https://nehgzbot.com"
       }
     }
   },

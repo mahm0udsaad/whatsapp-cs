@@ -33,6 +33,6 @@ Everything you need to ship `com.nehgz.nehgzbot` to the Google Play Store as a m
 ## Cited from the codebase
 
 - App config: `mobile/app.json` — `com.nehgz.nehgzbot`, version 1.0.0, owner `mahm0udsaad`, EAS project `a7b7daaf-...`.
-- Build profiles: `mobile/eas.json` — `production` profile with autoIncrement. ⚠ Note: the existing `2.aab` was built with `EXPO_PUBLIC_APP_BASE_URL=https://whatsapp-cs.vercel.app`, so don't disable that Vercel alias on your project — both `whatsapp-cs.vercel.app` and `nehgzbot.com` should resolve to the same deployment until the next AAB ships. Future builds can switch the env var to `https://nehgzbot.com`.
+- Build profiles: `mobile/eas.json` — `preview` and `production` profiles now point at `https://nehgzbot.com`. The existing `2.aab` was built before this change, so it still calls `whatsapp-cs.vercel.app`; keep that Vercel alias active alongside `nehgzbot.com` so the released build keeps working until the next AAB ships and replaces it.
 - Live privacy policy: `src/app/(public)/privacy/page.tsx` (already deployed).
 - App features summarized from: `mobile/app/(app)/overview.tsx`, `inbox/index.tsx`, `campaigns/index.tsx`, `team/index.tsx`, `customers/index.tsx`, `shifts.tsx`, `approvals.tsx`.
