@@ -2,7 +2,7 @@
   "expo": {
     "name": "Nehgz Bot",
     "slug": "whatsapp-cs-agent",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "scheme": "whatsapp-cs-agent",
     "userInterfaceStyle": "automatic",
@@ -48,6 +48,16 @@
           "photosPermission": "نحتاج إذنك للوصول إلى صورك حتى تتمكن من إرفاق الصور في محادثات الواتساب مع عملائك.",
           "cameraPermission": false,
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0"
+          }
         }
       ]
     ],
