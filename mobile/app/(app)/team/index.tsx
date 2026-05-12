@@ -5,6 +5,7 @@ import {
   FlatList,
   Linking,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -12,7 +13,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   format,
@@ -51,6 +51,7 @@ import {
   ManagerCard,
   ManagerMetric,
   managerColors,
+  softShadow,
 } from "../../../components/manager-ui";
 
 type Segment = "people" | "schedule" | "performance";
@@ -167,10 +168,10 @@ export default function TeamScreen() {
             className="rounded-t-[28px] p-4 pb-8"
             style={{ backgroundColor: managerColors.surface }}
           >
-            <Text className="text-right text-lg font-bold text-gray-950">
+            <Text className="text-right text-lg font-bold text-[#16245C]">
               {selectedMember?.full_name ?? "موظف"}
             </Text>
-            <Text className="text-right text-xs text-gray-500 mt-1">
+            <Text className="mt-1 text-right text-xs text-[#7A88B8]">
               {selectedMember?.role === "admin" ? "مدير" : "موظف"} ·{" "}
               {selectedMember?.is_available ? "متاح" : "غير متاح"}
             </Text>
@@ -183,7 +184,7 @@ export default function TeamScreen() {
                       : null
                   }
                   disabled={forceOfflineMutation.isPending}
-                  className="flex-row-reverse items-center justify-between rounded-lg border border-red-200 bg-red-50 p-3"
+                  className="flex-row-reverse items-center justify-between rounded-[18px] border border-red-200 bg-red-50 p-3"
                 >
                   <Text className="text-right text-sm font-semibold text-red-900">
                     إيقاف الاستلام الآن
@@ -191,17 +192,17 @@ export default function TeamScreen() {
                   <Ionicons name="moon-outline" size={20} color="#991B1B" />
                 </Pressable>
               ) : (
-                <View className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                  <Text className="text-right text-sm text-gray-600">
+                <View className="rounded-[18px] border border-[#E7EBFB] bg-[#F8FAFF] p-3">
+                  <Text className="text-right text-sm text-[#5E6A99]">
                     الموظف غير متاح حالياً
                   </Text>
                 </View>
               )}
               <Pressable
                 onPress={() => setSelectedMember(null)}
-                className="mt-3 items-center rounded-lg border border-gray-200 py-3"
+                className="mt-3 items-center rounded-[18px] border border-[#E7EBFB] py-3"
               >
-                <Text className="text-sm text-gray-700">إغلاق</Text>
+                <Text className="text-sm text-[#5E6A99]">إغلاق</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -223,13 +224,13 @@ function SegButton({
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-1 items-center rounded-lg border py-2 ${
-        active ? "border-emerald-200 bg-emerald-50" : "border-gray-200 bg-white"
+      className={`flex-1 items-center rounded-full border py-2 ${
+        active ? "border-[#D6DDF8] bg-[#EDF2FF]" : "border-[#E2E7FA] bg-[#F8FAFF]"
       }`}
     >
       <Text
         className={`text-sm font-semibold ${
-          active ? "text-emerald-900" : "text-gray-700"
+          active ? "text-[#16245C]" : "text-[#5E6A99]"
         }`}
       >
         {label}
@@ -292,7 +293,7 @@ function PeopleSegment({
     <FlatList
       data={rows}
       keyExtractor={(m) => m.id}
-      contentContainerStyle={{ padding: 12 }}
+      contentContainerStyle={{ padding: 12, paddingBottom: 24 }}
       refreshControl={
         <RefreshControl refreshing={isRefreshing} onRefresh={() => query.refetch()} />
       }
@@ -310,7 +311,7 @@ function PeopleSegment({
       ListHeaderComponent={
         rows.length > 0 ? (
           <ManagerCard className="mb-3">
-            <Text className="text-right text-sm font-bold text-gray-950">
+            <Text className="text-right text-sm font-bold text-[#16245C]">
               حالة الفريق الآن
             </Text>
             <View className="mt-3 flex-row-reverse gap-2">
@@ -347,29 +348,30 @@ function PeopleSegment({
       renderItem={({ item }) => (
         <Pressable
           onPress={() => onSelectMember(item)}
-          className="mb-2 flex-row-reverse items-center gap-3 rounded-lg border border-gray-200 bg-white p-3"
+          className="mb-2 flex-row-reverse items-center gap-3 rounded-[22px] border border-[#E7EBFB] bg-white p-3.5"
+          style={softShadow}
         >
           <View className="relative">
-            <View className="h-11 w-11 items-center justify-center rounded-full bg-gray-100">
-              <Text className="font-bold text-gray-700">
+            <View className="h-12 w-12 items-center justify-center rounded-full bg-[#F4F7FF]">
+              <Text className="font-bold text-[#273B9A]">
                 {initialsOf(item.full_name)}
               </Text>
             </View>
             <View
               className={`absolute -bottom-0.5 -left-0.5 h-3 w-3 rounded-full border-2 border-white ${
                 item.is_available && item.on_shift_now
-                  ? "bg-emerald-500"
+                  ? "bg-[#22C55E]"
                   : item.is_available
-                  ? "bg-emerald-300"
-                  : "bg-gray-300"
+                  ? "bg-[#86EFAC]"
+                  : "bg-[#CBD5E1]"
               }`}
             />
           </View>
           <View className="flex-1">
-            <Text className="text-right text-base font-semibold text-gray-950">
+            <Text className="text-right text-base font-semibold text-[#16245C]">
               {item.full_name ?? "—"}
             </Text>
-            <Text className="mt-0.5 text-right text-xs text-gray-500">
+            <Text className="mt-0.5 text-right text-xs leading-5 text-[#7A88B8]">
               {item.role === "admin" ? "مدير" : "موظف"}
               {item.on_shift_now ? " · في المناوبة" : ""}
               {item.active_conversations > 0
@@ -430,13 +432,13 @@ function ScheduleSegment({
       {/* Week header */}
       <View className="flex-row-reverse items-center justify-between px-3 pt-1 pb-2">
         <Pressable onPress={() => navigateWeek(7)} className="p-2">
-          <Ionicons name="chevron-forward" size={22} color="#374151" />
+          <Ionicons name="chevron-forward" size={22} color="#5E6A99" />
         </Pressable>
-        <Text className="text-sm font-semibold text-gray-950">
+        <Text className="text-sm font-semibold text-[#16245C]">
           {format(weekStartDate, "d MMM")} - {format(addDays(weekStartDate, 6), "d MMM")}
         </Text>
         <Pressable onPress={() => navigateWeek(-7)} className="p-2">
-          <Ionicons name="chevron-back" size={22} color="#374151" />
+          <Ionicons name="chevron-back" size={22} color="#5E6A99" />
         </Pressable>
       </View>
 
@@ -446,16 +448,16 @@ function ScheduleSegment({
           <Pressable
             key={d.toISOString()}
             onPress={() => setSelectedDay(idx)}
-            className={`flex-1 items-center rounded-lg border py-2 ${
+            className={`flex-1 items-center rounded-[18px] border py-2 ${
               idx === selectedDay
-                ? "border-emerald-200 bg-emerald-50"
-                : "border-gray-100 bg-white"
+                ? "border-[#D6DDF8] bg-[#EDF2FF]"
+                : "border-[#E7EBFB] bg-white"
             }`}
           >
-            <Text className="text-[11px] text-gray-500">{format(d, "EEE")}</Text>
+            <Text className="text-[11px] text-[#7A88B8]">{format(d, "EEE")}</Text>
             <Text
               className={`mt-0.5 text-sm font-bold ${
-                idx === selectedDay ? "text-emerald-900" : "text-gray-800"
+                idx === selectedDay ? "text-[#16245C]" : "text-[#445179]"
               }`}
             >
               {format(d, "d")}
@@ -487,38 +489,43 @@ function ScheduleSegment({
               <ErrorState onRetry={() => query.refetch()} />
             ) : (
               <View className="items-center py-16">
-                <Text className="text-gray-500">
+                <Text className="text-[#7A88B8]">
                   لا توجد مناوبات في هذا اليوم
                 </Text>
               </View>
             )
           }
           renderItem={({ item }) => (
-            <View className="mb-2 rounded-lg border border-gray-200 bg-white p-3">
-              <Text className="text-right text-base font-semibold text-gray-950">
+            <View className="mb-2 rounded-[18px] border border-[#E7EBFB] bg-white p-3">
+              <Text className="text-right text-base font-semibold text-[#16245C]">
                 {item.team_member_name ?? "—"}
               </Text>
-              <Text className="mt-1 text-right text-sm text-gray-600">
+              <Text className="mt-1 text-right text-sm text-[#5E6A99]">
                 {format(new Date(item.starts_at), "HH:mm")} —{" "}
                 {format(new Date(item.ends_at), "HH:mm")}
               </Text>
               {item.note ? (
-                <Text className="mt-1 text-right text-xs text-gray-500">
+                <Text className="mt-1 text-right text-xs text-[#7A88B8]">
                   {item.note}
                 </Text>
               ) : null}
             </View>
           )}
           ListFooterComponent={
-            <Pressable
-              onPress={() => {
-                const base = process.env.EXPO_PUBLIC_APP_BASE_URL ?? "";
-                if (base) Linking.openURL(`${base}/dashboard/shifts`);
-              }}
-              className="mt-3 items-center rounded-lg border border-gray-200 bg-white py-3"
-            >
-              <Text className="text-sm text-gray-700">تعديل من الويب</Text>
-            </Pressable>
+            // Hidden on iOS — see comment in profile.tsx for the rationale
+            // (App Store guideline 4.2 / 4.3: avoid signaling that core
+            // functionality lives on a website).
+            Platform.OS !== "ios" ? (
+              <Pressable
+                onPress={() => {
+                  const base = process.env.EXPO_PUBLIC_APP_BASE_URL ?? "";
+                  if (base) Linking.openURL(`${base}/dashboard/shifts`);
+                }}
+                className="mt-3 items-center rounded-[18px] border border-[#E7EBFB] bg-white py-3"
+              >
+                <Text className="text-sm text-[#5E6A99]">تعديل من الويب</Text>
+              </Pressable>
+            ) : null
           }
         />
       )}
@@ -629,15 +636,15 @@ function PerformanceSegment({ restaurantId }: { restaurantId: string }) {
             <Pressable
               key={k}
               onPress={() => setPeriodKey(k)}
-              className={`flex-1 items-center justify-center rounded-md border ${
+              className={`flex-1 items-center justify-center rounded-full border ${
                 active
-                  ? "border-emerald-300 bg-emerald-50"
-                  : "border-gray-200 bg-white"
+                  ? "border-[#D6DDF8] bg-[#EDF2FF]"
+                  : "border-[#E2E7FA] bg-[#F8FAFF]"
               }`}
             >
               <Text
                 className={`text-[12px] font-semibold ${
-                  active ? "text-emerald-900" : "text-gray-700"
+                  active ? "text-[#16245C]" : "text-[#5E6A99]"
                 }`}
                 numberOfLines={1}
               >
@@ -743,20 +750,20 @@ function TotalsHeader({
     },
   ];
   return (
-    <View className="mb-3 rounded-lg border border-gray-200 bg-white p-4">
+    <View className="mb-3 rounded-[22px] border border-[#E7EBFB] bg-white p-4">
       <View className="flex-row-reverse items-center justify-between">
-        <Text className="text-right text-sm font-bold text-gray-950">
+        <Text className="text-right text-sm font-bold text-[#16245C]">
           إجمالي {label}
         </Text>
         {isEmpty ? (
-          <Text className="text-[11px] text-gray-500">لا يوجد نشاط بعد</Text>
+          <Text className="text-[11px] text-[#7A88B8]">لا يوجد نشاط بعد</Text>
         ) : null}
       </View>
       <View className="mt-3 flex-row-reverse gap-2">
         {tiles.map((t) => (
           <View
             key={t.key}
-            className="flex-1 items-center rounded-lg py-3"
+            className="flex-1 items-center rounded-[14px] py-3"
             style={{ backgroundColor: t.bg }}
           >
             <Ionicons name={t.icon} size={16} color={t.color} />
@@ -766,7 +773,7 @@ function TotalsHeader({
             >
               {t.value}
             </Text>
-            <Text className="text-[11px] text-gray-600">{t.label}</Text>
+            <Text className="text-[11px] text-[#5E6A99]">{t.label}</Text>
           </View>
         ))}
       </View>
@@ -784,17 +791,18 @@ function PerformanceRow({
   return (
     <Pressable
       onPress={onPress}
-      className="mb-2 rounded-lg border border-gray-200 bg-white p-3"
+      className="mb-2 rounded-[22px] border border-[#E7EBFB] bg-white p-3.5"
+      style={softShadow}
     >
       <View className="flex-row-reverse items-center justify-between">
-        <Text className="text-right text-base font-semibold text-gray-950">
+        <Text className="text-right text-base font-semibold text-[#16245C]">
           {row.full_name ?? "—"}
         </Text>
         <View className="flex-row-reverse items-center gap-2">
           {row.is_available ? (
-            <View className="h-2 w-2 rounded-full bg-emerald-500" />
+            <View className="h-2 w-2 rounded-full bg-[#22C55E]" />
           ) : null}
-          <Text className="text-xs text-gray-500">
+          <Text className="text-xs text-[#7A88B8]">
             {row.role === "admin" ? "مدير" : "موظف"}
           </Text>
         </View>
@@ -853,14 +861,14 @@ function StatPill({
   const cls =
     tone === "warn"
       ? "border-amber-200 bg-amber-50"
-      : "border-gray-200 bg-gray-50";
-  const valueCls = tone === "warn" ? "text-amber-900" : "text-gray-950";
+      : "border-[#E7EBFB] bg-[#F8FAFF]";
+  const valueCls = tone === "warn" ? "text-amber-900" : "text-[#16245C]";
   return (
-    <View className={`rounded-md border px-2 py-1 ${cls}`}>
+    <View className={`rounded-[14px] border px-2.5 py-1.5 ${cls}`}>
       <Text className={`text-right text-[11px] font-bold ${valueCls}`}>
         {value}
       </Text>
-      <Text className="text-right text-[10px] text-gray-500">{label}</Text>
+      <Text className="text-right text-[10px] text-[#7A88B8]">{label}</Text>
     </View>
   );
 }
@@ -966,18 +974,18 @@ function AgentDetailModal({
       >
         <Pressable
           onPress={(e) => e.stopPropagation()}
-          className="max-h-[90%] rounded-t-2xl bg-white"
+          className="max-h-[90%] rounded-t-[30px] bg-white"
         >
           <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-            <Text className="text-right text-lg font-bold text-gray-950">
+            <Text className="text-right text-[22px] font-bold text-[#16245C]">
               {row.full_name ?? "موظف"}
             </Text>
-            <Text className="mt-0.5 text-right text-xs text-gray-500">
+            <Text className="mt-1 text-right text-sm text-[#7A88B8]">
               {range.label} · {row.role === "admin" ? "مدير" : "موظف"}
             </Text>
 
-            <View className="mt-3 rounded-md bg-gray-50 px-3 py-2">
-              <Text className="text-right text-[11px] leading-4 text-gray-600">
+            <View className="mt-4 rounded-[18px] bg-[#F7F9FF] px-3 py-3">
+              <Text className="text-right text-[11px] leading-5 text-[#5E6A99]">
                 &quot;الرد المعتاد&quot; = الوقت الذي يستغرقه الرد في معظم
                 المحادثات. &quot;أبطأ رد&quot; = في أسوأ ١٠٪ من الحالات.
               </Text>
@@ -1038,7 +1046,7 @@ function AgentDetailModal({
 
             {/* Sparkline */}
             <View className="mt-6">
-              <Text className="text-right text-sm font-bold text-gray-950">
+              <Text className="text-right text-sm font-bold text-[#16245C]">
                 النشاط اليومي
               </Text>
               {detailQuery.isLoading ? (
@@ -1052,7 +1060,7 @@ function AgentDetailModal({
 
             {/* Heatmap */}
             <View className="mt-6">
-              <Text className="text-right text-sm font-bold text-gray-950">
+              <Text className="text-right text-sm font-bold text-[#16245C]">
                 ساعات النشاط
               </Text>
               {detailQuery.isLoading ? (
@@ -1065,16 +1073,16 @@ function AgentDetailModal({
             </View>
 
             {/* Goals */}
-            <View className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-3">
-              <Text className="text-right text-sm font-bold text-gray-950">
+            <View className="mt-6 rounded-[22px] border border-[#E7EBFB] bg-[#F8FAFF] p-3.5">
+              <Text className="text-right text-sm font-bold text-[#16245C]">
                 الأهداف
               </Text>
-              <Text className="mt-1 text-right text-[11px] text-gray-500">
+              <Text className="mt-1 text-right text-[11px] text-[#7A88B8]">
                 اتركي الحقل فارغًا لإلغاء الهدف.
               </Text>
               <View className="mt-3 flex-row-reverse gap-2">
                 <View className="flex-1">
-                  <Text className="text-right text-[11px] text-gray-500">
+                  <Text className="text-right text-[11px] text-[#7A88B8]">
                     رد أولي (ثانية)
                   </Text>
                   <TextInput
@@ -1083,11 +1091,11 @@ function AgentDetailModal({
                     keyboardType="number-pad"
                     placeholder="مثال: 180"
                     textAlign="right"
-                    className="mt-1 rounded-md border border-gray-200 bg-white px-3 py-2 text-right text-sm"
+                    className="mt-1 rounded-[16px] border border-[#E2E7FA] bg-white px-3 py-2.5 text-right text-sm text-[#16245C]"
                   />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-right text-[11px] text-gray-500">
+                  <Text className="text-right text-[11px] text-[#7A88B8]">
                     رسائل/يوم
                   </Text>
                   <TextInput
@@ -1096,14 +1104,15 @@ function AgentDetailModal({
                     keyboardType="number-pad"
                     placeholder="مثال: 50"
                     textAlign="right"
-                    className="mt-1 rounded-md border border-gray-200 bg-white px-3 py-2 text-right text-sm"
+                    className="mt-1 rounded-[16px] border border-[#E2E7FA] bg-white px-3 py-2.5 text-right text-sm text-[#16245C]"
                   />
                 </View>
               </View>
               <Pressable
                 onPress={() => saveGoalsMutation.mutate()}
                 disabled={saveGoalsMutation.isPending}
-                className="mt-3 items-center rounded-md bg-[#00A884] py-2"
+                className="mt-3 items-center rounded-[16px] py-3"
+                style={{ backgroundColor: managerColors.brand }}
               >
                 {saveGoalsMutation.isPending ? (
                   <ActivityIndicator color="#fff" />
@@ -1115,10 +1124,10 @@ function AgentDetailModal({
 
             {/* Notes */}
             <View className="mt-6">
-              <Text className="text-right text-sm font-bold text-gray-950">
+              <Text className="text-right text-sm font-bold text-[#16245C]">
                 ملاحظات المدير
               </Text>
-              <View className="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+              <View className="mt-2 rounded-[22px] border border-[#E7EBFB] bg-[#F8FAFF] p-3.5">
                 <TextInput
                   value={noteDraft}
                   onChangeText={setNoteDraft}
@@ -1126,17 +1135,17 @@ function AgentDetailModal({
                   multiline
                   textAlign="right"
                   maxLength={4000}
-                  className="min-h-[60px] rounded-md border border-gray-200 bg-white px-3 py-2 text-right text-sm"
+                  className="min-h-[72px] rounded-[16px] border border-[#E2E7FA] bg-white px-3 py-2.5 text-right text-sm text-[#16245C]"
                 />
                 <Pressable
                   onPress={() => addNoteMutation.mutate()}
                   disabled={
                     addNoteMutation.isPending || noteDraft.trim().length === 0
                   }
-                  className={`mt-2 items-center rounded-md py-2 ${
+                  className={`mt-3 items-center rounded-[16px] py-3 ${
                     noteDraft.trim().length === 0
                       ? "bg-[#B6E5D6]"
-                      : "bg-[#00A884]"
+                      : "bg-[#273B9A]"
                   }`}
                 >
                   {addNoteMutation.isPending ? (
@@ -1153,20 +1162,20 @@ function AgentDetailModal({
                 {notesQuery.isLoading ? (
                   <ActivityIndicator />
                 ) : (notesQuery.data ?? []).length === 0 ? (
-                  <Text className="text-right text-xs text-gray-500">
+                  <Text className="text-right text-xs text-[#7A88B8]">
                     لا توجد ملاحظات بعد.
                   </Text>
                 ) : (
                   (notesQuery.data ?? []).map((n) => (
                     <View
                       key={n.id}
-                      className="mb-2 rounded-lg border border-gray-100 bg-white p-3"
+                      className="mb-2 rounded-[18px] border border-[#EEF2FF] bg-white p-3"
                     >
-                      <Text className="text-right text-sm text-gray-950">
+                      <Text className="text-right text-sm leading-6 text-[#16245C]">
                         {n.body}
                       </Text>
                       <View className="mt-2 flex-row-reverse items-center justify-between">
-                        <Text className="text-[10px] text-gray-400">
+                        <Text className="text-[10px] text-[#98A2B3]">
                           {format(new Date(n.created_at), "yyyy-MM-dd HH:mm")}
                         </Text>
                         <Pressable
@@ -1201,9 +1210,9 @@ function AgentDetailModal({
 
             <Pressable
               onPress={onClose}
-              className="mt-6 items-center rounded-lg border border-gray-200 py-3"
+              className="mt-6 items-center rounded-[18px] border border-[#E2E7FA] py-3"
             >
-              <Text className="text-sm text-gray-700">إغلاق</Text>
+              <Text className="text-sm text-[#5E6A99]">إغلاق</Text>
             </Pressable>
           </ScrollView>
         </Pressable>
@@ -1217,32 +1226,31 @@ function AgentDetailModal({
 function Sparkline({ daily }: { daily: AgentPerformanceDetail["daily"] }) {
   if (daily.length === 0) {
     return (
-      <Text className="mt-2 text-right text-xs text-gray-500">
+      <Text className="mt-2 text-right text-xs text-[#7A88B8]">
         لا يوجد نشاط.
       </Text>
     );
   }
   const max = Math.max(1, ...daily.map((d) => d.messages));
   return (
-    <View className="mt-2 rounded-lg border border-gray-100 bg-white p-3">
+    <View className="mt-2 rounded-[18px] border border-[#E7EBFB] bg-white p-3">
       <View className="flex-row items-end" style={{ height: 80, gap: 3 }}>
         {daily.map((d) => {
           const h = Math.max(2, (d.messages / max) * 72);
           return (
             <View key={d.day} style={{ flex: 1 }}>
               <View
-                style={{ height: h, borderRadius: 2 }}
-                className="bg-emerald-400"
+                style={{ height: h, borderRadius: 2, backgroundColor: "#273B9A" }}
               />
             </View>
           );
         })}
       </View>
       <View className="mt-1 flex-row-reverse items-center justify-between">
-        <Text className="text-[10px] text-gray-500">
+        <Text className="text-[10px] text-[#7A88B8]">
           {format(new Date(daily[0].day), "MM-dd")}
         </Text>
-        <Text className="text-[10px] text-gray-500">
+        <Text className="text-[10px] text-[#7A88B8]">
           {format(new Date(daily[daily.length - 1].day), "MM-dd")}
         </Text>
       </View>
@@ -1268,7 +1276,7 @@ function Heatmap({
 
   if (matrix.max === 0) {
     return (
-      <Text className="mt-2 text-right text-xs text-gray-500">
+      <Text className="mt-2 text-right text-xs text-[#7A88B8]">
         لا يوجد نشاط.
       </Text>
     );
@@ -1277,13 +1285,13 @@ function Heatmap({
   const dayNames = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
 
   return (
-    <View className="mt-2 rounded-lg border border-gray-100 bg-white p-2">
+    <View className="mt-2 rounded-[18px] border border-[#E7EBFB] bg-white p-2">
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View>
           {matrix.m.map((row, weekday) => (
             <View key={weekday} className="flex-row items-center">
               <Text
-                className="w-12 text-right text-[10px] text-gray-500"
+                className="w-12 text-right text-[10px] text-[#7A88B8]"
                 numberOfLines={1}
               >
                 {dayNames[weekday]}
@@ -1300,7 +1308,7 @@ function Heatmap({
                         height: 14,
                         marginRight: 1,
                         marginVertical: 1,
-                        backgroundColor: `rgba(0,168,132,${opacity})`,
+                        backgroundColor: `rgba(39,59,154,${opacity})`,
                         borderRadius: 2,
                       }}
                     />
@@ -1310,9 +1318,9 @@ function Heatmap({
             </View>
           ))}
           <View className="mt-1 flex-row justify-between" style={{ paddingRight: 48 }}>
-            <Text className="text-[9px] text-gray-400">0</Text>
-            <Text className="text-[9px] text-gray-400">12</Text>
-            <Text className="text-[9px] text-gray-400">23</Text>
+            <Text className="text-[9px] text-[#7A88B8]">0</Text>
+            <Text className="text-[9px] text-[#7A88B8]">12</Text>
+            <Text className="text-[9px] text-[#7A88B8]">23</Text>
           </View>
         </View>
       </ScrollView>

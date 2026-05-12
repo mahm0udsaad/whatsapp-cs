@@ -885,10 +885,10 @@ export default function ConversationDetail() {
   const pickImage = useCallback(async () => {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) {
-        Alert.alert("إذن مطلوب", "يلزم السماح بالوصول إلى الصور لإرسالها.");
-        return;
-      }
+      // Respect the user's decision — if they denied photo access, do nothing.
+      // Showing a custom "please reconsider" alert here violates App Store
+      // guideline 5.1.1(iv).
+      if (!perm.granted) return;
       const res = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.85,
@@ -1088,7 +1088,7 @@ export default function ConversationDetail() {
           data={displayMessages}
           inverted
           keyExtractor={(m) => m.id}
-          contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
+          contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 12, paddingBottom: 18 }}
           style={{ backgroundColor: chatTheme.screenBg }}
           onLayout={() => {
             listLaidOutRef.current = true;
@@ -1609,8 +1609,8 @@ function MessageBubble({ message }: { message: Msg }) {
       <View
         className={`max-w-[84%] border px-3 py-2 ${
           isCustomer
-            ? "rounded-[22px] rounded-tl-md"
-            : "rounded-[22px] rounded-tr-md"
+            ? "rounded-[24px] rounded-tl-md"
+            : "rounded-[24px] rounded-tr-md"
         }`}
         style={[
           isCustomer
@@ -1622,7 +1622,7 @@ function MessageBubble({ message }: { message: Msg }) {
                 borderColor: chatTheme.agentBubbleEdge,
                 backgroundColor: chatTheme.agentBubble,
               },
-          isCustomer ? softShadow : premiumShadow,
+          isCustomer ? softShadow : softShadow,
         ]}
       >
         {slots.length > 0 ? (
@@ -1851,17 +1851,20 @@ function Footer({
             </Pressable>
           </View>
         )}
-        <View className="flex-row-reverse items-end gap-2">
+        <View
+          className="flex-row-reverse items-end gap-2 rounded-[24px] border px-2 py-2"
+          style={{ borderColor: chatTheme.line, backgroundColor: "#FFFFFF" }}
+        >
           <Pressable
             onPress={onPickImage}
             disabled={sending || !!pendingFile}
             hitSlop={6}
-            className="h-12 w-12 items-center justify-center rounded-2xl"
+            className="h-10 w-10 items-center justify-center rounded-full"
             style={{ backgroundColor: chatTheme.subtleSurface }}
           >
             <Ionicons
               name="image-outline"
-              size={20}
+              size={19}
               color={sending || !!pendingFile ? "#A8A29E" : managerColors.muted}
             />
           </Pressable>
@@ -1869,12 +1872,12 @@ function Footer({
             onPress={onPickDocument}
             disabled={sending || !!pendingFile}
             hitSlop={6}
-            className="h-12 w-12 items-center justify-center rounded-2xl"
+            className="h-10 w-10 items-center justify-center rounded-full"
             style={{ backgroundColor: chatTheme.subtleSurface }}
           >
             <Ionicons
               name="attach-outline"
-              size={20}
+              size={19}
               color={sending || !!pendingFile ? "#A8A29E" : managerColors.muted}
             />
           </Pressable>
@@ -1883,26 +1886,23 @@ function Footer({
             onChangeText={setText}
             placeholder={pendingFile ? "أضيفي تعليقًا (اختياري)..." : "اكتبي ردك..."}
             placeholderTextColor="#98A2B3"
-            className="min-h-12 max-h-28 flex-1 rounded-[22px] border px-4 py-3 text-right text-[#16245C]"
-            style={{ borderColor: chatTheme.line, backgroundColor: chatTheme.subtleSurface }}
+            className="min-h-11 max-h-28 flex-1 px-2 py-2 text-right text-[#16245C]"
             multiline
           />
           <Pressable
             onPress={onSend}
             disabled={sending || !canSend}
-            className="h-12 min-w-16 items-center justify-center rounded-2xl px-4"
+            className="h-11 w-11 items-center justify-center rounded-full"
             style={
               sending || !canSend
                 ? { backgroundColor: "#D0D5DD" }
-                : [premiumShadow, { backgroundColor: managerColors.brand }]
+                : [softShadow, { backgroundColor: managerColors.brand }]
             }
           >
             {sending ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text className="font-semibold text-white">
-                {uploading ? "رفع..." : "إرسال"}
-              </Text>
+              <Ionicons name="arrow-up" size={18} color="#FFFFFF" />
             )}
           </Pressable>
         </View>

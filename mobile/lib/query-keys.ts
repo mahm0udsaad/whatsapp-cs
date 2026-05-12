@@ -50,6 +50,13 @@ export const qk = {
   marketingCustomersCount: (restaurantId: string, since: string | null) =>
     ["manager", "marketing-customers-count", restaurantId, since ?? "all"] as const,
 
+  metaAdsStatus: (restaurantId: string) =>
+    ["manager", "meta-ads-status", restaurantId] as const,
+  metaAdAccounts: (restaurantId: string) =>
+    ["manager", "meta-ad-accounts", restaurantId] as const,
+  metaCampaigns: (restaurantId: string) =>
+    ["manager", "meta-campaigns", restaurantId] as const,
+
   customers: (
     restaurantId: string,
     q: string,

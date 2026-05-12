@@ -101,18 +101,18 @@ function ApprovalsHeader({
     <View className="border-b border-[#E6E8EC] bg-white px-4 pb-3 pt-2">
       <View className="flex-row-reverse items-center gap-3">
         <View className="flex-1">
-          <Text className="text-right text-lg font-bold text-gray-950">
+          <Text className="text-right text-[22px] font-bold text-[#16245C]">
             الطلبات
           </Text>
-          <Text className="mt-0.5 text-right text-xs text-gray-500">
+          <Text className="mt-1 text-right text-sm leading-6 text-[#5E6A99]">
             محادثات أوقفها البوت لأنه يحتاج قراركِ قبل الرد
           </Text>
         </View>
-        <View className="h-10 min-w-10 items-center justify-center rounded-lg border border-red-100 bg-red-50 px-2.5">
+        <View className="min-w-12 items-center justify-center rounded-[18px] border border-red-100 bg-red-50 px-3 py-2.5">
           {fetching ? (
             <ActivityIndicator color={managerColors.danger} size="small" />
           ) : (
-            <Text className="text-base font-bold text-red-700">{count}</Text>
+            <Text className="text-lg font-bold text-red-700">{count}</Text>
           )}
           <Text className="text-[10px] font-semibold text-red-700">طلب</Text>
         </View>
@@ -150,33 +150,33 @@ function ApprovalCard({ approval }: { approval: PendingApproval }) {
 
   return (
     <View
-      className="mb-3 overflow-hidden rounded-lg border border-[#E6E8EC] bg-white"
+      className="mb-3 overflow-hidden rounded-[24px] border border-[#E7EBFB] bg-white"
       style={softShadow}
     >
       <View className="flex-row-reverse">
         <View className={`w-1.5 ${accentBar}`} />
         <View className="flex-1 p-4">
           <View className="flex-row-reverse items-start gap-3">
-            <View className="h-11 w-11 items-center justify-center rounded-lg bg-[#F1F5F3]">
-              <Text className="text-base font-bold text-[#344054]">
+            <View className="h-12 w-12 items-center justify-center rounded-full bg-[#F4F7FF]">
+              <Text className="text-base font-bold text-[#273B9A]">
                 {customerLabel.trim().charAt(0).toUpperCase()}
               </Text>
             </View>
             <View className="min-w-0 flex-1">
               <View className="flex-row-reverse items-center gap-2">
                 <Text
-                  className="min-w-0 flex-1 text-right text-base font-bold text-gray-950"
+                  className="min-w-0 flex-1 text-right text-[17px] font-bold text-[#16245C]"
                   numberOfLines={1}
                 >
                   {customerLabel}
                 </Text>
-                <Text className="text-[11px] font-medium text-gray-500">
+                <Text className="text-[11px] font-medium text-[#7A88B8]">
                   {ageLabel}
                 </Text>
               </View>
               {showPhone ? (
                 <Text
-                  className="mt-0.5 text-right text-xs text-gray-500"
+                  className="mt-0.5 text-right text-xs text-[#7A88B8]"
                   selectable
                 >
                   {approval.customer_phone}
@@ -186,7 +186,7 @@ function ApprovalCard({ approval }: { approval: PendingApproval }) {
           </View>
 
           <View
-            className={`mt-3 rounded-lg border px-3 py-2.5 ${reasonClasses}`}
+            className={`mt-3 rounded-[14px] border px-3 py-2.5 ${reasonClasses}`}
           >
             <View className="flex-row-reverse items-center gap-1.5">
               <Ionicons
@@ -230,13 +230,13 @@ function ApprovalCard({ approval }: { approval: PendingApproval }) {
               <ExtractedIntentCard intent={approval.extracted_intent} />
             </View>
           ) : (
-            <View className="mt-2 rounded-lg bg-[#F6F7F9] px-3 py-2.5">
-              <Text className="mb-1 text-right text-[11px] font-semibold text-gray-500">
+            <View className="mt-2 rounded-[18px] bg-[#F7F9FF] px-3 py-3">
+              <Text className="mb-1 text-right text-[11px] font-semibold text-[#7A88B8]">
                 آخر رسالة من العميل
               </Text>
               <Text
                 numberOfLines={4}
-                className="text-right text-sm leading-6 text-gray-950"
+                className="text-right text-sm leading-6 text-[#16245C]"
               >
                 {body}
               </Text>
@@ -247,7 +247,8 @@ function ApprovalCard({ approval }: { approval: PendingApproval }) {
             onPress={() =>
               router.push(`/(app)/inbox/${approval.conversation_id}`)
             }
-            className="mt-3 flex-row-reverse items-center justify-center gap-2 rounded-lg bg-[#052E26] py-3"
+            className="mt-3 flex-row-reverse items-center justify-center gap-2 rounded-[18px] py-3"
+            style={{ backgroundColor: managerColors.brand }}
             accessibilityRole="button"
             accessibilityLabel={`فتح محادثة ${customerLabel}`}
           >

@@ -23,6 +23,7 @@ const publicPrefixes = [
   "/api/internal/",
   "/api/auth/member-login",
   "/api/auth/member-logout",
+  "/api/auth/meta-callback",
   // Mobile API uses Bearer-token auth on every route, which the middleware's
   // cookie-only Supabase client cannot validate. The route handlers themselves
   // call `createServerSupabaseClient` (which does read Bearer) and reject

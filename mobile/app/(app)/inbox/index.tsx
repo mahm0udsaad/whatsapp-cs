@@ -619,10 +619,10 @@ export default function InboxScreen() {
               <Pressable
                 key={f.key}
                 onPress={() => setFilter(f.key)}
-                className={`min-h-11 rounded-lg border px-3 py-2 ${
+                className={`min-h-10 rounded-full border px-3.5 py-2 ${
                   active
                     ? "border-[#273B9A] bg-[#273B9A]"
-                    : "border-[#E6E8EC] bg-white"
+                    : "border-[#E2E7FA] bg-[#F8FAFF]"
                 }`}
               >
                 <Text
@@ -654,10 +654,10 @@ export default function InboxScreen() {
               <Pressable
                 key={r.key}
                 onPress={() => setDateRange(r.key)}
-                className={`min-h-11 flex-row-reverse items-center gap-1.5 rounded-lg border px-3 py-2 ${
+                className={`min-h-10 flex-row-reverse items-center gap-1.5 rounded-full border px-3.5 py-2 ${
                   active
-                    ? "border-[#00A884] bg-[#E9FBF3]"
-                    : "border-[#E6E8EC] bg-white"
+                    ? "border-[#D6DDF8] bg-[#EDF2FF]"
+                    : "border-[#E2E7FA] bg-[#F8FAFF]"
                 }`}
               >
                 <Ionicons
@@ -667,7 +667,7 @@ export default function InboxScreen() {
                 />
                 <Text
                   className={`text-xs font-semibold ${
-                    active ? "text-[#052E26]" : "text-[#344054]"
+                    active ? "text-[#16245C]" : "text-[#5E6A99]"
                   }`}
                 >
                   {r.label}
@@ -680,8 +680,7 @@ export default function InboxScreen() {
         {/* Search */}
         <View className="px-4 pb-3">
           <View
-            className="min-h-12 flex-row-reverse items-center gap-2 rounded-lg border border-[#E6E8EC] bg-[#F6F7F9] px-3"
-            style={softShadow}
+            className="min-h-12 flex-row-reverse items-center gap-2 rounded-[18px] border border-[#E2E7FA] bg-[#F8FAFF] px-3"
           >
             <Ionicons name="search" size={16} color={managerColors.muted} />
             <TextInput
@@ -717,6 +716,7 @@ export default function InboxScreen() {
         <FlatList
           data={items}
           keyExtractor={(c) => c.id}
+          contentContainerStyle={{ paddingTop: 4, paddingBottom: 18 }}
           contentInsetAdjustmentBehavior="automatic"
           onEndReached={loadMore}
           onEndReachedThreshold={0.4}
@@ -762,18 +762,20 @@ export default function InboxScreen() {
               onPress={() => openConversation(item.id)}
               onLongPress={() => setReassignTarget(item)}
               delayLongPress={400}
-              className={`relative mx-3 my-1.5 overflow-hidden rounded-lg border bg-white p-4 ${
+              className={`relative mx-3 my-1.5 overflow-hidden rounded-[24px] border bg-white p-4 ${
                 item.is_expired
                   ? "border-amber-200"
                   : item.handler_mode === "unassigned"
                   ? "border-red-200"
-                  : "border-[#E6E8EC]"
+                  : item.unread_count > 0
+                  ? "border-[#D6DDF8]"
+                  : "border-[#E8ECFA]"
               }`}
               style={
                 item.handler_mode === "unassigned" ||
                 item.is_expired ||
                 item.unread_count > 0
-                  ? premiumShadow
+                  ? softShadow
                   : softShadow
               }
             >
@@ -804,14 +806,14 @@ export default function InboxScreen() {
                 </View>
                 <View className="items-start gap-2">
                   <View className="flex-row-reverse items-center gap-2">
-                    <Text className="text-xs text-[#667085]" numberOfLines={1}>
+                    <Text className="text-xs text-[#7A88B8]" numberOfLines={1}>
                       {formatDistanceToNow(new Date(item.last_message_at), {
                         addSuffix: true,
                         locale: ar,
                       })}
                     </Text>
                     {item.unread_count > 0 ? (
-                      <View className="min-w-5 items-center justify-center rounded-full bg-[#00A884] px-1.5 py-0.5">
+                      <View className="min-w-5 items-center justify-center rounded-full bg-[#273B9A] px-1.5 py-0.5">
                         <Text className="text-[11px] font-bold text-white">
                           {item.unread_count > 99 ? "99+" : item.unread_count}
                         </Text>
@@ -825,7 +827,7 @@ export default function InboxScreen() {
                         setReassignTarget(item);
                       }}
                       hitSlop={8}
-                      className="min-h-8 flex-row-reverse items-center gap-1 rounded-lg bg-[#F2F4F7] px-2.5 py-1"
+                      className="min-h-8 flex-row-reverse items-center gap-1 rounded-full bg-[#F4F7FF] px-2.5 py-1"
                     >
                       <Ionicons name="swap-horizontal" size={14} color={managerColors.muted} />
                       <Text className="text-xs font-semibold text-[#344054]">
@@ -838,10 +840,10 @@ export default function InboxScreen() {
               {!!item.preview && (
                 <Text
                   numberOfLines={2}
-                  className="text-right text-sm leading-5 text-[#344054]"
+                  className="text-right text-sm leading-6 text-[#445179]"
                 >
                   {item.preview_role === "agent" && (
-                    <Text className="font-semibold text-[#0B7A4B]">
+                    <Text className="font-semibold text-[#273B9A]">
                       {item.handler_mode === "bot" ? "البوت: " : "أنت: "}
                     </Text>
                   )}
@@ -860,10 +862,10 @@ export default function InboxScreen() {
                 />
                 {!!getWindowLabel(item.last_inbound_at) && (
                   <Text
-                    className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                       item.is_expired
                         ? "bg-amber-50 text-amber-900"
-                        : "bg-[#E9FBF3] text-[#052E26]"
+                        : "bg-[#EDF2FF] text-[#1A2A78]"
                     }`}
                   >
                     {getWindowLabel(item.last_inbound_at)}
@@ -877,7 +879,7 @@ export default function InboxScreen() {
                   return (
                     <Text
                       key={lid}
-                      className={`rounded-lg border px-2 py-0.5 text-[11px] font-semibold ${cls.bg} ${cls.fg} ${cls.border}`}
+                      className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${cls.bg} ${cls.fg} ${cls.border}`}
                       numberOfLines={1}
                     >
                       {lbl.name}
@@ -890,7 +892,7 @@ export default function InboxScreen() {
                   </Text>
                 ) : null}
                 {item.archived_at ? (
-                  <Text className="rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
+                  <Text className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
                     مؤرشفة
                   </Text>
                 ) : null}
@@ -1057,7 +1059,7 @@ function MetricCard({
       ? "text-indigo-800"
       : "text-amber-800";
   return (
-    <View className={`flex-1 rounded-lg border px-3 py-2.5 ${toneClass}`}>
+    <View className={`flex-1 rounded-[18px] border px-3 py-2.5 ${toneClass}`}>
       <Text className={`text-right text-lg font-bold ${textClass}`}>
         {value}
       </Text>
@@ -1101,7 +1103,7 @@ function ModeBadge({
         : "مع موظف"
       : "موكلة للبوت";
   return (
-    <View className={`rounded-lg px-2.5 py-1 ${bg}`}>
+    <View className={`rounded-full px-2.5 py-1 ${bg}`}>
       <Text className={`text-xs font-semibold ${fg}`}>{label}</Text>
     </View>
   );

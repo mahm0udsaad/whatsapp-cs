@@ -354,6 +354,31 @@ export default async function LandingPage() {
             ابدأ صغير وكبّر متى ما احتجت. كل الباقات تشمل الذكاء الاصطناعي والتطبيق الجوّال.
           </p>
         </div>
+
+        {/*
+          Business-only eligibility banner.
+          Required for App Store Review 3.1.3(c) — Enterprise Services. All
+          Nehgz plans are sold to businesses (legal entities or sole-trader
+          merchants) for commercial use only. Individual, consumer, and
+          family use is not offered, and no purchase happens inside the
+          iOS app — all billing is processed on this website.
+        */}
+        <div
+          id="business-only-pricing-notice"
+          className="mt-8 mx-auto max-w-3xl rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center text-sm leading-relaxed text-emerald-900"
+          role="note"
+          aria-label="Business-only eligibility notice"
+        >
+          <p className="font-semibold mb-1">
+            جميع الباقات للأعمال التجارية فقط (B2B)
+          </p>
+          <p>
+            نِهجز بوت يُباع حصراً للمتاجر والمطاعم والكافيهات والصالونات
+            والعيادات والأنشطة التجارية المسجَّلة. لا نوفّر حسابات للأفراد أو
+            للاستخدام الشخصي أو العائلي. جميع المدفوعات تتم عبر هذا الموقع
+            فقط وليس داخل تطبيق الجوّال.
+          </p>
+        </div>
         <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {PRICING.map((p) => (
             <div

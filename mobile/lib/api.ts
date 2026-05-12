@@ -912,3 +912,83 @@ export async function findOrCreateConversationForPhone(
     body: JSON.stringify({ phone_number }),
   });
 }
+
+// ---- Meta Ads manager -----------------------------------------------------
+
+export interface MetaAdsStatus {
+  connected: boolean;
+  accountSelected: boolean;
+  adAccountId: string | null;
+  adAccountName: string | null;
+  connectedAt: string | null;
+  expiresAt: string | null;
+}
+
+export interface MetaAdAccount {
+  id: string;
+  name: string;
+  account_status: number; // 1 = ACTIVE
+  currency: string;
+  amount_spent: string; // in cents as string
+}
+
+export interface MetaInsights {
+  spend: string;
+  impressions: string;
+  clicks: string;
+  reach: string;
+  ctr: string;
+}
+
+export interface MetaCampaign {
+  id: string;
+  name: string;
+  status: "ACTIVE" | "PAUSED" | "DELETED" | "ARCHIVED";
+  effective_status: string;
+  objective: string;
+  daily_budget: string | null;
+  lifetime_budget: string | null;
+  start_time: string | null;
+  stop_time: string | null;
+  insights?: { data: MetaInsights[] };
+}
+
+export async function getMetaAdsStatus(): Promise<MetaAdsStatus> {
+  return apiFetch(`/api/mobile/meta-ads/status`);
+}
+
+export async function disconnectMetaAds(): Promise<{ ok: true }> {
+  return apiFetch(`/api/mobile/meta-ads/status`, { method: "DELETE" });
+}
+
+export async function getMetaAdsAuthUrl(): Promise<{ url: string }> {
+  return apiFetch(`/api/mobile/meta-ads/auth-url`);
+}
+
+export async function listMetaAdAccounts(): Promise<MetaAdAccount[]> {
+  return apiFetch(`/api/mobile/meta-ads/ad-accounts`);
+}
+
+export async function selectMetaAdAccount(
+  adAccountId: string,
+  adAccountName?: string
+): Promise<{ ok: true }> {
+  return apiFetch(`/api/mobile/meta-ads/ad-accounts`, {
+    method: "POST",
+    body: JSON.stringify({ ad_account_id: adAccountId, ad_account_name: adAccountName }),
+  });
+}
+
+export async function listMetaCampaigns(): Promise<MetaCampaign[]> {
+  return apiFetch(`/api/mobile/meta-ads/campaigns`);
+}
+
+export async function updateMetaCampaignStatus(
+  campaignId: string,
+  status: "ACTIVE" | "PAUSED"
+): Promise<{ ok: true; status: string }> {
+  return apiFetch(`/api/mobile/meta-ads/campaigns/${campaignId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}

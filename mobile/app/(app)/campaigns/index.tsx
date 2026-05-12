@@ -69,7 +69,7 @@ export default function CampaignsIndexScreen() {
         <FlatList
           data={rows}
           keyExtractor={(c) => c.id}
-          contentContainerStyle={{ padding: 12, paddingBottom: 100 }}
+          contentContainerStyle={{ padding: 12, paddingBottom: 132 }}
           refreshControl={
             <RefreshControl
               refreshing={campaignsQuery.isFetching}
@@ -80,25 +80,25 @@ export default function CampaignsIndexScreen() {
             <View>
               <Pressable
                 onPress={() => router.push("/(app)/customers")}
-                className="mb-3 flex-row-reverse items-center justify-between rounded-[20px] border p-3"
+                className="mb-3 flex-row-reverse items-center justify-between rounded-[24px] border px-4 py-3.5"
                 style={{
-                  borderColor: managerColors.border,
+                  borderColor: "#E7EBFB",
                   backgroundColor: managerColors.surface,
                 }}
               >
                 <View className="flex-row-reverse items-center gap-2.5">
-                  <View className="h-10 w-10 items-center justify-center rounded-lg bg-emerald-50">
+                  <View className="h-11 w-11 items-center justify-center rounded-full bg-[#F4F7FF]">
                     <Ionicons
                       name="people-circle-outline"
                       size={22}
-                      color="#047857"
+                      color="#273B9A"
                     />
                   </View>
                   <View>
-                    <Text className="text-right text-sm font-bold text-gray-950">
+                    <Text className="text-right text-sm font-bold text-[#16245C]">
                       العملاء
                     </Text>
-                    <Text className="mt-0.5 text-right text-xs text-gray-500">
+                    <Text className="mt-0.5 text-right text-xs leading-5 text-[#7A88B8]">
                       دفتر جهات الاتصال لاختيار مستلمي الحملات
                     </Text>
                   </View>
@@ -107,14 +107,26 @@ export default function CampaignsIndexScreen() {
               </Pressable>
               {rows.length > 0 ? (
                 <ManagerCard className="mb-3">
-                  <Text className="text-right text-sm font-bold text-gray-950">
-                    إجمالي النشاط
-                  </Text>
+                  <View className="flex-row-reverse items-center justify-between">
+                    <View>
+                      <Text className="text-right text-sm font-bold text-[#16245C]">
+                        إجمالي النشاط
+                      </Text>
+                      <Text className="mt-0.5 text-right text-xs text-[#7A88B8]">
+                        ملخص سريع لأحدث الحملات
+                      </Text>
+                    </View>
+                    <View className="rounded-full bg-[#EDF2FF] px-3 py-1.5">
+                      <Text className="text-[11px] font-semibold text-[#273B9A]">
+                        {rows.length} حملة
+                      </Text>
+                    </View>
+                  </View>
                   <View className="mt-3 flex-row-reverse gap-2">
                     <ManagerMetric
-                      label="مُرسلة"
+                      label="مرسلة"
                       value={totals.sent}
-                      tone="info"
+                      tone="bot"
                       compact
                     />
                     <ManagerMetric
@@ -126,24 +138,54 @@ export default function CampaignsIndexScreen() {
                     <ManagerMetric
                       label="مقروءة"
                       value={totals.read}
-                      tone="success"
+                      tone="warning"
                       compact
                     />
                   </View>
                 </ManagerCard>
-              ) : null}
+              ) : (
+                <View
+                  className="mb-3 overflow-hidden rounded-[28px] border px-5 py-5"
+                  style={{
+                    borderColor: "#D6DDF8",
+                    backgroundColor: "#273B9A",
+                  }}
+                >
+                  <View
+                    className="absolute -left-8 -top-8 h-24 w-24 rounded-full"
+                    style={{ backgroundColor: "rgba(255,255,255,0.10)" }}
+                  />
+                  <View
+                    className="absolute -bottom-10 right-0 h-28 w-28 rounded-full"
+                    style={{ backgroundColor: "rgba(255,201,40,0.20)" }}
+                  />
+                  <Text className="text-right text-xs font-semibold text-white/70">
+                    الحملات
+                  </Text>
+                  <Text className="mt-2 text-right text-2xl font-bold text-white">
+                    ابدئي أول حملة
+                  </Text>
+                  <Text className="mt-2 text-right text-sm leading-6 text-white/80">
+                    جهزي القالب ثم اختاري العملاء وابدئي الإرسال من هنا.
+                  </Text>
+                </View>
+              )}
             </View>
           }
           ListEmptyComponent={
-            <View className="items-center py-16">
-              <Ionicons
-                name="megaphone-outline"
-                size={48}
-                color="#9CA3AF"
-              />
-              <Text className="mt-3 text-gray-500">لا توجد حملات بعد</Text>
-              <Text className="mt-1 text-xs text-gray-400">
-                ابدئي أول حملة من زر &quot;+&quot; أدناه
+            <View className="items-center px-8 py-10">
+              <View className="h-16 w-16 items-center justify-center rounded-[22px] bg-[#EDF2FF]">
+                <Ionicons
+                  name="megaphone-outline"
+                  size={30}
+                  color="#273B9A"
+                />
+              </View>
+              <Text className="mt-4 text-base font-bold text-[#16245C]">
+                لا توجد حملات بعد
+              </Text>
+              <Text className="mt-1 text-center text-sm leading-6 text-[#7A88B8]">
+                ابدئي أول حملة جديدة أو افتحي القوالب لتجهيز المحتوى أولًا.
               </Text>
             </View>
           }
@@ -161,40 +203,40 @@ export default function CampaignsIndexScreen() {
         />
       )}
 
-      {/* FAB — New campaign */}
-      <Pressable
-        onPress={() => router.push("/campaigns/new")}
-        className="absolute bottom-6 left-6 h-14 flex-row items-center gap-2 rounded-full px-5"
+      <View
+        className="absolute bottom-4 left-4 right-4 flex-row-reverse gap-3 rounded-[28px] border px-4 py-3"
         style={{
-          backgroundColor: managerColors.brand,
-          shadowColor: managerColors.brandDark,
-          shadowOpacity: 0.18,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: 6 },
-          elevation: 6,
+          borderColor: "#E7EBFB",
+          backgroundColor: "rgba(255,255,255,0.96)",
         }}
       >
-        <Ionicons name="add" size={22} color="#fff" />
-        <Text className="font-bold text-white">حملة جديدة</Text>
-      </Pressable>
-
-      {/* Secondary FAB — Templates library */}
-      <Pressable
-        onPress={() => router.push("/campaigns/templates")}
-        className="absolute bottom-6 right-6 h-12 flex-row items-center gap-1.5 rounded-full border px-4"
-        style={{
-          borderColor: managerColors.border,
-          backgroundColor: managerColors.surface,
-          shadowColor: managerColors.brandDark,
-          shadowOpacity: 0.08,
-          shadowRadius: 6,
-          shadowOffset: { width: 0, height: 2 },
-          elevation: 3,
-        }}
-      >
-        <Ionicons name="document-text-outline" size={18} color="#4B5563" />
-        <Text className="text-sm font-semibold text-gray-700">القوالب</Text>
-      </Pressable>
+        <Pressable
+          onPress={() => router.push("/campaigns/new")}
+          className="h-12 flex-1 flex-row-reverse items-center justify-center gap-2 rounded-full"
+          style={{
+            backgroundColor: managerColors.brand,
+            shadowColor: managerColors.brandDark,
+            shadowOpacity: 0.14,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 4,
+          }}
+        >
+          <Ionicons name="add" size={20} color="#fff" />
+          <Text className="font-bold text-white">حملة جديدة</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => router.push("/campaigns/templates")}
+          className="h-12 flex-row-reverse items-center justify-center gap-2 rounded-full border px-4"
+          style={{
+            borderColor: "#D6DDF8",
+            backgroundColor: "#F8FAFF",
+          }}
+        >
+          <Ionicons name="document-text-outline" size={18} color="#273B9A" />
+          <Text className="text-sm font-semibold text-[#273B9A]">القوالب</Text>
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }
@@ -233,59 +275,97 @@ function CampaignCard({
   return (
     <Pressable
       onPress={onPress}
-      className="mb-2 rounded-[20px] border p-3"
+      className="mb-3 overflow-hidden rounded-[24px] border p-4"
       style={{
-        borderColor: managerColors.border,
+        borderColor: "#E7EBFB",
         backgroundColor: managerColors.surface,
       }}
     >
       <View className="flex-row-reverse items-start justify-between gap-2">
-        <Text className="flex-1 text-right text-base font-semibold text-gray-950">
-          {row.name}
-        </Text>
-        <View className={`rounded-full px-2 py-0.5 ${s.tone}`}>
+        <View className="flex-1">
+          <Text className="text-right text-base font-semibold text-[#16245C]">
+            {row.name}
+          </Text>
+          <Text className="mt-1 text-right text-xs text-[#7A88B8]">
+            {row.marketing_templates?.name ?? "قالب غير محدد"} ·{" "}
+            {formatDistanceToNow(new Date(row.created_at), {
+              addSuffix: true,
+              locale: ar,
+            })}
+          </Text>
+        </View>
+        <View className={`rounded-full px-2.5 py-1 ${s.tone}`}>
           <Text className="text-[11px] font-bold">{s.label}</Text>
         </View>
       </View>
 
-      <Text className="mt-1 text-right text-xs text-gray-500">
-        {row.marketing_templates?.name ?? "قالب غير محدد"} ·{" "}
-        {formatDistanceToNow(new Date(row.created_at), {
-          addSuffix: true,
-          locale: ar,
-        })}
-      </Text>
-
       {row.total_recipients > 0 ? (
         <View className="mt-3">
-          <View className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+          <View className="h-1.5 overflow-hidden rounded-full bg-[#EEF2FF]">
             <View
-              className="h-full bg-emerald-500"
+              className="h-full bg-[#273B9A]"
               style={{ width: `${progressPct}%` }}
             />
           </View>
-          <View className="mt-2 flex-row-reverse items-center justify-between">
-            <Text className="text-[11px] text-gray-500">
-              {row.sent_count.toLocaleString()} / {row.total_recipients.toLocaleString()}
-            </Text>
-            <Text className="text-[11px] text-gray-500">
-              تسليم {row.delivered_count} · قراءة {row.read_count}
-              {row.failed_count > 0 ? ` · فشل ${row.failed_count}` : ""}
-            </Text>
+          <View className="mt-3 flex-row-reverse flex-wrap items-center gap-2">
+            <MiniCount label="مرسلة" value={row.sent_count} />
+            <MiniCount label="مستلمون" value={row.total_recipients} />
+            <MiniCount label="تسليم" value={row.delivered_count} />
+            <MiniCount label="قراءة" value={row.read_count} />
+            {row.failed_count > 0 ? (
+              <MiniCount label="فشل" value={row.failed_count} tone="danger" />
+            ) : null}
           </View>
         </View>
       ) : (
-        <Text className="mt-2 text-right text-[11px] text-gray-400">
-          لا توجد جهات اتصال بعد
-        </Text>
+        <View className="mt-3 rounded-[18px] bg-[#F8FAFF] px-3 py-3">
+          <Text className="text-right text-[11px] text-[#7A88B8]">
+            لا توجد جهات اتصال بعد
+          </Text>
+        </View>
       )}
 
-      {row.scheduled_at ? (
-        <Text className="mt-2 text-right text-[11px] text-indigo-700">
-          موعد الإرسال:{" "}
-          {format(new Date(row.scheduled_at), "yyyy-MM-dd HH:mm")}
-        </Text>
-      ) : null}
+      <View className="mt-3 flex-row-reverse items-center justify-between">
+        {row.scheduled_at ? (
+          <Text className="text-right text-[11px] text-[#273B9A]">
+            موعد الإرسال: {format(new Date(row.scheduled_at), "yyyy-MM-dd HH:mm")}
+          </Text>
+        ) : (
+          <View />
+        )}
+        <View className="flex-row-reverse items-center gap-1.5">
+          <Text className="text-[11px] font-semibold text-[#7A88B8]">
+            فتح التفاصيل
+          </Text>
+          <Ionicons name="chevron-back" size={16} color="#7A88B8" />
+        </View>
+      </View>
     </Pressable>
+  );
+}
+
+function MiniCount({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: number;
+  tone?: "neutral" | "danger";
+}) {
+  return (
+    <View
+      className={`rounded-full px-2.5 py-1 ${
+        tone === "danger" ? "bg-red-50" : "bg-[#F4F7FF]"
+      }`}
+    >
+      <Text
+        className={`text-[11px] font-semibold ${
+          tone === "danger" ? "text-red-700" : "text-[#5E6A99]"
+        }`}
+      >
+        {label} {value.toLocaleString()}
+      </Text>
+    </View>
   );
 }

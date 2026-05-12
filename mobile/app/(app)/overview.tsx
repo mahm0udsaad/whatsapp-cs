@@ -3,6 +3,7 @@ import {
   Alert,
   Image,
   Linking,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -344,7 +345,7 @@ export default function OverviewScreen() {
               <Text className="mt-2 text-right text-2xl font-bold text-white">
                 {hasAlerts ? "يحتاج متابعة الآن" : "الصورة التشغيلية واضحة"}
               </Text>
-              <Text className="mt-2 text-right text-sm leading-6 text-gray-300">
+              <Text className="mt-2 text-right text-sm leading-6 text-white/70">
                 {hasAlerts
                   ? "ابدئي بالحالات العاجلة ثم تابعي الفريق والنمو من نفس الشاشة."
                   : "لا توجد حالات حرجة الآن، ويمكنك متابعة الأداء والحملات من الأسفل."}
@@ -588,16 +589,20 @@ export default function OverviewScreen() {
           />
         </View>
 
-        <Pressable
-          onPress={() => {
-            const webUrl = process.env.EXPO_PUBLIC_APP_BASE_URL ?? "";
-            if (webUrl) Linking.openURL(`${webUrl}/dashboard`);
-          }}
-          className="items-center rounded-[20px] border py-3.5"
-          style={{ borderColor: managerColors.border, backgroundColor: managerColors.surface }}
-        >
-          <Text className="text-sm font-semibold text-[#344054]">فتح لوحة التحكم</Text>
-        </Pressable>
+        {/* Hidden on iOS — see comment in profile.tsx (4.2 minimum
+            functionality / 4.3 spam: avoid the "thin web wrapper" signal). */}
+        {Platform.OS !== "ios" ? (
+          <Pressable
+            onPress={() => {
+              const webUrl = process.env.EXPO_PUBLIC_APP_BASE_URL ?? "";
+              if (webUrl) Linking.openURL(`${webUrl}/dashboard`);
+            }}
+            className="items-center rounded-[22px] border py-3.5"
+            style={{ borderColor: "#E7EBFB", backgroundColor: managerColors.surface }}
+          >
+            <Text className="text-sm font-semibold text-[#5E6A99]">فتح لوحة التحكم</Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -702,20 +707,20 @@ function TeamPulseCard({
             <Text className="text-right text-[11px] font-semibold tracking-[0.4px] text-[#5E6A99]">
               جودة الخدمة
             </Text>
-            <Text className="mt-2 text-right text-sm font-bold text-gray-950">
+            <Text className="mt-2 text-right text-sm font-bold text-[#16245C]">
               ملخص الخدمة اليوم
             </Text>
-            <Text className="mt-1 text-right text-xs leading-5 text-gray-600">
+            <Text className="mt-1 text-right text-xs leading-5 text-[#5E6A99]">
               {totals.messages > 0 || totals.conversations > 0
                 ? `${totals.messages} رسالة و ${totals.conversations} محادثة تمت متابعتها اليوم.`
                 : "لا توجد حركة كافية لقياس الخدمة اليوم بعد."}
             </Text>
           </View>
           <View className="rounded-[18px] border border-[#EEF1FB] bg-white px-3 py-2.5">
-            <Text className="text-center text-lg font-extrabold text-gray-950">
+            <Text className="text-center text-lg font-extrabold text-[#16245C]">
               {totals.breaches}
             </Text>
-            <Text className="text-[11px] text-gray-500">تجاوز SLA</Text>
+            <Text className="text-[11px] text-[#7A88B8]">تجاوز SLA</Text>
           </View>
         </View>
       </View>
@@ -820,21 +825,21 @@ function GrowthPulseCard({
       {latestCampaign ? (
         <View className="mt-4 rounded-[24px] border border-[#ECEFF7] bg-[#FEFEFF] p-4">
           <View className="flex-row-reverse items-start justify-between gap-2">
-            <Text className="flex-1 text-right text-sm font-bold text-gray-950">
+            <Text className="flex-1 text-right text-sm font-bold text-[#16245C]">
               {latestCampaign.name}
             </Text>
-            <Text className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-700">
+            <Text className="rounded-full bg-[#F4F7FF] px-2 py-0.5 text-[10px] font-bold text-[#5E6A99]">
               {campaignStatusLabel(latestCampaign.status)}
             </Text>
           </View>
-          <Text className="mt-1 text-right text-xs text-gray-500">
+          <Text className="mt-1 text-right text-xs text-[#7A88B8]">
             {latestCampaign.marketing_templates?.name ?? "بدون قالب"} ·{" "}
             {formatDistanceToNow(new Date(latestCampaign.created_at), {
               addSuffix: true,
               locale: ar,
             })}
           </Text>
-          <Text className="mt-2 text-right text-xs leading-5 text-gray-700">
+          <Text className="mt-2 text-right text-xs leading-5 text-[#5E6A99]">
             {latestCampaign.total_recipients > 0
               ? `استهدفت ${latestCampaign.total_recipients} جهة، تم التسليم إلى ${latestCampaign.delivered_count} وقراءة ${latestCampaign.read_count}.`
               : "الحملة لم تُربط بجمهور بعد."}
@@ -842,10 +847,10 @@ function GrowthPulseCard({
         </View>
       ) : (
         <View className="mt-4 rounded-[24px] border border-dashed border-[#D7DDF0] bg-[#FEFEFF] p-4">
-          <Text className="text-right text-sm font-semibold text-gray-900">
+          <Text className="text-right text-sm font-semibold text-[#16245C]">
             لا توجد حملات بعد
           </Text>
-          <Text className="mt-1 text-right text-xs text-gray-500">
+          <Text className="mt-1 text-right text-xs text-[#7A88B8]">
             إضافة حملة واحدة هنا ستجعل شاشة المتابعة أذكى بكثير.
           </Text>
         </View>
@@ -870,11 +875,11 @@ function MiniMetric({
       ? "border-amber-200 bg-amber-50 text-amber-900"
       : tone === "info"
       ? "border-[#F4D774] bg-[#FFF7D8] text-[#8A5E00]"
-      : "border-[#E6E8EC] bg-white text-gray-950";
+      : "border-[#E7EBFB] bg-white text-[#16245C]";
   return (
     <View className={`min-w-[47%] flex-1 rounded-[16px] border px-3 py-3 ${toneClasses}`}>
       <Text className="text-right text-2xl font-extrabold">{value}</Text>
-      <Text className="mt-1 text-right text-[10px] font-medium text-gray-500">
+      <Text className="mt-1 text-right text-[10px] font-medium text-[#7A88B8]">
         {label}
       </Text>
     </View>
@@ -917,7 +922,7 @@ function InsightRow({
       </View>
       <View className="flex-1">
         <Text className={`text-right text-sm font-bold ${tone.title}`}>{title}</Text>
-        <Text className="mt-1 text-right text-[11px] leading-5 text-gray-700">
+        <Text className="mt-1 text-right text-[11px] leading-5 text-[#5E6A99]">
           {body}
         </Text>
       </View>
@@ -948,10 +953,10 @@ function QuickLinkCard({
         </View>
         <Ionicons name="chevron-back" size={18} color="#98A2B3" />
       </View>
-      <Text className="mt-5 text-right text-sm font-bold text-gray-950">
+      <Text className="mt-5 text-right text-sm font-bold text-[#16245C]">
         {title}
       </Text>
-      <Text className="mt-1 text-right text-[11px] leading-5 text-gray-500">
+      <Text className="mt-1 text-right text-[11px] leading-5 text-[#7A88B8]">
         {description}
       </Text>
     </Pressable>
@@ -1025,7 +1030,7 @@ function OrdersWidget({ approvals }: { approvals: PendingApproval[] }) {
                   {count === 1 ? "طلب ينتظر قراركِ" : "طلبات تنتظر قراركِ"}
                 </Text>
               </View>
-              <Text className="mt-1 text-right text-xs text-gray-600">
+              <Text className="mt-1 text-right text-xs text-[#5E6A99]">
                 البوت أوقف الرد على هذه المحادثات ويحتاج تدخلكِ
               </Text>
             </View>
@@ -1037,13 +1042,13 @@ function OrdersWidget({ approvals }: { approvals: PendingApproval[] }) {
             <View className="rounded-[16px] border border-[#EEF1F8] bg-[#FCFCFE] p-3">
               <View className="flex-row-reverse items-center justify-between gap-2">
                 <Text
-                  className="flex-1 text-right text-sm font-semibold text-gray-950"
+                  className="flex-1 text-right text-sm font-semibold text-[#16245C]"
                   numberOfLines={1}
                 >
                   {topCustomer}
                 </Text>
                 {top.reasonCode ? (
-                  <Text className="rounded-lg bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-800">
+                  <Text className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-800">
                     {escalationReasonLabel(top.reasonCode)}
                   </Text>
                 ) : null}
@@ -1057,7 +1062,7 @@ function OrdersWidget({ approvals }: { approvals: PendingApproval[] }) {
                 </View>
               ) : topBody ? (
                 <Text
-                  className="mt-1 text-right text-sm leading-5 text-gray-700"
+                  className="mt-1 text-right text-sm leading-5 text-[#5E6A99]"
                   numberOfLines={2}
                 >
                   {topBody}
@@ -1067,7 +1072,7 @@ function OrdersWidget({ approvals }: { approvals: PendingApproval[] }) {
           </Pressable>
           <Pressable
             onPress={() => router.push("/(app)/approvals")}
-            className="mt-3 flex-row-reverse items-center justify-center gap-2 rounded-lg bg-red-600 py-3"
+            className="mt-3 flex-row-reverse items-center justify-center gap-2 rounded-[18px] bg-red-600 py-3"
           >
             <Ionicons name="shield-checkmark" size={16} color="#fff" />
             <Text className="text-sm font-bold text-white">
@@ -1086,6 +1091,18 @@ function WhatsAppHealthCard({
   health: WhatsAppHealth | undefined;
 }) {
   const onOpenSetup = useCallback(() => {
+    // WhatsApp number provisioning is a one-time admin task that lives on the
+    // web dashboard (Meta Business Manager handshake, etc.). On iOS we can't
+    // deep-link out to the web app without it looking like a thin web wrapper
+    // (App Store guidelines 4.2 / 4.3) — instead we tell the manager to
+    // finish setup from a desktop browser. Android keeps the deep link.
+    if (Platform.OS === "ios") {
+      Alert.alert(
+        "إكمال إعداد واتساب",
+        "لإكمال إعداد رقم واتساب، يرجى تسجيل الدخول إلى لوحة التحكم من متصفح الكمبيوتر."
+      );
+      return;
+    }
     const webUrl = process.env.EXPO_PUBLIC_APP_BASE_URL ?? "";
     if (webUrl) Linking.openURL(`${webUrl}/dashboard/whatsapp-setup`);
   }, []);
@@ -1105,7 +1122,7 @@ function WhatsAppHealthCard({
         <SectionHeader title="رقم واتساب" />
         <Pressable
           onPress={onOpenSetup}
-          className="mt-1 flex-row-reverse items-center justify-between rounded-lg border border-amber-200 bg-amber-50 p-3"
+          className="mt-1 flex-row-reverse items-center justify-between rounded-[18px] border border-amber-200 bg-amber-50 p-3"
         >
           <View className="flex-row-reverse items-center gap-2">
             <Ionicons name="warning-outline" size={20} color="#B45309" />
@@ -1115,7 +1132,7 @@ function WhatsAppHealthCard({
           </View>
           <Ionicons name="chevron-back" size={18} color="#B45309" />
         </Pressable>
-        <Text className="mt-2 text-right text-xs text-[#667085]">
+        <Text className="mt-2 text-right text-xs text-[#7A88B8]">
           افتحي لوحة التحكم لإكمال الإعداد ومشاركة الرابط مع مزود واتساب.
         </Text>
       </ManagerCard>
@@ -1126,10 +1143,10 @@ function WhatsAppHealthCard({
   const toneClasses =
     p.severity === "ok"
       ? {
-          border: "border-emerald-200",
-          bg: "bg-emerald-50",
-          text: "text-emerald-900",
-          icon: "#065F46",
+          border: "border-[#D6DDF8]",
+          bg: "bg-[#EDF2FF]",
+          text: "text-[#16245C]",
+          icon: "#273B9A",
         }
       : p.severity === "warn"
       ? {
@@ -1158,7 +1175,7 @@ function WhatsAppHealthCard({
       <SectionHeader title="رقم واتساب" />
       <Container
         onPress={tappable ? onOpenSetup : undefined}
-        className={`mt-1 flex-row-reverse items-center justify-between rounded-lg border p-3 ${toneClasses.border} ${toneClasses.bg}`}
+        className={`mt-1 flex-row-reverse items-center justify-between rounded-[18px] border p-3 ${toneClasses.border} ${toneClasses.bg}`}
       >
         <View className="flex-1 flex-row-reverse items-center gap-2.5">
           <Ionicons name={iconName} size={20} color={toneClasses.icon} />

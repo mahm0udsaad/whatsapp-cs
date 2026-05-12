@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  Platform,
   Pressable,
   Switch,
   Text,
@@ -11,7 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { signOut } from "../../lib/auth";
+import { deleteAccount, signOut } from "../../lib/auth";
 import { getAiStatus, setAvailability, toggleAi } from "../../lib/api";
 import { disablePushToken } from "../../lib/push";
 import {
@@ -34,6 +35,7 @@ export default function ProfileScreen() {
   const [available, setAvailableLocal] = useState(member?.is_available ?? true);
   const [saving, setSaving] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const manager = isManager(member);
   const restaurantId = member?.restaurant_id ?? "";
@@ -132,19 +134,75 @@ export default function ProfileScreen() {
     })();
   }
 
+  // Account deletion is required by Apple App Store guideline 5.1.1(v) for
+  // every app that lets users create an account. We confirm twice — once for
+  // the destructive intent, once as a final "are you sure" — then call the
+  // backend to hard-delete the account. The local client follows up with a
+  // sign-out so no stale token remains.
+  function onDeleteAccount() {
+    Alert.alert(
+      "حذف الحساب",
+      "سيتم حذف حسابك وجميع بياناتك بشكل نهائي. لا يمكن التراجع عن هذا الإجراء.",
+      [
+        { text: "إلغاء", style: "cancel" },
+        {
+          text: "متابعة",
+          style: "destructive",
+          onPress: () => {
+            Alert.alert(
+              "تأكيد نهائي",
+              "هل أنتِ متأكدة من حذف الحساب؟ سيتم تسجيل خروجك فوراً.",
+              [
+                { text: "إلغاء", style: "cancel" },
+                {
+                  text: "حذف نهائي",
+                  style: "destructive",
+                  onPress: async () => {
+                    setDeleting(true);
+                    try {
+                      await deleteAccount();
+                    } catch (e) {
+                      captureException(e, { source: "delete-account" });
+                      setDeleting(false);
+                      Alert.alert(
+                        "تعذّر حذف الحساب",
+                        getErrorMessage(
+                          e,
+                          "حاولي مرة أخرى أو راسلي الدعم."
+                        )
+                      );
+                      return;
+                    }
+                    setActiveMember(null);
+                    try {
+                      await clearActiveTenant();
+                    } catch {
+                      // Non-fatal — local store will be reset on next launch.
+                    }
+                    router.replace("/(auth)/login");
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-[#F6F7F9] p-4" edges={["bottom"]}>
       {manager ? (
         <View
-          className={`mb-3 rounded-lg border p-4 ${
+          className={`mb-3 rounded-[22px] border p-4 ${
             aiQuery.data?.enabled
-              ? "border-indigo-100 bg-indigo-50"
+              ? "border-[#D6DDF8] bg-[#EDF2FF]"
               : "border-red-200 bg-red-50"
           }`}
         >
           <View className="flex-row-reverse items-center justify-between gap-3">
             <View className="flex-1">
-              <Text className="text-right text-xs font-medium text-gray-500">
+              <Text className="text-right text-xs font-medium text-[#7A88B8]">
                 المساعد الذكي
               </Text>
               {aiQuery.isLoading ? (
@@ -154,7 +212,7 @@ export default function ProfileScreen() {
               ) : (
                 <Text
                   className={`mt-1 text-right text-xl font-bold ${
-                    aiQuery.data?.enabled ? "text-indigo-900" : "text-red-900"
+                    aiQuery.data?.enabled ? "text-[#16245C]" : "text-red-900"
                   }`}
                 >
                   {aiQuery.data?.enabled ? "مُفعّل" : "متوقف"}
@@ -176,7 +234,7 @@ export default function ProfileScreen() {
               <SkeletonBlock className="h-3 w-44 rounded-lg" />
             </View>
           ) : (
-            <Text className="mt-3 text-right text-sm leading-6 text-gray-600">
+            <Text className="mt-3 text-right text-sm leading-6 text-[#5E6A99]">
               {aiQuery.data?.enabled
                 ? "يرد المساعد تلقائياً على الرسائل الجديدة عندما يكون في وضع البوت."
                 : "تم إيقاف الرد التلقائي لجميع المحادثات. الموظفون فقط يردون."}
@@ -186,20 +244,20 @@ export default function ProfileScreen() {
       ) : null}
 
       <View
-        className={`mb-3 rounded-lg border p-4 ${
+        className={`mb-3 rounded-[22px] border p-4 ${
           available
-            ? "border-emerald-100 bg-emerald-50"
-            : "border-gray-100 bg-white"
+            ? "border-[#D6DDF8] bg-[#EDF2FF]"
+            : "border-[#E7EBFB] bg-white"
         }`}
       >
         <View className="flex-row-reverse items-center justify-between gap-3">
           <View className="flex-1">
-            <Text className="text-right text-xs font-medium text-gray-500">
+            <Text className="text-right text-xs font-medium text-[#7A88B8]">
               حالتك الآن
             </Text>
             <Text
               className={`mt-1 text-right text-xl font-bold ${
-                available ? "text-emerald-900" : "text-gray-950"
+                available ? "text-[#16245C]" : "text-[#445179]"
               }`}
             >
               {available ? "متاح لاستلام المحادثات" : "غير متاح للاستلام"}
@@ -211,44 +269,63 @@ export default function ProfileScreen() {
             <Switch value={available} onValueChange={onToggle} />
           )}
         </View>
-        <Text className="mt-3 text-right text-sm leading-6 text-gray-600">
+        <Text className="mt-3 text-right text-sm leading-6 text-[#5E6A99]">
           {available
             ? "ستصلك إشعارات المحادثات الجديدة ويمكن توجيه العملاء إليك."
             : "لن يتم توجيه محادثات جديدة إليك أثناء إيقاف الاستلام."}
         </Text>
       </View>
 
-      <View className="mb-3 rounded-lg border border-[#E6E8EC] bg-white p-4">
-        <Text className="text-right text-xs font-medium text-gray-500">المتجر</Text>
-        <Text className="mt-1 text-right text-lg font-semibold text-gray-950">
+      <View className="mb-3 rounded-[22px] border border-[#E7EBFB] bg-white p-4">
+        <Text className="text-right text-xs font-medium text-[#7A88B8]">المتجر</Text>
+        <Text className="mt-1 text-right text-lg font-semibold text-[#16245C]">
           {member?.restaurant?.name ?? member?.restaurant_id ?? "—"}
         </Text>
-        <Text className="mt-2 text-right text-sm text-gray-600">
+        <Text className="mt-2 text-right text-sm text-[#5E6A99]">
           {member?.full_name ?? ""} - {member?.role === "admin" ? "مدير" : "موظف"}
         </Text>
       </View>
 
-      {manager ? (
+      {/*
+        The "Open Web Dashboard" shortcut is hidden on iOS to keep the App
+        Store build from looking like a thin wrapper around a website
+        (rejection vector under guideline 4.2 Minimum Functionality / 4.3
+        Spam). Managers on iOS can still reach the dashboard through any
+        browser. On Android we keep the shortcut.
+      */}
+      {manager && Platform.OS !== "ios" ? (
         <Pressable
           onPress={() => {
             const base = process.env.EXPO_PUBLIC_APP_BASE_URL ?? "";
             if (base) Linking.openURL(`${base}/dashboard`);
           }}
-          className="mb-3 items-center rounded-lg border border-[#E6E8EC] bg-white py-3"
+          className="mb-3 items-center rounded-[22px] border border-[#E7EBFB] bg-white py-3"
         >
-          <Text className="text-sm text-gray-700">فتح لوحة التحكم</Text>
+          <Text className="text-sm text-[#5E6A99]">فتح لوحة التحكم</Text>
         </Pressable>
       ) : null}
 
       <Pressable
         onPress={onLogout}
-        disabled={loggingOut}
-        className="mt-4 items-center rounded-lg bg-red-600 py-4"
+        disabled={loggingOut || deleting}
+        className="mt-4 items-center rounded-[22px] bg-red-600 py-4"
       >
         {loggingOut ? (
           <ActivityIndicator color="#fff" />
         ) : (
           <Text className="text-white font-semibold">تسجيل الخروج</Text>
+        )}
+      </Pressable>
+
+      <Pressable
+        onPress={onDeleteAccount}
+        disabled={loggingOut || deleting}
+        className="mt-3 items-center rounded-[22px] border border-red-200 bg-white py-3"
+      >
+        {deleting ? (
+          <ActivityIndicator color="#dc2626" />
+        ) : (
+          <Text className="text-sm font-medium text-red-600">حذف الحساب</Text>
         )}
       </Pressable>
     </SafeAreaView>

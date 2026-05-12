@@ -46,21 +46,26 @@ export default function AppLayout() {
         headerTintColor: managerColors.ink,
         headerTitleStyle: {
           fontWeight: "700",
+          fontSize: 17,
         },
         headerStyle: {
-          backgroundColor: managerColors.surfaceTint,
+          backgroundColor: managerColors.surface,
         },
+        headerShadowVisible: false,
         tabBarStyle: {
           display: isConversationDetail ? "none" : "flex",
-          backgroundColor: managerColors.surfaceTint,
-          borderTopColor: managerColors.border,
-          height: 72,
-          paddingBottom: 10,
-          paddingTop: 8,
+          backgroundColor: "#FFFFFF",
+          borderTopColor: "#E7EBFB",
+          height: 82,
+          paddingBottom: 12,
+          paddingTop: 10,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: "600",
+        },
+        sceneStyle: {
+          backgroundColor: managerColors.bg,
         },
       }}
     >
@@ -137,6 +142,25 @@ export default function AppLayout() {
             <Ionicons
               name={focused ? "megaphone" : "megaphone-outline"}
               color={color}
+              size={size}
+            />
+          ),
+        }}
+      />
+
+      {/* Meta Ads — manager-only ad campaign manager. */}
+      <Tabs.Screen
+        name="ads"
+        options={{
+          title: "الإعلانات",
+          tabBarLabel: "الإعلانات",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          href: manager ? ("/ads" as any) : null,
+          headerShown: false,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? "logo-facebook" : "logo-facebook"}
+              color={focused ? "#1877F2" : color}
               size={size}
             />
           ),

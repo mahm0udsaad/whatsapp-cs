@@ -56,20 +56,20 @@ export default function ShiftsScreen() {
         contentContainerStyle={{ padding: 16 }}
         ListEmptyComponent={
           <View className="items-center py-20">
-            <Text className="text-gray-500">لا توجد مناوبات مجدولة</Text>
+            <Text className="text-[#7A88B8]">لا توجد مناوبات مجدولة</Text>
           </View>
         }
         renderItem={({ item }) => (
-          <View className="mb-2 rounded-lg border border-[#E6E8EC] bg-white p-4">
-            <Text className="text-base font-semibold text-right">
+          <View className="mb-2 rounded-[22px] border border-[#E7EBFB] bg-white p-4">
+            <Text className="text-right text-base font-semibold text-[#16245C]">
               {format(new Date(item.starts_at), "EEEE d MMM")}
             </Text>
-            <Text className="text-sm text-gray-600 text-right mt-1">
+            <Text className="mt-1 text-right text-sm text-[#5E6A99]">
               {format(new Date(item.starts_at), "HH:mm")} —{" "}
               {format(new Date(item.ends_at), "HH:mm")}
             </Text>
             {item.note && (
-              <Text className="text-xs text-gray-500 text-right mt-1">
+              <Text className="mt-1 text-right text-xs text-[#7A88B8]">
                 {item.note}
               </Text>
             )}

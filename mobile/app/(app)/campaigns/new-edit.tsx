@@ -173,7 +173,10 @@ export default function CampaignNewEditScreen() {
   const uploadMutation = useMutation({
     mutationFn: async () => {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) throw new Error("نحتاج الوصول إلى الصور");
+      // Respect the user's decision — if they denied photo access, do nothing.
+      // Throwing an error here surfaces a "please reconsider" alert to the
+      // user, which violates App Store guideline 5.1.1(iv).
+      if (!perm.granted) return null;
       const res = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         base64: true,

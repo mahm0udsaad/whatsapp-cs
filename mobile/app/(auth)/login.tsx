@@ -1,8 +1,6 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
-  Linking,
   Pressable,
   Text,
   TextInput,
@@ -62,25 +60,14 @@ export default function LoginScreen() {
         deviceId
       );
       if (result.status === "skipped") {
+        // Respect the user's permission decision — App Store guideline 5.1.1(iv)
+        // forbids "please reconsider" prompts after a denial. We log the skip
+        // for observability but no UI prompt is shown. The user can re-enable
+        // push notifications from iOS Settings whenever they want.
         captureMessage("Push registration skipped", "info", {
           reason: result.reason,
           teamMemberId: m.id,
         });
-        if (result.reason === "permission-denied") {
-          // Push is the only way the agent learns about new conversations
-          // when the app is backgrounded — make this visible, not silent.
-          Alert.alert(
-            "الإشعارات معطّلة",
-            "لن تصلك تنبيهات بالمحادثات الجديدة. يمكنكِ تفعيل الإشعارات من إعدادات النظام.",
-            [
-              { text: "ليس الآن", style: "cancel" },
-              {
-                text: "فتح الإعدادات",
-                onPress: () => Linking.openSettings(),
-              },
-            ]
-          );
-        }
       }
     } catch (e) {
       captureException(e, {

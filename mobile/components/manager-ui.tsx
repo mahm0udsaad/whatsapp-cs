@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 
-type Tone = "neutral" | "success" | "warning" | "danger" | "info";
+type Tone = "neutral" | "success" | "warning" | "danger" | "info" | "bot";
 
 export const managerColors = {
   bg: "#EFF3FF",
@@ -50,6 +50,11 @@ const toneClasses: Record<Tone, { card: string; text: string; icon: string }> = 
     icon: managerColors.danger,
   },
   info: {
+    card: "border-[#F4D774] bg-[#FFF7D8]",
+    text: "text-[#8A5E00]",
+    icon: managerColors.bot,
+  },
+  bot: {
     card: "border-[#F4D774] bg-[#FFF7D8]",
     text: "text-[#8A5E00]",
     icon: managerColors.bot,
