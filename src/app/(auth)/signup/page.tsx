@@ -392,7 +392,12 @@ export default function SignupPage() {
           <Button
             type="submit"
             className="w-full"
-            disabled={loading || isPersonal}
+            disabled={
+              loading ||
+              isPersonal ||
+              !formData.acceptedBusinessTerms ||
+              !formData.businessName.trim()
+            }
             size="lg"
           >
             {loading ? "جارٍ إنشاء الحساب..." : "إنشاء حساب النشاط التجاري"}
@@ -413,7 +418,12 @@ export default function SignupPage() {
           variant="outline"
           className="w-full"
           onClick={handleGoogleSignup}
-          disabled={loading || isPersonal}
+          disabled={
+            loading ||
+            isPersonal ||
+            !formData.acceptedBusinessTerms ||
+            !formData.businessName.trim()
+          }
           size="lg"
         >
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
