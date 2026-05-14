@@ -116,7 +116,7 @@ export function ExtractedIntentCard({ intent, variant = "full" }: Props) {
       {intent.missing.length > 0 ? (
         <View className="mt-3">
           <Text className="mb-1.5 text-right text-[11px] font-semibold text-gray-500">
-            يحتاج منكِ
+            يحتاج منك
           </Text>
           <View className="flex-row-reverse flex-wrap gap-1.5">
             {intent.missing.map((m) => (

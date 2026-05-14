@@ -12,7 +12,23 @@ export default function CampaignsLayout() {
     >
       <Stack.Screen
         name="index"
-        options={{ title: "الحملات" }}
+        options={{ title: "التسويق" }}
+      />
+      <Stack.Screen
+        name="whatsapp"
+        options={{ title: "حملات WhatsApp" }}
+      />
+      <Stack.Screen
+        name="meta"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="compose"
+        options={{ headerShown: false, presentation: "modal" }}
+      />
+      <Stack.Screen
+        name="new-campaign"
+        options={{ headerShown: false, presentation: "modal" }}
       />
       <Stack.Screen
         name="new"

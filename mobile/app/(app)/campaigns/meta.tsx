@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { router, useLocalSearchParams } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as WebBrowser from "expo-web-browser";
 import {
@@ -29,6 +30,13 @@ import { useSessionStore } from "../../../lib/session-store";
 import { ManagerCard, managerColors, softShadow } from "../../../components/manager-ui";
 
 const APP_SCHEME = "whatsapp-cs-agent";
+
+// Platform-specific branding
+type Platform = "instagram" | "facebook";
+const PLATFORM_THEME = {
+  instagram: { color: "#E1306C", icon: "logo-instagram" as const, name: "Instagram" },
+  facebook: { color: "#1877F2", icon: "logo-facebook" as const, name: "Facebook" },
+};
 
 // ---- helpers ---------------------------------------------------------------
 
@@ -77,14 +85,25 @@ function statusLabel(effectiveStatus: string) {
 
 // ---- sub-components --------------------------------------------------------
 
-function ConnectScreen({ onConnect }: { onConnect: () => void }) {
+function ConnectScreen({
+  platform,
+  onConnect,
+}: {
+  platform: Platform;
+  onConnect: () => void;
+}) {
+  const theme = PLATFORM_THEME[platform];
+  const requiresIgNote = platform === "instagram"
+    ? "يتطلب حساب Instagram للأعمال (Business / Creator) مرتبط بصفحة Facebook"
+    : "يتطلب صفحة Facebook للأعمال";
+
   return (
     <View className="flex-1 items-center justify-center px-8 gap-6">
       <View
         className="w-20 h-20 rounded-[22px] items-center justify-center"
-        style={{ backgroundColor: "#1877F2" }}
+        style={{ backgroundColor: theme.color }}
       >
-        <Ionicons name="logo-facebook" size={44} color="#fff" />
+        <Ionicons name={theme.icon} size={44} color="#fff" />
       </View>
 
       <View className="items-center gap-2">
@@ -92,39 +111,43 @@ function ConnectScreen({ onConnect }: { onConnect: () => void }) {
           className="text-[22px] font-bold text-center"
           style={{ color: managerColors.ink }}
         >
-          إدارة إعلانات Meta
+          انشر على {theme.name}
         </Text>
         <Text
           className="text-center text-[15px] leading-6"
           style={{ color: managerColors.muted }}
         >
-          اربط حساب Meta Business الخاص بك لعرض حملاتك الإعلانية على Facebook
-          وInstagram وإيقافها أو تفعيلها مباشرةً من هذا التطبيق.
+          اربط حسابك على Meta لتنشر منشورات وتدير حملاتك الإعلانية على
+          Instagram و Facebook من تطبيق واحد.
         </Text>
       </View>
 
       <View className="gap-3 w-full">
         <View className="flex-row items-center gap-3">
-          <Ionicons name="bar-chart-outline" size={20} color={managerColors.brand} />
-          <Text style={{ color: managerColors.muted }}>الإنفاق والمشاهدات والنقرات</Text>
+          <Ionicons name="image-outline" size={20} color={theme.color} />
+          <Text style={{ color: managerColors.muted }}>نشر منشورات بالصور والتعليقات</Text>
         </View>
         <View className="flex-row items-center gap-3">
-          <Ionicons name="pause-circle-outline" size={20} color={managerColors.brand} />
-          <Text style={{ color: managerColors.muted }}>إيقاف / تفعيل الحملات</Text>
+          <Ionicons name="bar-chart-outline" size={20} color={theme.color} />
+          <Text style={{ color: managerColors.muted }}>إدارة الحملات الإعلانية ومتابعة الأداء</Text>
         </View>
         <View className="flex-row items-center gap-3">
-          <Ionicons name="shield-checkmark-outline" size={20} color={managerColors.brand} />
-          <Text style={{ color: managerColors.muted }}>التوكن محفوظ على الخادم فقط</Text>
+          <Ionicons name="shield-checkmark-outline" size={20} color={theme.color} />
+          <Text style={{ color: managerColors.muted }}>اتصال آمن عبر Meta Business</Text>
         </View>
       </View>
 
       <Pressable
         onPress={onConnect}
         className="w-full rounded-[14px] py-4 items-center"
-        style={{ backgroundColor: "#1877F2" }}
+        style={{ backgroundColor: theme.color }}
       >
-        <Text className="text-white font-bold text-[16px]">ربط حساب Meta</Text>
+        <Text className="text-white font-bold text-[16px]">ربط حساب {theme.name}</Text>
       </Pressable>
+
+      <Text className="text-center text-[12px]" style={{ color: managerColors.muted }}>
+        {requiresIgNote}
+      </Text>
     </View>
   );
 }
@@ -323,6 +346,10 @@ function Divider() {
 // ---- main screen -----------------------------------------------------------
 
 export default function AdsScreen() {
+  const params = useLocalSearchParams<{ platform?: string }>();
+  const platform: Platform = params.platform === "facebook" ? "facebook" : "instagram";
+  const theme = PLATFORM_THEME[platform];
+
   const member = useSessionStore((s) => s.activeMember);
   const restaurantId = member?.restaurant_id ?? "";
   const qc = useQueryClient();
@@ -472,15 +499,39 @@ export default function AdsScreen() {
           ...softShadow,
         }}
       >
-        <Text className="text-[17px] font-bold" style={{ color: managerColors.ink }}>
-          إعلانات Meta
-        </Text>
-
-        {status?.connected ? (
-          <Pressable onPress={handleDisconnect} hitSlop={8}>
-            <Ionicons name="log-out-outline" size={22} color={managerColors.danger} />
+        <View className="flex-row items-center gap-3 flex-1">
+          <Pressable onPress={() => router.back()} hitSlop={8}>
+            <Ionicons name="chevron-back" size={24} color={managerColors.ink} />
           </Pressable>
-        ) : null}
+          <Ionicons name={theme.icon} size={20} color={theme.color} />
+          <Text className="text-[17px] font-bold" style={{ color: managerColors.ink }}>
+            {theme.name}
+          </Text>
+        </View>
+
+        <View className="flex-row items-center gap-3">
+          {status?.connected ? (
+            <Pressable
+              onPress={() =>
+                router.push(
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  (`/(app)/campaigns/compose?platform=${platform}`) as any
+                )
+              }
+              hitSlop={8}
+              className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+              style={{ backgroundColor: theme.color }}
+            >
+              <Ionicons name="add" size={16} color="#fff" />
+              <Text className="text-white font-semibold text-[13px]">منشور</Text>
+            </Pressable>
+          ) : null}
+          {status?.connected ? (
+            <Pressable onPress={handleDisconnect} hitSlop={8}>
+              <Ionicons name="log-out-outline" size={22} color={managerColors.danger} />
+            </Pressable>
+          ) : null}
+        </View>
       </View>
 
       {/* Not connected */}
@@ -493,7 +544,7 @@ export default function AdsScreen() {
             </Text>
           </View>
         ) : (
-          <ConnectScreen onConnect={() => connectMutation.mutate()} />
+          <ConnectScreen platform={platform} onConnect={() => connectMutation.mutate()} />
         )
       ) : /* Connected, no account selected */
       !status.accountSelected ? (
@@ -543,6 +594,21 @@ export default function AdsScreen() {
               </Text>
             </Pressable>
           </View>
+
+          {/* New campaign button */}
+          <Pressable
+            onPress={() =>
+              router.push(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (`/(app)/campaigns/new-campaign?platform=${platform}`) as any
+              )
+            }
+            className="flex-row items-center justify-center gap-2 rounded-[14px] py-3.5 mb-1"
+            style={{ backgroundColor: theme.color }}
+          >
+            <Ionicons name="add-circle" size={20} color="#fff" />
+            <Text className="text-white font-bold text-[15px]">إنشاء حملة جديدة</Text>
+          </Pressable>
 
           {/* Campaigns */}
           {campaignsQuery.isPending ? (

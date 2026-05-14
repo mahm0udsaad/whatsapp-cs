@@ -204,7 +204,7 @@ export default function CampaignNewEditScreen() {
 
   const generateMutation = useMutation({
     mutationFn: async () => {
-      if (!imagePrompt.trim()) throw new Error("اكتبي وصف الصورة أولاً");
+      if (!imagePrompt.trim()) throw new Error("اكتب وصف الصورة أولاً");
       return generateTemplateImage({
         prompt: imagePrompt.trim(),
         language: (draft?.language === "en" ? "en" : "ar"),
@@ -457,7 +457,7 @@ export default function CampaignNewEditScreen() {
               <View className="mt-2 items-center justify-center rounded-md border border-dashed border-gray-300 bg-white py-10">
                 <Ionicons name="image-outline" size={32} color="#9CA3AF" />
                 <Text className="mt-1 text-[11px] text-gray-500">
-                  اختاري من المعرض أو وَلِّدي بالذكاء الاصطناعي
+                  اختر من المعرض أو وَلِّد بالذكاء الاصطناعي
                 </Text>
               </View>
             )}

@@ -574,7 +574,7 @@ export default function InboxScreen() {
                 style={{ borderColor: "#FFD34D", backgroundColor: "#FFC928" }}
               >
                 <Text className="text-xs font-semibold text-[#273B9A]">
-                  ابدأي من
+                  ابدأ من
                 </Text>
                 <Text className="mt-1 text-sm font-bold text-[#273B9A]">
                   {leadFilter === "unassigned"
@@ -737,9 +737,9 @@ export default function InboxScreen() {
               </Text>
               <Text className="mt-2 text-center text-sm text-gray-500">
                 {query.isError
-                  ? "تحققي من الاتصال ثم اسحبي للتحديث."
+                  ? "تحقق من الاتصال ثم اسحب للتحديث."
                   : search.length > 0 || dateRange !== "any"
-                  ? "جرّبي كلمة بحث مختلفة أو وسّعي الفترة الزمنية."
+                  ? "جرّب كلمة بحث مختلفة أو وسّع الفترة الزمنية."
                   : "سيظهر أي طلب يحتاج متابعة في هذه القائمة."}
               </Text>
             </View>

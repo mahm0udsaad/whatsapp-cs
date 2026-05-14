@@ -151,7 +151,7 @@ export default function ProfileScreen() {
           onPress: () => {
             Alert.alert(
               "تأكيد نهائي",
-              "هل أنتِ متأكدة من حذف الحساب؟ سيتم تسجيل خروجك فوراً.",
+              "هل أنت متأكد من حذف الحساب؟ سيتم تسجيل خروجك فوراً.",
               [
                 { text: "إلغاء", style: "cancel" },
                 {
@@ -168,7 +168,7 @@ export default function ProfileScreen() {
                         "تعذّر حذف الحساب",
                         getErrorMessage(
                           e,
-                          "حاولي مرة أخرى أو راسلي الدعم."
+                          "حاول مرة أخرى أو راسل الدعم."
                         )
                       );
                       return;

@@ -220,8 +220,8 @@ export default function CampaignDetailScreen() {
         ListEmptyComponent={
           <View className="items-center py-10">
             <Text className="text-xs text-gray-500">
-              لم تُضَف جهات اتصال للحملة بعد. ابدئي من شاشة &quot;حملة
-              جديدة&quot; أو ارجعي لإضافة الجمهور.
+              لم تُضَف جهات اتصال للحملة بعد. ابدأ من شاشة &quot;حملة
+              جديدة&quot; أو ارجع لإضافة الجمهور.
             </Text>
             <Pressable
               onPress={() => router.back()}

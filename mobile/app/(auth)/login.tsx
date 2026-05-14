@@ -104,7 +104,7 @@ export default function LoginScreen() {
     <SafeAreaView className="flex-1 bg-white p-6 justify-center">
       <Text className="text-3xl font-bold text-center mb-2">لوحة الموظفين</Text>
       <Text className="text-center text-gray-500 mb-8">
-        تسجيل دخول الموظفات
+        تسجيل دخول الموظفين
       </Text>
 
       <TextInput

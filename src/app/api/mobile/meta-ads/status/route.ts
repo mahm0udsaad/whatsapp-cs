@@ -14,12 +14,14 @@ export async function GET() {
 
   const { data } = await adminSupabaseClient
     .from("meta_ads_connections")
-    .select("ad_account_id, ad_account_name, connected_at, expires_at")
+    .select(
+      "ad_account_id, ad_account_name, connected_at, expires_at, page_id, page_name, instagram_account_id, instagram_username"
+    )
     .eq("restaurant_id", restaurantId)
     .maybeSingle();
 
   if (!data) {
-    return NextResponse.json({ connected: false, accountSelected: false });
+    return NextResponse.json({ connected: false, accountSelected: false, pageSelected: false });
   }
 
   return NextResponse.json({
@@ -29,6 +31,11 @@ export async function GET() {
     adAccountName: data.ad_account_name,
     connectedAt: data.connected_at,
     expiresAt: data.expires_at,
+    pageSelected: Boolean(data.page_id),
+    pageId: data.page_id,
+    pageName: data.page_name,
+    instagramAccountId: data.instagram_account_id,
+    instagramUsername: data.instagram_username,
   });
 }
 

@@ -215,7 +215,7 @@ export default function CustomersListScreen() {
               <Ionicons name="people-outline" size={48} color="#9CA3AF" />
               <Text className="mt-3 text-gray-500">لا يوجد عملاء بعد</Text>
               <Text className="mt-1 text-xs text-gray-400">
-                أضيفي عميلاً جديداً أو استورديهم من حملة سابقة.
+                أضف عميلاً جديداً أو استوردهم من حملة سابقة.
               </Text>
             </View>
           )

@@ -64,7 +64,7 @@ export async function apiFetch(
         elapsedMs: elapsed,
         limitMs: effectiveTimeout,
       });
-      throw new Error("انتهت مهلة الاتصال. حاولي مرة أخرى.");
+      throw new Error("انتهت مهلة الاتصال. حاول مرة أخرى.");
     }
     throw e;
   }
@@ -922,6 +922,11 @@ export interface MetaAdsStatus {
   adAccountName: string | null;
   connectedAt: string | null;
   expiresAt: string | null;
+  pageSelected: boolean;
+  pageId: string | null;
+  pageName: string | null;
+  instagramAccountId: string | null;
+  instagramUsername: string | null;
 }
 
 export interface MetaAdAccount {
@@ -990,5 +995,142 @@ export async function updateMetaCampaignStatus(
   return apiFetch(`/api/mobile/meta-ads/campaigns/${campaignId}`, {
     method: "PATCH",
     body: JSON.stringify({ status }),
+  });
+}
+
+// ---- Create new campaign --------------------------------------------------
+
+export type MetaObjective =
+  | "OUTCOME_AWARENESS"
+  | "OUTCOME_TRAFFIC"
+  | "OUTCOME_ENGAGEMENT"
+  | "OUTCOME_LEADS"
+  | "OUTCOME_SALES"
+  | "OUTCOME_APP_PROMOTION";
+
+export interface CreateCampaignInput {
+  name: string;
+  objective: MetaObjective;
+  daily_budget_sar: number;
+  start_time: string; // ISO 8601
+  end_time?: string;
+  countries: string[];
+  age_min: number;
+  age_max: number;
+  caption: string;
+  image_base64: string;
+  image_type: string;
+  link_url?: string;
+  launch_now?: boolean;
+}
+
+export interface CreateCampaignResult {
+  ok: true;
+  campaign_id: string;
+  adset_id: string;
+  creative_id: string;
+  ad_id: string;
+  status: "ACTIVE" | "PAUSED";
+}
+
+export async function createMetaCampaign(
+  input: CreateCampaignInput
+): Promise<CreateCampaignResult> {
+  return apiFetch(`/api/mobile/meta-ads/campaigns/create`, {
+    method: "POST",
+    body: JSON.stringify(input),
+    timeoutMs: 90_000,
+  });
+}
+
+export interface MetaPage {
+  id: string;
+  name: string;
+  category: string;
+  fan_count: number;
+  access_token: string;
+  instagram_business_account?: { id: string; username: string };
+}
+
+export async function listMetaPages(): Promise<MetaPage[]> {
+  return apiFetch(`/api/mobile/meta-ads/pages`);
+}
+
+export async function selectMetaPage(
+  page: MetaPage
+): Promise<{ ok: true; instagramLinked: boolean; instagramUsername: string | null }> {
+  return apiFetch(`/api/mobile/meta-ads/pages`, {
+    method: "POST",
+    body: JSON.stringify({
+      page_id: page.id,
+      page_name: page.name,
+      page_access_token: page.access_token,
+    }),
+  });
+}
+
+export interface PublishPostResult {
+  ok: boolean;
+  published: string[];
+  errors: Record<string, string>;
+}
+
+export async function publishMetaPost(opts: {
+  caption: string;
+  publish_to: ("facebook" | "instagram")[];
+  image_base64?: string;
+  image_type?: string;
+}): Promise<PublishPostResult> {
+  return apiFetch(`/api/mobile/meta-ads/posts`, {
+    method: "POST",
+    body: JSON.stringify(opts),
+    timeoutMs: 60_000,
+  });
+}
+
+// ---- AI features ----------------------------------------------------------
+
+export interface AiUsageRow {
+  used: number;
+  limit: number;
+  remaining: number;
+  month: string;
+}
+
+export interface AiUsage {
+  image: AiUsageRow;
+  caption: AiUsageRow;
+}
+
+export async function getAiUsage(): Promise<AiUsage> {
+  return apiFetch(`/api/mobile/meta-ads/ai/usage`);
+}
+
+export async function generateCaptions(opts: {
+  hint?: string;
+  platform: "instagram" | "facebook";
+  has_image?: boolean;
+}): Promise<{ captions: string[]; usage: AiUsageRow }> {
+  return apiFetch(`/api/mobile/meta-ads/ai/caption`, {
+    method: "POST",
+    body: JSON.stringify(opts),
+    timeoutMs: 30_000,
+  });
+}
+
+export async function generatePostImage(opts: {
+  prompt: string;
+  reference_image_base64?: string;
+  reference_image_type?: string;
+}): Promise<{
+  image_base64: string;
+  image_type: string;
+  image_url: string | null;
+  usage: AiUsageRow;
+}> {
+  return apiFetch(`/api/mobile/meta-ads/ai/image`, {
+    method: "POST",
+    body: JSON.stringify(opts),
+    timeoutMs: 90_000,
   });
 }

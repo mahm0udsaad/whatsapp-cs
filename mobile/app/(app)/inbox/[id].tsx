@@ -146,7 +146,7 @@ function getWindowState(lastInboundAt: string | null) {
       expired: true,
       tone: "warning" as const,
       title: "انتهت نافذة الرد",
-      description: "قد تحتاجين إلى استخدام قالب واتساب معتمد قبل إرسال رد جديد.",
+      description: "قد تحتاج إلى استخدام قالب واتساب معتمد قبل إرسال رد جديد.",
     };
   }
 
@@ -310,6 +310,78 @@ export default function ConversationDetail() {
 
   const queryKey = useMemo(() => ["conv", id], [id]);
 
+  const query = useQuery({
+    queryKey,
+    enabled: !!id,
+    queryFn: async (): Promise<ConvPayload> => {
+      const { data: conv, error: convErr } = await supabase
+        .from("conversations")
+        .select(
+          "id, customer_name, customer_phone, last_inbound_at, handler_mode, assigned_to, unread_count, archived_at"
+        )
+        .eq("id", id!)
+        .maybeSingle();
+      if (convErr) throw convErr;
+      if (!conv) throw new Error("Conversation not found");
+
+      const [msgsRes, assigneeRes, escalationRes] = await Promise.all([
+        supabase
+          .from("messages")
+          .select("id, role, content, message_type, metadata, created_at, delivery_status")
+          .eq("conversation_id", id!)
+          .order("created_at", { ascending: true })
+          .limit(200),
+        conv.assigned_to
+          ? supabase
+              .from("team_members")
+              .select("full_name")
+              .eq("id", conv.assigned_to)
+              .maybeSingle()
+          : Promise.resolve({ data: null as { full_name: string | null } | null, error: null }),
+        // Any pending escalation approval for this conversation drives the
+        // red "needs manager decision" banner in the chat header.
+        supabase
+          .from("orders")
+          .select("id, created_at, escalation_reason, details")
+          .eq("conversation_id", id!)
+          .eq("type", "escalation")
+          .eq("status", "pending")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+      if (msgsRes.error) throw msgsRes.error;
+
+      const esc = (escalationRes.data ?? null) as {
+        id: string;
+        created_at: string;
+        escalation_reason: string | null;
+        details: string | null;
+      } | null;
+
+      return {
+        conversation: {
+          ...(conv as ConvRow),
+          assignee_name: (assigneeRes.data?.full_name as string | null) ?? null,
+          is_mine: conv.assigned_to === teamMemberId,
+        },
+        messages: (msgsRes.data ?? []) as Msg[],
+        pendingEscalation: esc
+          ? {
+              id: esc.id,
+              created_at: esc.created_at,
+              reason_code: esc.escalation_reason,
+              message: esc.details,
+            }
+          : null,
+      };
+    },
+  });
+
+  const conv = query.data?.conversation;
+  const messages = query.data?.messages ?? EMPTY_MESSAGES;
+  const pendingEscalation = query.data?.pendingEscalation ?? null;
+
   const openAssignToMemberSheet = useCallback(async () => {
     const loaded =
       asArray<TeamMemberRosterRow>(rosterQuery.data).filter((m) => m.is_active);
@@ -399,77 +471,6 @@ export default function ConversationDetail() {
     );
   }, [conv?.archived_at, id, openAssignToMemberSheet, reassignMutation]);
 
-  const query = useQuery({
-    queryKey,
-    enabled: !!id,
-    queryFn: async (): Promise<ConvPayload> => {
-      const { data: conv, error: convErr } = await supabase
-        .from("conversations")
-        .select(
-          "id, customer_name, customer_phone, last_inbound_at, handler_mode, assigned_to, unread_count, archived_at"
-        )
-        .eq("id", id!)
-        .maybeSingle();
-      if (convErr) throw convErr;
-      if (!conv) throw new Error("Conversation not found");
-
-      const [msgsRes, assigneeRes, escalationRes] = await Promise.all([
-        supabase
-          .from("messages")
-          .select("id, role, content, message_type, metadata, created_at, delivery_status")
-          .eq("conversation_id", id!)
-          .order("created_at", { ascending: true })
-          .limit(200),
-        conv.assigned_to
-          ? supabase
-              .from("team_members")
-              .select("full_name")
-              .eq("id", conv.assigned_to)
-              .maybeSingle()
-          : Promise.resolve({ data: null as { full_name: string | null } | null, error: null }),
-        // Any pending escalation approval for this conversation drives the
-        // red "needs manager decision" banner in the chat header.
-        supabase
-          .from("orders")
-          .select("id, created_at, escalation_reason, details")
-          .eq("conversation_id", id!)
-          .eq("type", "escalation")
-          .eq("status", "pending")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
-      if (msgsRes.error) throw msgsRes.error;
-
-      const esc = (escalationRes.data ?? null) as {
-        id: string;
-        created_at: string;
-        escalation_reason: string | null;
-        details: string | null;
-      } | null;
-
-      return {
-        conversation: {
-          ...(conv as ConvRow),
-          assignee_name: (assigneeRes.data?.full_name as string | null) ?? null,
-          is_mine: conv.assigned_to === teamMemberId,
-        },
-        messages: (msgsRes.data ?? []) as Msg[],
-        pendingEscalation: esc
-          ? {
-              id: esc.id,
-              created_at: esc.created_at,
-              reason_code: esc.escalation_reason,
-              message: esc.details,
-            }
-          : null,
-      };
-    },
-  });
-
-  const conv = query.data?.conversation;
-  const messages = query.data?.messages ?? EMPTY_MESSAGES;
-  const pendingEscalation = query.data?.pendingEscalation ?? null;
   const displayMessages = useMemo(() => [...messages].reverse(), [messages]);
   const dateSeparatorIds = useMemo(() => {
     const ids = new Set<string>();
@@ -780,7 +781,7 @@ export default function ConversationDetail() {
           });
         }
         const err = e as { message?: string };
-        Alert.alert("تعذّر الاستلام", err?.message ?? "حاولي مرة أخرى");
+        Alert.alert("تعذّر الاستلام", err?.message ?? "حاول مرة أخرى");
       } finally {
         setClaiming(null);
       }
@@ -874,7 +875,7 @@ export default function ConversationDetail() {
       const err = e as { message?: string };
       Alert.alert(
         "تعذّر الإرسال",
-        err?.message ?? "حاولي مرة أخرى"
+        err?.message ?? "حاول مرة أخرى"
       );
     } finally {
       setSending(false);
@@ -908,7 +909,7 @@ export default function ConversationDetail() {
     } catch (e: unknown) {
       Alert.alert(
         "تعذّر اختيار الصورة",
-        e instanceof Error ? e.message : "حاولي مرة أخرى"
+        e instanceof Error ? e.message : "حاول مرة أخرى"
       );
     }
   }, []);
@@ -931,7 +932,7 @@ export default function ConversationDetail() {
     } catch (e: unknown) {
       Alert.alert(
         "تعذّر اختيار الملف",
-        e instanceof Error ? e.message : "حاولي مرة أخرى"
+        e instanceof Error ? e.message : "حاول مرة أخرى"
       );
     }
   }, []);
@@ -1457,10 +1458,11 @@ function MediaAttachment({
   useEffect(() => {
     let cancelled = false;
     if (!slot.storage_path) return;
+    const storagePath = slot.storage_path;
     (async () => {
       const { data, error } = await supabase.storage
         .from(WHATSAPP_MEDIA_BUCKET)
-        .createSignedUrl(slot.storage_path, 60 * 60);
+        .createSignedUrl(storagePath, 60 * 60);
       if (cancelled) return;
       if (error || !data?.signedUrl) {
         setError(error?.message ?? "تعذّر تحميل الملف");
@@ -1538,7 +1540,7 @@ function MediaAttachment({
               resizeMode="contain"
             />
             <Text className="mt-4 text-sm text-white/78">
-              اضغطي لإغلاق الصورة
+              اضغط لإغلاق الصورة
             </Text>
           </Pressable>
         </Modal>
@@ -1777,7 +1779,7 @@ function Footer({
         <View className="mb-3 flex-row-reverse items-center justify-center gap-1.5">
           <Ionicons name="hand-left-outline" size={16} color={managerColors.danger} />
           <Text className="text-right text-xs text-[#667085]">
-            هذه المحادثة غير مستلمة. اختاري جهة الاستلام للرد.
+            هذه المحادثة غير مستلمة. اختر جهة الاستلام للرد.
           </Text>
         </View>
         <View className="flex-row-reverse gap-2">
@@ -1822,7 +1824,7 @@ function Footer({
           <View className="mb-2 flex-row-reverse items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
             <Ionicons name="warning-outline" size={17} color={managerColors.warning} />
             <Text className="flex-1 text-right text-xs leading-5 text-amber-800">
-              انتهت نافذة الرد المجاني. تأكدي من سياسة قوالب واتساب قبل الإرسال.
+              انتهت نافذة الرد المجاني. تأكد من سياسة قوالب واتساب قبل الإرسال.
             </Text>
           </View>
         )}
@@ -1884,7 +1886,7 @@ function Footer({
           <TextInput
             value={text}
             onChangeText={setText}
-            placeholder={pendingFile ? "أضيفي تعليقًا (اختياري)..." : "اكتبي ردك..."}
+            placeholder={pendingFile ? "أضف تعليقًا (اختياري)..." : "اكتب ردك..."}
             placeholderTextColor="#98A2B3"
             className="min-h-11 max-h-28 flex-1 px-2 py-2 text-right text-[#16245C]"
             multiline
@@ -2146,7 +2148,7 @@ function LabelsPickerModal({
             التسميات
           </Text>
           <Text className="mt-1 text-right text-xs text-[#667085]">
-            اختاري التسميات التي تنطبق على هذه المحادثة.
+            اختر التسميات التي تنطبق على هذه المحادثة.
           </Text>
 
           <View className="mt-4">
@@ -2157,7 +2159,7 @@ function LabelsPickerModal({
                 {labels.length === 0 ? (
                   <View className="items-center py-6">
                     <Text className="text-center text-sm text-[#667085]">
-                      لا توجد تسميات بعد. أنشئي أول تسمية مثل &quot;بانتظار
+                      لا توجد تسميات بعد. أنشئ أول تسمية مثل &quot;بانتظار
                       الدفع&quot; أو &quot;لم يستلم بعد&quot;.
                     </Text>
                   </View>

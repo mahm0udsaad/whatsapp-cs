@@ -105,7 +105,7 @@ function ApprovalsHeader({
             الطلبات
           </Text>
           <Text className="mt-1 text-right text-sm leading-6 text-[#5E6A99]">
-            محادثات أوقفها البوت لأنه يحتاج قراركِ قبل الرد
+            محادثات أوقفها البوت لأنه يحتاج قرارك قبل الرد
           </Text>
         </View>
         <View className="min-w-12 items-center justify-center rounded-[18px] border border-red-100 bg-red-50 px-3 py-2.5">
@@ -209,7 +209,7 @@ function ApprovalCard({ approval }: { approval: PendingApproval }) {
                     : "text-indigo-900"
                 }`}
               >
-                لماذا يحتاج البوت مساعدتكِ؟
+                لماذا يحتاج البوت مساعدتك؟
               </Text>
             </View>
             <Text

@@ -347,7 +347,7 @@ export default function OverviewScreen() {
               </Text>
               <Text className="mt-2 text-right text-sm leading-6 text-white/70">
                 {hasAlerts
-                  ? "ابدئي بالحالات العاجلة ثم تابعي الفريق والنمو من نفس الشاشة."
+                  ? "ابدأ بالحالات العاجلة ثم تابع الفريق والنمو من نفس الشاشة."
                   : "لا توجد حالات حرجة الآن، ويمكنك متابعة الأداء والحملات من الأسفل."}
               </Text>
               <View className="mt-4 flex-row-reverse flex-wrap gap-2">
@@ -424,7 +424,7 @@ export default function OverviewScreen() {
             {kpis.expiredCount > 0 ? (
               <PriorityAction
                 title="محادثات خارج نافذة الرد"
-                description="راجعي سياسة قوالب واتساب قبل الرد."
+                description="راجع سياسة قوالب واتساب قبل الرد."
                 value={kpis.expiredCount}
                 tone="warning"
                 icon="time-outline"
@@ -999,7 +999,7 @@ function OrdersWidget({ approvals }: { approvals: PendingApproval[] }) {
           </View>
           <View>
             <Text className="text-right text-sm font-bold text-[#16245C]">
-              لا توجد طلبات تنتظر قراركِ
+              لا توجد طلبات تنتظر قرارك
             </Text>
             <Text className="mt-0.5 text-right text-xs text-[#44559A]">
               البوت يتولى المحادثات حالياً
@@ -1027,11 +1027,11 @@ function OrdersWidget({ approvals }: { approvals: PendingApproval[] }) {
               <View className="flex-row-reverse items-center gap-1.5">
                 <Ionicons name="alert-circle" size={16} color="#B91C1C" />
                 <Text className="text-right text-sm font-bold text-red-800">
-                  {count === 1 ? "طلب ينتظر قراركِ" : "طلبات تنتظر قراركِ"}
+                  {count === 1 ? "طلب ينتظر قرارك" : "طلبات تنتظر قرارك"}
                 </Text>
               </View>
               <Text className="mt-1 text-right text-xs text-[#5E6A99]">
-                البوت أوقف الرد على هذه المحادثات ويحتاج تدخلكِ
+                البوت أوقف الرد على هذه المحادثات ويحتاج تدخلك
               </Text>
             </View>
           </View>
@@ -1133,7 +1133,7 @@ function WhatsAppHealthCard({
           <Ionicons name="chevron-back" size={18} color="#B45309" />
         </Pressable>
         <Text className="mt-2 text-right text-xs text-[#7A88B8]">
-          افتحي لوحة التحكم لإكمال الإعداد ومشاركة الرابط مع مزود واتساب.
+          افتح لوحة التحكم لإكمال الإعداد ومشاركة الرابط مع مزود واتساب.
         </Text>
       </ManagerCard>
     );

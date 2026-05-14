@@ -304,7 +304,7 @@ function PeopleSegment({
           <EmptyState
             icon="people-outline"
             title="لا يوجد أعضاء في الفريق"
-            description="أضيفي أعضاء من لوحة الإدارة على الويب لتظهري بياناتهم هنا."
+            description="أضف أعضاء من لوحة الإدارة على الويب لتظهر بياناتهم هنا."
           />
         )
       }
@@ -680,7 +680,7 @@ function PerformanceSegment({ restaurantId }: { restaurantId: string }) {
               <EmptyState
                 icon="bar-chart-outline"
                 title="لا توجد بيانات في هذه الفترة"
-                description="جربي تغيير الفترة أو التحقق لاحقاً"
+                description="جرّب تغيير الفترة أو التحقق لاحقاً"
               />
             )
           }
@@ -1078,7 +1078,7 @@ function AgentDetailModal({
                 الأهداف
               </Text>
               <Text className="mt-1 text-right text-[11px] text-[#7A88B8]">
-                اتركي الحقل فارغًا لإلغاء الهدف.
+                اترك الحقل فارغًا لإلغاء الهدف.
               </Text>
               <View className="mt-3 flex-row-reverse gap-2">
                 <View className="flex-1">
@@ -1131,7 +1131,7 @@ function AgentDetailModal({
                 <TextInput
                   value={noteDraft}
                   onChangeText={setNoteDraft}
-                  placeholder="اكتبي ملاحظة خاصة..."
+                  placeholder="اكتب ملاحظة خاصة..."
                   multiline
                   textAlign="right"
                   maxLength={4000}

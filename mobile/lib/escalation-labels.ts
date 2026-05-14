@@ -16,7 +16,7 @@ const DICT: Record<string, Entry> = {
   customer_asked_human: { label: "العميل طلب التحدث مع موظف", tone: "danger" },
   sensitive: { label: "محادثة حساسة تحتاج مراجعتكِ", tone: "danger" },
   knowledge_gap: {
-    label: "البوت لا يعرف الإجابة ويحتاج مساعدتكِ",
+    label: "البوت لا يعرف الإجابة ويحتاج مساعدتك",
     tone: "warn",
   },
   // Emitted by other escalation paths (SLA sweep, AI orchestrator direct calls)

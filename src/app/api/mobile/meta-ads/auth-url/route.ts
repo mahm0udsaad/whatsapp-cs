@@ -36,7 +36,15 @@ export async function GET() {
   const params = new URLSearchParams({
     client_id: appId,
     redirect_uri: redirectUri,
-    scope: "ads_management,ads_read",
+    scope: [
+      "ads_management",
+      "ads_read",
+      "pages_show_list",
+      "pages_manage_posts",
+      "pages_read_engagement",
+      "instagram_basic",
+      "instagram_content_publish",
+    ].join(","),
     state,
     response_type: "code",
   });

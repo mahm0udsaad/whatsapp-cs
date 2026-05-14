@@ -148,25 +148,6 @@ export default function AppLayout() {
         }}
       />
 
-      {/* Meta Ads — manager-only ad campaign manager. */}
-      <Tabs.Screen
-        name="ads"
-        options={{
-          title: "الإعلانات",
-          tabBarLabel: "الإعلانات",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          href: manager ? ("/ads" as any) : null,
-          headerShown: false,
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name={focused ? "logo-facebook" : "logo-facebook"}
-              color={focused ? "#1877F2" : color}
-              size={size}
-            />
-          ),
-        }}
-      />
-
       {/* Approvals — manager-only, visible in tab bar as "الطلبات". */}
       <Tabs.Screen
         name="approvals"

@@ -42,7 +42,7 @@ interface ErrorStateProps {
 
 export function ErrorState({
   title = "تعذّر تحميل البيانات",
-  description = "تحققي من الاتصال ثم حاولي مرة أخرى.",
+  description = "تحقق من الاتصال ثم حاول مرة أخرى.",
   onRetry,
   retryLabel = "إعادة المحاولة",
 }: ErrorStateProps) {
