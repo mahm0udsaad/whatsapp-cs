@@ -19,7 +19,7 @@ describe("ErrorState", () => {
   it("renders default Arabic copy", () => {
     const { getByText } = render(<ErrorState />);
     expect(getByText("تعذّر تحميل البيانات")).toBeTruthy();
-    expect(getByText("تحققي من الاتصال ثم حاولي مرة أخرى.")).toBeTruthy();
+    expect(getByText("تحقق من الاتصال ثم حاول مرة أخرى.")).toBeTruthy();
   });
 
   it("does not render retry button without onRetry", () => {

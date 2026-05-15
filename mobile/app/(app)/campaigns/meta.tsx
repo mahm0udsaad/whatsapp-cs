@@ -25,11 +25,13 @@ import {
   type MetaAdAccount,
   type MetaCampaign,
 } from "../../../lib/api";
+import { captureException, captureMessage } from "../../../lib/observability";
 import { qk } from "../../../lib/query-keys";
 import { useSessionStore } from "../../../lib/session-store";
 import { ManagerCard, managerColors, softShadow } from "../../../components/manager-ui";
 
 const APP_SCHEME = "whatsapp-cs-agent";
+const META_CALLBACK_URL = `${APP_SCHEME}://meta-ads/callback`;
 
 // Platform-specific branding
 type Platform = "instagram" | "facebook";
@@ -385,11 +387,37 @@ export default function AdsScreen() {
   const connectMutation = useMutation({
     mutationFn: async () => {
       const { url } = await getMetaAdsAuthUrl();
+      captureMessage("Meta auth session starting", "info", {
+        authUrlHost: (() => {
+          try {
+            return new URL(url).host;
+          } catch {
+            return "invalid-url";
+          }
+        })(),
+        callbackUrl: META_CALLBACK_URL,
+        apiBaseUrl: process.env.EXPO_PUBLIC_APP_BASE_URL ?? "(missing)",
+      });
       const result = await WebBrowser.openAuthSessionAsync(
         url,
-        `${APP_SCHEME}://meta-ads/callback`
+        META_CALLBACK_URL
       );
-      if (result.type !== "success") throw new Error("cancelled");
+      captureMessage("Meta auth session completed", "info", {
+        resultType: result.type,
+        returnedUrl: "url" in result ? result.url : null,
+        callbackUrl: META_CALLBACK_URL,
+      });
+      if (result.type !== "success") {
+        throw new Error(
+          JSON.stringify({
+            reason: "meta-auth-session-not-success",
+            resultType: result.type,
+            returnedUrl: "url" in result ? result.url : null,
+            callbackUrl: META_CALLBACK_URL,
+            apiBaseUrl: process.env.EXPO_PUBLIC_APP_BASE_URL ?? "(missing)",
+          })
+        );
+      }
       // Regardless of deep-link params, refresh status to pick up new state
       return result;
     },
@@ -398,9 +426,26 @@ export default function AdsScreen() {
       qc.invalidateQueries({ queryKey: qk.metaAdAccounts(restaurantId) });
     },
     onError: (err) => {
-      if ((err as Error).message !== "cancelled") {
-        Alert.alert("خطأ", "فشل ربط حساب Meta. حاول مرة أخرى.");
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === "cancelled") return;
+      captureException(err, { source: "meta-auth-connect" });
+      let debug = "";
+      try {
+        const parsed = JSON.parse(message) as {
+          resultType?: string;
+          returnedUrl?: string | null;
+          callbackUrl?: string;
+          apiBaseUrl?: string;
+        };
+        debug =
+          `\n\nresult.type: ${parsed.resultType ?? "(missing)"}` +
+          `\nreturnedUrl: ${parsed.returnedUrl ?? "(none)"}` +
+          `\ncallback: ${parsed.callbackUrl ?? "(missing)"}` +
+          `\nbaseUrl: ${parsed.apiBaseUrl ?? "(missing)"}`;
+      } catch {
+        debug = `\n\n${message}`;
       }
+      Alert.alert("خطأ", `فشل ربط حساب Meta. حاول مرة أخرى.${debug}`);
     },
   });
 

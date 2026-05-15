@@ -12,7 +12,6 @@
       "resizeMode": "contain",
       "backgroundColor": "#1e3a8a"
     },
-    "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.nehgz.nehgzbot",
       "supportsTablet": false,
@@ -59,7 +58,8 @@
             "buildToolsVersion": "35.0.0"
           }
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "extra": {
       "i18n": {
@@ -105,7 +105,8 @@
       }
     },
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "reactCompiler": true
     },
     "owner": "mahm0udsaad",
     "runtimeVersion": {
