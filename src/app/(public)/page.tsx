@@ -77,64 +77,12 @@ const SCREENS = [
   },
 ];
 
-const PRICING = [
-  {
-    name: "Starter",
-    price: "299",
-    period: "ريال / شهرياً",
-    convos: "حتى 500 محادثة شهرياً",
-    features: [
-      "ردود ذكية تلقائية",
-      "قاعدة معرفة لمتجر واحد",
-      "تطبيق جوّال للموبايل",
-      "تنبيهات لحظية",
-      "5 صور تسويقية / شهر",
-    ],
-    highlight: false,
-  },
-  {
-    name: "Business",
-    price: "999",
-    period: "ريال / شهرياً",
-    convos: "حتى 2,000 محادثة شهرياً",
-    features: [
-      "كل مميزات Starter",
-      "تصنيف وتصعيد ذكي",
-      "حملات تسويقية مع قوالب",
-      "30 صورة تسويقية / شهر",
-      "دعم فني خلال 24 ساعة",
-    ],
-    highlight: true,
-  },
-  {
-    name: "Pro",
-    price: "4,999",
-    period: "ريال / شهرياً",
-    convos: "حتى 10,000 محادثة شهرياً",
-    features: [
-      "كل مميزات Business",
-      "فريق ومناوبات بدون حد",
-      "تحليلات متقدمة",
-      "150 صورة تسويقية / شهر",
-      "دعم فني خلال ساعة",
-    ],
-    highlight: false,
-  },
-  {
-    name: "Enterprise",
-    price: "تواصل معنا",
-    period: "تسعير مخصص",
-    convos: "محادثات غير محدودة",
-    features: [
-      "كل مميزات Pro",
-      "API مخصص",
-      "تكامل مع أنظمتك",
-      "مدير حساب مخصص",
-      "اتفاقية مستوى خدمة (SLA)",
-    ],
-    highlight: false,
-  },
-];
+// Pricing tiers used to be defined here. They have been intentionally
+// removed from the public marketing site — Nehgz Bot is now an
+// enterprise/sales-led service. All commercial terms are negotiated
+// directly with our sales team on a per-business basis. The iOS app
+// is a free sign-in client for already-onboarded business workspaces
+// (App Store Review Guideline 3.1.3(b) — Multiplatform Services).
 
 const FAQ = [
   {
@@ -343,96 +291,52 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* PRICING */}
-      <section id="pricing" className="mx-auto max-w-6xl px-6 py-20">
-        <div className="text-center max-w-2xl mx-auto">
-          <p className="text-sm font-semibold text-emerald-600">الباقات</p>
-          <h2 className="mt-3 text-3xl sm:text-4xl font-bold text-gray-900">
-            باقات تناسب حجم متجرك
-          </h2>
-          <p className="mt-4 text-gray-600">
-            ابدأ صغير وكبّر متى ما احتجت. كل الباقات تشمل الذكاء الاصطناعي والتطبيق الجوّال.
-          </p>
-        </div>
+      {/*
+        SALES-LED ONBOARDING SECTION
 
-        {/*
-          Business-only eligibility banner.
-          Required for App Store Review 3.1.3(c) — Enterprise Services. All
-          Nehgz plans are sold to businesses (legal entities or sole-trader
-          merchants) for commercial use only. Individual, consumer, and
-          family use is not offered, and no purchase happens inside the
-          iOS app — all billing is processed on this website.
-        */}
-        <div
-          id="business-only-pricing-notice"
-          className="mt-8 mx-auto max-w-3xl rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center text-sm leading-relaxed text-emerald-900"
-          role="note"
-          aria-label="Business-only eligibility notice"
-        >
-          <p className="font-semibold mb-1">
-            جميع الباقات للأعمال التجارية فقط (B2B)
+        The pricing tiers section that used to live here has been removed.
+        Nehgz Bot is sold exclusively through a sales-led process: every
+        new merchant talks to our sales team on WhatsApp, signs a
+        commercial agreement, and is onboarded manually with a custom
+        configuration. There is no self-service purchase path on the web
+        or in the mobile app.
+
+        This section replaces the pricing grid with a single "Talk to
+        sales" CTA — consistent with App Store Review Guideline
+        3.1.3(b) — Multiplatform Services. The iOS app is a free
+        account-gated sign-in client for an already-onboarded business
+        workspace; no monetary plans are advertised on this site.
+      */}
+      <section id="contact-sales" className="mx-auto max-w-6xl px-6 py-20">
+        <div className="text-center max-w-2xl mx-auto">
+          <p className="text-sm font-semibold text-emerald-600">للأعمال</p>
+          <h2 className="mt-3 text-3xl sm:text-4xl font-bold text-gray-900">
+            خدمة موجَّهة للأعمال التجارية
+          </h2>
+          <p className="mt-4 text-gray-600 leading-relaxed">
+            نِهجز بوت يُقدَّم حصراً للأنشطة التجارية المسجَّلة عبر فريق
+            المبيعات لدينا. نتواصل معك، نفهم احتياجات نشاطك، ونجهّز لك
+            حسابك يدوياً مع إعداد كامل لقاعدة المعرفة والربط مع واتساب
+            للأعمال. لا توجد عملية تسجيل ذاتي ولا اشتراك مباشر عبر
+            الموقع أو التطبيق.
           </p>
-          <p>
-            نِهجز بوت يُباع حصراً للمتاجر والمطاعم والكافيهات والصالونات
-            والعيادات والأنشطة التجارية المسجَّلة. لا نوفّر حسابات للأفراد أو
-            للاستخدام الشخصي أو العائلي. جميع المدفوعات تتم عبر هذا الموقع
-            فقط وليس داخل تطبيق الجوّال.
-          </p>
-        </div>
-        <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {PRICING.map((p) => (
-            <div
-              key={p.name}
-              className={`relative rounded-2xl border p-6 flex flex-col ${
-                p.highlight
-                  ? "border-emerald-500 shadow-xl shadow-emerald-500/10 bg-white ring-2 ring-emerald-500/20"
-                  : "border-gray-200 bg-white"
-              }`}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <a
+              href={WHATSAPP_LINK}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-white font-semibold shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition"
             >
-              {p.highlight && (
-                <span className="absolute -top-3 right-1/2 translate-x-1/2 inline-flex items-center rounded-full bg-emerald-600 text-white px-3 py-1 text-xs font-semibold shadow">
-                  الأكثر طلباً
-                </span>
-              )}
-              <h3 className="font-bold text-lg text-gray-900">{p.name}</h3>
-              <div className="mt-4">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-extrabold text-gray-900">{p.price}</span>
-                  {p.price !== "تواصل معنا" && (
-                    <span className="text-sm text-gray-500">ريال</span>
-                  )}
-                </div>
-                <p className="mt-1 text-sm text-gray-500">{p.period}</p>
-              </div>
-              <p className="mt-4 text-sm font-semibold text-gray-900">{p.convos}</p>
-              <ul className="mt-4 space-y-2.5 text-sm text-gray-600 flex-1">
-                {p.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2">
-                    <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-[10px]">
-                      ✓
-                    </span>
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-              <a
-                href={WHATSAPP_LINK}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`mt-6 inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
-                  p.highlight
-                    ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md"
-                    : "border border-gray-300 text-gray-800 hover:bg-gray-50"
-                }`}
-              >
-                {p.price === "تواصل معنا" ? "تواصل معنا" : "ابدأ التجربة"}
-              </a>
-            </div>
-          ))}
+              تواصل مع فريق المبيعات
+              <span className="text-lg">←</span>
+            </a>
+          </div>
+          <p className="mt-6 text-xs text-gray-500 leading-relaxed">
+            خدمة Business-to-Business فقط · لا تُقدَّم للأفراد أو للاستخدام
+            الشخصي أو العائلي · جميع التعاقدات والمدفوعات تتم خارج تطبيق
+            الجوّال عبر فريق المبيعات.
+          </p>
         </div>
-        <p className="mt-8 text-center text-xs text-gray-500">
-          * الأسعار لا تشمل رسوم واتساب من Meta والتي تحتسب على المحادثة.
-        </p>
       </section>
 
       {/* FAQ */}

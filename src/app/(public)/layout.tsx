@@ -20,7 +20,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
           <nav className="hidden md:flex items-center gap-6 text-sm text-gray-600">
             <Link href="/#features" className="hover:text-gray-900">المميزات</Link>
             <Link href="/#screens" className="hover:text-gray-900">واجهة التطبيق</Link>
-            <Link href="/#pricing" className="hover:text-gray-900">الأسعار</Link>
+            <Link href="/#contact-sales" className="hover:text-gray-900">للأعمال</Link>
             <Link href="/support" className="hover:text-gray-900">الدعم</Link>
           </nav>
           <a
@@ -49,7 +49,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
             <h4 className="font-semibold text-gray-900 mb-3">روابط</h4>
             <ul className="space-y-2">
               <li><Link href="/#features" className="hover:text-gray-900">المميزات</Link></li>
-              <li><Link href="/#pricing" className="hover:text-gray-900">الأسعار</Link></li>
+              <li><Link href="/#contact-sales" className="hover:text-gray-900">للأعمال</Link></li>
               <li><Link href="/support" className="hover:text-gray-900">الدعم والأسئلة</Link></li>
             </ul>
           </div>
