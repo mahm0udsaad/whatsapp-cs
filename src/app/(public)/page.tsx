@@ -126,9 +126,9 @@ export default async function LandingPage() {
         <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] bg-[#011F91]/5 blur-[120px] rounded-full animate-pulse" />
         <div className="absolute bottom-[-10%] left-[-5%] w-[30%] h-[30%] bg-[#FCBD05]/5 blur-[100px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
 
-        <div className="mx-auto grid max-w-7xl items-center gap-12 px-6 pt-10 pb-20 lg:grid-cols-[1.1fr_0.9fr] lg:pt-16 lg:pb-32">
+        <div className="mx-auto grid max-w-7xl items-center gap-12 px-6 pt-6 pb-16 lg:grid-cols-[1.1fr_0.9fr] lg:pt-10 lg:pb-24">
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#011F91]/10 bg-white/60 backdrop-blur-md px-4 py-2 text-xs font-bold text-[#011F91] shadow-sm mb-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#011F91]/10 bg-white/60 backdrop-blur-md px-4 py-2 text-xs font-bold text-[#011F91] shadow-sm mb-6">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FCBD05] opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#FCBD05]"></span>
@@ -136,16 +136,16 @@ export default async function LandingPage() {
               منصة تشغيل واتساب للأعمال بالذكاء الاصطناعي
             </div>
             
-            <h1 className="text-4xl font-black leading-[1.1] tracking-tight text-slate-950 sm:text-5xl lg:text-7xl [text-wrap:balance]">
+            <h1 className="text-4xl font-black leading-[1.1] tracking-tight text-slate-950 sm:text-5xl lg:text-6xl [text-wrap:balance]">
               مساعد واتساب <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#011F91] to-[#4361ee]">يبدو كأنه جزء</span> من فريقك.
             </h1>
             
-            <p className="mt-8 max-w-2xl text-lg leading-relaxed text-slate-600 lg:text-xl">
+            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-600 lg:text-xl">
               نِحجز يربط متجرك بواتساب الأعمال ويرد على عملائك تلقائياً بلهجتك، من قاعدة معرفتك،
               على مدار الساعة. <span className="font-semibold text-slate-900">أنت تتابع كل شيء من تطبيق جوّال واحد.</span>
             </p>
             
-            <div className="mt-10 flex flex-wrap items-center gap-4">
+            <div className="mt-8 flex flex-wrap items-center gap-4">
               <a
                 href={WHATSAPP_LINK}
                 target="_blank"
@@ -164,7 +164,7 @@ export default async function LandingPage() {
               </Link>
             </div>
             
-            <div className="mt-12 flex items-center gap-6">
+            <div className="mt-10 flex items-center gap-6">
               <div className="flex -space-x-3 space-x-reverse">
                 {["نون", "سلة", "زد", "مكياجي"].map((name, i) => (
                   <div key={i} className="relative h-10 w-10 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center overflow-hidden">
@@ -182,10 +182,10 @@ export default async function LandingPage() {
             </div>
           </div>
 
-          <div className="relative z-10 lg:ml-[-2rem]">
-            <div className="relative mx-auto w-full max-w-[440px]">
-              <div className="relative z-20 rounded-[3rem] border-[12px] border-slate-950 bg-slate-950 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)]">
-                <div className="aspect-[9/19] overflow-hidden rounded-[2.2rem] bg-white">
+          <div className="relative z-10 lg:ml-[-1rem]">
+            <div className="relative mx-auto w-full max-w-[320px]">
+              <div className="relative z-20 rounded-[2.5rem] border-[10px] border-slate-950 bg-slate-950 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)]">
+                <div className="aspect-[9/19] overflow-hidden rounded-[1.8rem] bg-white">
                   <Image
                     src="/screenshots/02-ai-chat.png"
                     alt="واجهة المحادثات الذكية"
@@ -194,32 +194,32 @@ export default async function LandingPage() {
                     className="object-cover"
                   />
                 </div>
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 mt-4 h-6 w-24 rounded-full bg-slate-950" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 mt-3 h-5 w-20 rounded-full bg-slate-950" />
               </div>
 
-              <div className="absolute -left-12 top-20 z-30 animate-bounce-subtle">
-                <div className="rounded-2xl border border-white/50 bg-white/80 p-4 shadow-xl backdrop-blur-md">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
-                      <span className="text-xl">💬</span>
+              <div className="absolute -left-8 top-16 z-30 animate-bounce-subtle">
+                <div className="rounded-xl border border-white/50 bg-white/80 p-3 shadow-xl backdrop-blur-md">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg">
+                      <span className="">💬</span>
                     </div>
                     <div>
-                      <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">الرد الذكي</div>
-                      <div className="text-sm font-bold text-slate-900">تم الرد على عميل VIP</div>
+                      <div className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">الرد الذكي</div>
+                      <div className="text-xs font-bold text-slate-900">تم الرد على عميل VIP</div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="absolute -right-8 bottom-32 z-30 animate-bounce-subtle" style={{ animationDelay: '1s' }}>
-                <div className="rounded-2xl border border-white/50 bg-slate-900/90 p-4 shadow-2xl backdrop-blur-md text-white">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-[#FCBD05] flex items-center justify-center">
-                      <span className="text-xl">🚀</span>
+              <div className="absolute -right-6 bottom-24 z-30 animate-bounce-subtle" style={{ animationDelay: '1s' }}>
+                <div className="rounded-xl border border-white/50 bg-slate-900/90 p-3 shadow-2xl backdrop-blur-md text-white">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-[#FCBD05] flex items-center justify-center">
+                      <span className="text-lg">🚀</span>
                     </div>
                     <div>
-                      <div className="text-[10px] font-bold text-[#FCBD05] uppercase tracking-wider">حملة نشطة</div>
-                      <div className="text-sm font-bold">وصول بنسبة 98%</div>
+                      <div className="text-[9px] font-bold text-[#FCBD05] uppercase tracking-wider">حملة نشطة</div>
+                      <div className="text-xs font-bold">وصول بنسبة 98%</div>
                     </div>
                   </div>
                 </div>
