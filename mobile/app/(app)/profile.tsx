@@ -5,6 +5,7 @@ import {
   Linking,
   Platform,
   Pressable,
+  StyleSheet,
   Switch,
   Text,
   View,
@@ -191,29 +192,29 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F7F9] p-4" edges={["bottom"]}>
+    <SafeAreaView style={styles.screen} edges={["bottom"]}>
       {manager ? (
         <View
-          className={`mb-3 rounded-[22px] border p-4 ${
-            aiQuery.data?.enabled
-              ? "border-[#D6DDF8] bg-[#EDF2FF]"
-              : "border-red-200 bg-red-50"
-          }`}
+          style={[
+            styles.card,
+            aiQuery.data?.enabled ? styles.cardActive : styles.cardDanger,
+          ]}
         >
-          <View className="flex-row-reverse items-center justify-between gap-3">
-            <View className="flex-1">
-              <Text className="text-right text-xs font-medium text-[#7A88B8]">
+          <View style={styles.cardRow}>
+            <View style={styles.cardContent}>
+              <Text style={styles.cardEyebrow}>
                 المساعد الذكي
               </Text>
               {aiQuery.isLoading ? (
-                <View className="mt-2 items-end">
+                <View style={styles.skeletonAlign}>
                   <SkeletonBlock className="h-6 w-24 rounded-lg" />
                 </View>
               ) : (
                 <Text
-                  className={`mt-1 text-right text-xl font-bold ${
-                    aiQuery.data?.enabled ? "text-[#16245C]" : "text-red-900"
-                  }`}
+                  style={[
+                    styles.cardTitle,
+                    aiQuery.data?.enabled ? styles.titleActive : styles.titleDanger,
+                  ]}
                 >
                   {aiQuery.data?.enabled ? "مُفعّل" : "متوقف"}
                 </Text>
@@ -229,12 +230,12 @@ export default function ProfileScreen() {
             )}
           </View>
           {aiQuery.isLoading ? (
-            <View className="mt-3 items-end gap-2">
+            <View style={styles.descriptionSkeleton}>
               <SkeletonBlock className="h-3 w-64 rounded-lg" />
               <SkeletonBlock className="h-3 w-44 rounded-lg" />
             </View>
           ) : (
-            <Text className="mt-3 text-right text-sm leading-6 text-[#5E6A99]">
+            <Text style={styles.descriptionText}>
               {aiQuery.data?.enabled
                 ? "يرد المساعد تلقائياً على الرسائل الجديدة عندما يكون في وضع البوت."
                 : "تم إيقاف الرد التلقائي لجميع المحادثات. الموظفون فقط يردون."}
@@ -244,21 +245,21 @@ export default function ProfileScreen() {
       ) : null}
 
       <View
-        className={`mb-3 rounded-[22px] border p-4 ${
-          available
-            ? "border-[#D6DDF8] bg-[#EDF2FF]"
-            : "border-[#E7EBFB] bg-white"
-        }`}
+        style={[
+          styles.card,
+          available ? styles.cardActive : styles.cardNeutral,
+        ]}
       >
-        <View className="flex-row-reverse items-center justify-between gap-3">
-          <View className="flex-1">
-            <Text className="text-right text-xs font-medium text-[#7A88B8]">
+        <View style={styles.cardRow}>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardEyebrow}>
               حالتك الآن
             </Text>
             <Text
-              className={`mt-1 text-right text-xl font-bold ${
-                available ? "text-[#16245C]" : "text-[#445179]"
-              }`}
+              style={[
+                styles.cardTitle,
+                available ? styles.titleActive : styles.titleMuted,
+              ]}
             >
               {available ? "متاح لاستلام المحادثات" : "غير متاح للاستلام"}
             </Text>
@@ -269,19 +270,19 @@ export default function ProfileScreen() {
             <Switch value={available} onValueChange={onToggle} />
           )}
         </View>
-        <Text className="mt-3 text-right text-sm leading-6 text-[#5E6A99]">
+        <Text style={styles.descriptionText}>
           {available
             ? "ستصلك إشعارات المحادثات الجديدة ويمكن توجيه العملاء إليك."
             : "لن يتم توجيه محادثات جديدة إليك أثناء إيقاف الاستلام."}
         </Text>
       </View>
 
-      <View className="mb-3 rounded-[22px] border border-[#E7EBFB] bg-white p-4">
-        <Text className="text-right text-xs font-medium text-[#7A88B8]">المتجر</Text>
-        <Text className="mt-1 text-right text-lg font-semibold text-[#16245C]">
+      <View style={[styles.card, styles.cardNeutral]}>
+        <Text style={styles.cardEyebrow}>المتجر</Text>
+        <Text style={styles.storeName}>
           {member?.restaurant?.name ?? member?.restaurant_id ?? "—"}
         </Text>
-        <Text className="mt-2 text-right text-sm text-[#5E6A99]">
+        <Text style={styles.storeMeta}>
           {member?.full_name ?? ""} - {member?.role === "admin" ? "مدير" : "موظف"}
         </Text>
       </View>
@@ -299,35 +300,158 @@ export default function ProfileScreen() {
             const base = process.env.EXPO_PUBLIC_APP_BASE_URL ?? "";
             if (base) Linking.openURL(`${base}/dashboard`);
           }}
-          className="mb-3 items-center rounded-[22px] border border-[#E7EBFB] bg-white py-3"
+          style={styles.dashboardButton}
         >
-          <Text className="text-sm text-[#5E6A99]">فتح لوحة التحكم</Text>
+          <Text style={styles.dashboardButtonText}>فتح لوحة التحكم</Text>
         </Pressable>
       ) : null}
 
       <Pressable
         onPress={onLogout}
         disabled={loggingOut || deleting}
-        className="mt-4 items-center rounded-[22px] bg-red-600 py-4"
+        style={styles.logoutButton}
       >
         {loggingOut ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text className="text-white font-semibold">تسجيل الخروج</Text>
+          <Text style={styles.logoutButtonText}>تسجيل الخروج</Text>
         )}
       </Pressable>
 
       <Pressable
         onPress={onDeleteAccount}
         disabled={loggingOut || deleting}
-        className="mt-3 items-center rounded-[22px] border border-red-200 bg-white py-3"
+        style={styles.deleteButton}
       >
         {deleting ? (
           <ActivityIndicator color="#dc2626" />
         ) : (
-          <Text className="text-sm font-medium text-red-600">حذف الحساب</Text>
+          <Text style={styles.deleteButtonText}>حذف الحساب</Text>
         )}
       </Pressable>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: "#F6F7F9",
+    padding: 16,
+  },
+  card: {
+    marginBottom: 12,
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 16,
+  },
+  cardActive: {
+    borderColor: "#D6DDF8",
+    backgroundColor: "#EDF2FF",
+  },
+  cardDanger: {
+    borderColor: "#FECACA",
+    backgroundColor: "#FEF2F2",
+  },
+  cardNeutral: {
+    borderColor: "#E7EBFB",
+    backgroundColor: "#FFFFFF",
+  },
+  cardRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    columnGap: 12,
+  },
+  cardContent: {
+    flex: 1,
+  },
+  cardEyebrow: {
+    textAlign: "right",
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#7A88B8",
+  },
+  skeletonAlign: {
+    marginTop: 8,
+    alignItems: "flex-end",
+  },
+  cardTitle: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  titleActive: {
+    color: "#16245C",
+  },
+  titleDanger: {
+    color: "#7F1D1D",
+  },
+  titleMuted: {
+    color: "#445179",
+  },
+  descriptionSkeleton: {
+    marginTop: 12,
+    alignItems: "flex-end",
+    rowGap: 8,
+  },
+  descriptionText: {
+    marginTop: 12,
+    textAlign: "right",
+    fontSize: 14,
+    lineHeight: 24,
+    color: "#5E6A99",
+  },
+  storeName: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#16245C",
+  },
+  storeMeta: {
+    marginTop: 8,
+    textAlign: "right",
+    fontSize: 14,
+    color: "#5E6A99",
+  },
+  dashboardButton: {
+    marginBottom: 12,
+    alignItems: "center",
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#E7EBFB",
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 12,
+  },
+  dashboardButtonText: {
+    fontSize: 14,
+    color: "#5E6A99",
+  },
+  logoutButton: {
+    marginTop: 16,
+    alignItems: "center",
+    borderRadius: 22,
+    backgroundColor: "#DC2626",
+    paddingVertical: 16,
+  },
+  logoutButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  deleteButton: {
+    marginTop: 12,
+    alignItems: "center",
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 12,
+  },
+  deleteButtonText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#DC2626",
+  },
+});

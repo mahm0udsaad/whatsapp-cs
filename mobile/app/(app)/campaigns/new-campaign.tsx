@@ -1,17 +1,8 @@
 import { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
-  Image,
   Modal,
-  Pressable,
-  ScrollView,
-  Switch,
-  Text,
-  TextInput,
-  View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -20,10 +11,22 @@ import {
   createMetaCampaign,
   generateCaptions,
   generatePostImage,
+  getApiErrorMessage,
   getAiUsage,
   type MetaObjective,
 } from "../../../lib/api";
 import { ManagerCard, managerColors, softShadow } from "../../../components/manager-ui";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from "../../../components/tw";
 
 // ---- Static definitions ----------------------------------------------------
 
@@ -80,7 +83,10 @@ interface PickedImage {
   uri: string;
   base64: string;
   mimeType: string;
+  fileSize?: number;
 }
+
+const MAX_REFERENCE_IMAGE_BYTES = 4 * 1024 * 1024;
 
 // ============================================================================
 // MAIN WIZARD
@@ -161,7 +167,8 @@ export default function NewCampaignWizard() {
       });
       aiUsageQuery.refetch();
     },
-    onError: () => Alert.alert("خطأ", "تعذّر توليد الصورة."),
+    onError: (e) =>
+      Alert.alert("خطأ", getApiErrorMessage(e, "تعذّر توليد الصورة.")),
   });
 
   // Submit
@@ -210,10 +217,18 @@ export default function NewCampaignWizard() {
     });
     if (result.canceled || !result.assets[0].base64) return;
     const asset = result.assets[0];
+    if (target === "aiRef" && (asset.fileSize ?? 0) > MAX_REFERENCE_IMAGE_BYTES) {
+      Alert.alert(
+        "الصورة المرجعية كبيرة جدًا",
+        "اختر صورة أصغر من 4MB أو استخدم التوليد بدون صورة مرجعية."
+      );
+      return;
+    }
     const picked = {
       uri: asset.uri,
       base64: asset.base64!,
       mimeType: asset.mimeType ?? "image/jpeg",
+      fileSize: asset.fileSize,
     };
     if (target === "creative") setImage(picked);
     else setAiRefImage(picked);

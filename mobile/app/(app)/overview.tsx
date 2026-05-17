@@ -7,6 +7,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  StyleSheet,
   Text,
   View,
 } from "react-native";
@@ -295,7 +296,7 @@ export default function OverviewScreen() {
 
   if (!restaurantId) {
     return (
-      <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["bottom"]}>
+      <SafeAreaView style={styles.screen} edges={["bottom"]}>
         <DashboardSkeleton />
       </SafeAreaView>
     );
@@ -303,54 +304,47 @@ export default function OverviewScreen() {
 
   if (kpisQuery.isLoading && !kpis) {
     return (
-      <View className="flex-1" style={{ backgroundColor: managerColors.bg }}>
+      <View style={styles.screen}>
         <DashboardSkeleton />
       </View>
     );
   }
 
   return (
-    <View className="flex-1" style={{ backgroundColor: managerColors.bg }}>
+    <View style={styles.screen}>
       <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={refetchAll} />
         }
       >
         <View
-          className="overflow-hidden rounded-[28px] p-5"
-          style={{ backgroundColor: managerColors.brandDark }}
+          style={styles.heroCard}
         >
-          <View
-            className="absolute left-[-18] top-[-12] h-24 w-24 rounded-full"
-            style={{ backgroundColor: "rgba(255, 201, 40, 0.18)" }}
-          />
-          <View
-            className="absolute bottom-[-32] right-[-14] h-28 w-28 rounded-full"
-            style={{ backgroundColor: "rgba(255, 255, 255, 0.10)" }}
-          />
-          <View className="flex-row-reverse items-start justify-between gap-4">
-            <View className="flex-1">
-              <View className="flex-row-reverse items-center gap-2">
+          <View style={styles.heroOrbLeft} />
+          <View style={styles.heroOrbRight} />
+          <View style={styles.heroRow}>
+            <View style={styles.heroContent}>
+              <View style={styles.heroBrandRow}>
                 <Image
                   source={require("../../assets/logo.png")}
                   style={{ width: 28, height: 28, borderRadius: 6 }}
                   resizeMode="cover"
                 />
-                <Text className="text-right text-xs font-semibold text-[#FFD969]">
+                <Text style={styles.heroBrandText}>
                   Nehgz Bot
                 </Text>
               </View>
-              <Text className="mt-2 text-right text-2xl font-bold text-white">
+              <Text style={styles.heroTitle}>
                 {hasAlerts ? "يحتاج متابعة الآن" : "الصورة التشغيلية واضحة"}
               </Text>
-              <Text className="mt-2 text-right text-sm leading-6 text-white/70">
+              <Text style={styles.heroDescription}>
                 {hasAlerts
                   ? "ابدأ بالحالات العاجلة ثم تابع الفريق والنمو من نفس الشاشة."
                   : "لا توجد حالات حرجة الآن، ويمكنك متابعة الأداء والحملات من الأسفل."}
               </Text>
-              <View className="mt-4 flex-row-reverse flex-wrap gap-2">
+              <View style={styles.heroPillsRow}>
                 <HeroPill
                   icon="sparkles"
                   label={ai?.enabled ? "الأتمتة تعمل" : "الأتمتة متوقفة"}
@@ -366,36 +360,34 @@ export default function OverviewScreen() {
               </View>
             </View>
             <View
-              className={`min-w-20 items-center rounded-2xl border px-4 py-3 ${
-                hasAlerts
-                  ? "border-red-400 bg-red-500"
-                  : "border-[#FFD34D] bg-[#FFC928]"
-              }`}
+              style={[
+                styles.heroCountCard,
+                hasAlerts ? styles.heroCountCardDanger : styles.heroCountCardNormal,
+              ]}
             >
-              <Text className={`text-4xl font-bold ${hasAlerts ? "text-white" : "text-[#16245C]"}`}>
+              <Text style={[styles.heroCountValue, hasAlerts ? styles.heroCountTextLight : styles.heroCountTextDark]}>
                 {needsAttentionCount}
               </Text>
-              <Text className={`mt-1 text-xs font-semibold ${hasAlerts ? "text-white" : "text-[#16245C]"}`}>
+              <Text style={[styles.heroCountLabel, hasAlerts ? styles.heroCountTextLight : styles.heroCountTextDark]}>
                 عاجل
               </Text>
             </View>
           </View>
-          <View className="mt-5 flex-row-reverse gap-2">
+          <View style={styles.heroActionsRow}>
             <Pressable
               onPress={() => router.push("/(app)/inbox")}
-              className="flex-1 items-center rounded-2xl py-3"
-              style={{ backgroundColor: "#FFC928" }}
+              style={styles.heroPrimaryAction}
             >
-              <Text className="text-sm font-bold text-[#16245C]">
+              <Text style={styles.heroPrimaryActionText}>
                 فتح المحادثات
               </Text>
             </Pressable>
             <Pressable
               onPress={() => confirmToggleAi(!(ai?.enabled ?? true))}
               disabled={toggleMutation.isPending}
-              className="flex-1 items-center rounded-2xl border border-white/20 py-3"
+              style={styles.heroSecondaryAction}
             >
-              <Text className="text-sm font-bold text-white">
+              <Text style={styles.heroSecondaryActionText}>
                 {ai?.enabled ? "إيقاف البوت" : "تشغيل البوت"}
               </Text>
             </Pressable>
@@ -405,7 +397,7 @@ export default function OverviewScreen() {
         <OrdersWidget approvals={approvals} />
 
         {hasAlerts && kpis ? (
-          <View className="gap-2">
+          <View style={styles.alertStack}>
             {kpis.unassignedCount > 0 ? (
               <PriorityAction
                 title="محادثات غير مستلمة"
@@ -439,54 +431,54 @@ export default function OverviewScreen() {
           </View>
         ) : null}
 
-        <View className="gap-3">
+        <View style={styles.operationalSection}>
           <SectionHeader title="نظرة عامة على التشغيل" />
-          <View
-            className="rounded-[30px] border px-5 py-5"
-            style={{ borderColor: "#E2E7FA", backgroundColor: "#FCFDFE" }}
-          >
-            <View className="flex-row-reverse items-start justify-between gap-3">
-              <View className="flex-1">
-                <Text className="text-right text-[11px] font-semibold tracking-[0.4px] text-[#5E6A99]">
+          <View style={styles.operationalCard}>
+            <View style={styles.operationalHeaderRow}>
+              <View style={styles.operationalHeaderContent}>
+                <Text style={styles.operationalEyebrow}>
                   التشغيل الآن
                 </Text>
-                <View className="mt-2 flex-row-reverse items-center gap-3">
+                <View style={styles.operationalStatusRow}>
                   <View
-                    className={`h-3 w-3 rounded-full ${
-                      ai?.enabled ? "bg-[#273B9A]" : "bg-red-500"
-                    }`}
+                    style={[
+                      styles.operationalStatusDot,
+                      ai?.enabled
+                        ? styles.operationalStatusDotOn
+                        : styles.operationalStatusDotOff,
+                    ]}
                   />
-                  <Text className="text-right text-lg font-bold text-[#16245C]">
+                  <Text style={styles.operationalStatusText}>
                     {ai?.enabled ? "المساعد الذكي نشط" : "المساعد الذكي متوقف"}
                   </Text>
                 </View>
               </View>
-              <View className="rounded-full border border-[#E7EBFB] bg-[#F8FAFF] px-3 py-1.5">
-                <View className="flex-row-reverse items-center gap-1.5">
+              <View style={styles.operationalBadge}>
+                <View style={styles.operationalBadgeRow}>
                   <Ionicons name="people" size={15} color="#5E6A99" />
-                  <Text className="text-sm font-bold text-[#16245C]">
+                  <Text style={styles.operationalBadgeValue}>
                     {kpis?.agentsOnShiftCount ?? 0}
                   </Text>
-                  <Text className="text-[11px] font-medium text-[#5E6A99]">متاح</Text>
+                  <Text style={styles.operationalBadgeLabel}>متاح</Text>
                 </View>
               </View>
             </View>
-            <View className="mt-4 flex-row-reverse flex-wrap gap-2.5">
+            <View style={styles.operationalMetricsGrid}>
               <MetricFeatureCard
                 icon="hardware-chip"
-                iconColor="#273B9A"
+                iconColor="#011F91"
                 borderClass="border-[#E1E7FB]"
                 bgClass="bg-[#F7F9FF]"
                 value={kpis?.botActiveCount ?? 0}
                 label="مع المساعد"
                 hint="محادثات يرد عليها البوت"
                 valueClass="text-[#16245C]"
-                labelClass="text-[#1A2A78]"
+                labelClass="text-[#011F91]"
                 hintClass="text-[#44559A]"
               />
               <MetricFeatureCard
                 icon="person"
-                iconColor="#FFC928"
+                iconColor="#FCBD05"
                 borderClass="border-[#F6E5AF]"
                 bgClass="bg-[#FFFBEF]"
                 value={kpis?.humanActiveCount ?? 0}
@@ -510,14 +502,14 @@ export default function OverviewScreen() {
               />
               <MetricFeatureCard
                 icon="mail-unread-outline"
-                iconColor="#273B9A"
+                iconColor="#011F91"
                 borderClass="border-[#D6DDF8]"
                 bgClass="bg-[#EDF2FF]"
                 value={kpis?.unreadCount ?? 0}
                 label="غير مقروءة"
                 hint="محادثات فيها رسائل لم تُراجع بعد"
                 valueClass="text-[#16245C]"
-                labelClass="text-[#1A2A78]"
+                labelClass="text-[#011F91]"
                 hintClass="text-[#44559A]"
               />
               <MetricFeatureCard
@@ -559,7 +551,7 @@ export default function OverviewScreen() {
 
         <WhatsAppHealthCard health={waHealth} />
 
-        <View className="flex-row-reverse gap-3">
+        <View style={styles.quickLinksRow}>
           <QuickLinkCard
             icon="people-circle-outline"
             title="الفريق"
@@ -574,7 +566,7 @@ export default function OverviewScreen() {
           />
         </View>
 
-        <View className="flex-row-reverse gap-3">
+        <View style={styles.quickLinksRow}>
           <QuickLinkCard
             icon="person-add-outline"
             title="العملاء"
@@ -597,10 +589,9 @@ export default function OverviewScreen() {
               const webUrl = process.env.EXPO_PUBLIC_APP_BASE_URL ?? "";
               if (webUrl) Linking.openURL(`${webUrl}/dashboard`);
             }}
-            className="items-center rounded-[22px] border py-3.5"
-            style={{ borderColor: "#E7EBFB", backgroundColor: managerColors.surface }}
+            style={styles.dashboardButton}
           >
-            <Text className="text-sm font-semibold text-[#5E6A99]">فتح لوحة التحكم</Text>
+            <Text style={styles.dashboardButtonText}>فتح لوحة التحكم</Text>
           </Pressable>
         ) : null}
       </ScrollView>
@@ -616,9 +607,9 @@ function HeroPill({
   label: string;
 }) {
   return (
-    <View className="flex-row-reverse items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5">
-      <Ionicons name={icon} size={13} color="#FFD969" />
-      <Text className="text-right text-[11px] font-semibold text-[#F8F9FF]">
+    <View style={styles.heroPill}>
+      <Ionicons name={icon} size={13} color="#FCBD05" />
+      <Text style={styles.heroPillText}>
         {label}
       </Text>
     </View>
@@ -650,16 +641,62 @@ function MetricFeatureCard({
 }) {
   return (
     <View
-      className={`min-w-[45%] flex-1 rounded-[20px] border px-4 py-4 ${borderClass} ${bgClass}`}
+      style={[
+        styles.metricFeatureCard,
+        bgClass === "bg-[#FFFBEF]"
+          ? styles.metricFeatureCardWarm
+          : bgClass === "bg-amber-50"
+          ? styles.metricFeatureCardAmber
+          : bgClass === "bg-red-50"
+          ? styles.metricFeatureCardRed
+          : bgClass === "bg-[#EDF2FF]"
+          ? styles.metricFeatureCardBlue
+          : styles.metricFeatureCardWhite,
+      ]}
     >
-      <View className="mb-4 flex-row-reverse items-start justify-between">
-        <View className="rounded-full border border-black/5 bg-white px-2.5 py-1.5">
+      <View style={styles.metricFeatureTopRow}>
+        <View style={styles.metricFeatureIconWrap}>
           <Ionicons name={icon} size={16} color={iconColor} />
         </View>
-        <Text className={`text-3xl font-extrabold ${valueClass}`}>{value}</Text>
+        <Text
+          style={[
+            styles.metricFeatureValue,
+            valueClass === "text-[#8A5E00]"
+              ? styles.metricFeatureValueWarm
+              : valueClass === "text-amber-900"
+              ? styles.metricFeatureValueWarm
+              : valueClass === "text-red-900"
+              ? styles.metricFeatureValueDanger
+              : styles.metricFeatureValueBlue,
+          ]}
+        >
+          {value}
+        </Text>
       </View>
-      <Text className={`text-right text-sm font-bold ${labelClass}`}>{label}</Text>
-      <Text className={`mt-1 text-right text-[11px] leading-5 ${hintClass}`}>{hint}</Text>
+      <Text
+        style={[
+          styles.metricFeatureLabel,
+          labelClass === "text-[#8A5E00]" || labelClass === "text-amber-900"
+            ? styles.metricFeatureLabelWarm
+            : labelClass === "text-red-900"
+            ? styles.metricFeatureLabelDanger
+            : styles.metricFeatureLabelBlue,
+        ]}
+      >
+        {label}
+      </Text>
+      <Text
+        style={[
+          styles.metricFeatureHint,
+          hintClass === "text-[#A37200]" || hintClass === "text-amber-700/80"
+            ? styles.metricFeatureHintWarm
+            : hintClass === "text-red-700/80"
+            ? styles.metricFeatureHintDanger
+            : styles.metricFeatureHintBlue,
+        ]}
+      >
+        {hint}
+      </Text>
     </View>
   );
 }
@@ -684,14 +721,15 @@ function TeamPulseCard({
   topPerformer: TeamPerformanceRow | null;
 }) {
   return (
-    <ManagerCard className="overflow-hidden" >
-      <View className="absolute left-0 top-0 h-full w-1 rounded-l-full bg-[#273B9A]" />
-      <SectionHeader
-        title="نبض الفريق"
-        actionLabel="عرض الفريق"
-        onActionPress={() => router.push("/(app)/team")}
-      />
-      <View className="mt-3 flex-row-reverse flex-wrap gap-2.5">
+    <View style={styles.insightCard}>
+      <View style={styles.insightAccentBlue} />
+      <View style={styles.cardHeaderRow}>
+        <Pressable onPress={() => router.push("/(app)/team")} hitSlop={8}>
+          <Text style={styles.cardHeaderAction}>عرض الفريق</Text>
+        </Pressable>
+        <Text style={styles.cardHeaderTitle}>نبض الفريق</Text>
+      </View>
+      <View style={styles.miniMetricGrid}>
         <MiniMetric label="إجمالي الفريق" value={rosterCount} tone="neutral" />
         <MiniMetric label="متاح الآن" value={activeTeamCount} tone="success" />
         <MiniMetric label="في المناوبة" value={onShiftCount} tone="info" />
@@ -701,30 +739,30 @@ function TeamPulseCard({
           tone={overloadedCount > 0 ? "warning" : "neutral"}
         />
       </View>
-      <View className="mt-4 rounded-[24px] border border-[#E7EBFB] bg-[#FBFCFF] p-4">
-        <View className="flex-row-reverse items-start justify-between gap-3">
-          <View className="flex-1">
-            <Text className="text-right text-[11px] font-semibold tracking-[0.4px] text-[#5E6A99]">
+      <View style={styles.serviceSummaryCard}>
+        <View style={styles.serviceSummaryRow}>
+          <View style={styles.serviceSummaryContent}>
+            <Text style={styles.serviceSummaryEyebrow}>
               جودة الخدمة
             </Text>
-            <Text className="mt-2 text-right text-sm font-bold text-[#16245C]">
+            <Text style={styles.serviceSummaryTitle}>
               ملخص الخدمة اليوم
             </Text>
-            <Text className="mt-1 text-right text-xs leading-5 text-[#5E6A99]">
+            <Text style={styles.serviceSummaryBody}>
               {totals.messages > 0 || totals.conversations > 0
                 ? `${totals.messages} رسالة و ${totals.conversations} محادثة تمت متابعتها اليوم.`
                 : "لا توجد حركة كافية لقياس الخدمة اليوم بعد."}
             </Text>
           </View>
-          <View className="rounded-[18px] border border-[#EEF1FB] bg-white px-3 py-2.5">
-            <Text className="text-center text-lg font-extrabold text-[#16245C]">
+          <View style={styles.serviceSummaryBadge}>
+            <Text style={styles.serviceSummaryBadgeValue}>
               {totals.breaches}
             </Text>
-            <Text className="text-[11px] text-[#7A88B8]">تجاوز SLA</Text>
+            <Text style={styles.serviceSummaryBadgeLabel}>تجاوز SLA</Text>
           </View>
         </View>
       </View>
-      <View className="mt-3 gap-2">
+      <View style={styles.insightStack}>
         {busiestMember ? (
           <InsightRow
             icon="pulse"
@@ -750,7 +788,7 @@ function TeamPulseCard({
           />
         ) : null}
       </View>
-    </ManagerCard>
+    </View>
   );
 }
 
@@ -772,14 +810,15 @@ function GrowthPulseCard({
   latestCampaign: MarketingCampaignRow | null;
 }) {
   return (
-    <ManagerCard className="overflow-hidden">
-      <View className="absolute left-0 top-0 h-full w-1 rounded-l-full bg-[#FFC928]" />
-      <SectionHeader
-        title="النمو والحملات"
-        actionLabel="فتح الحملات"
-        onActionPress={() => router.push("/(app)/campaigns")}
-      />
-      <View className="mt-3 flex-row-reverse flex-wrap gap-2.5">
+    <View style={styles.insightCard}>
+      <View style={styles.insightAccentGold} />
+      <View style={styles.cardHeaderRow}>
+        <Pressable onPress={() => router.push("/(app)/campaigns")} hitSlop={8}>
+          <Text style={styles.cardHeaderAction}>فتح الحملات</Text>
+        </Pressable>
+        <Text style={styles.cardHeaderTitle}>النمو والحملات</Text>
+      </View>
+      <View style={styles.miniMetricGrid}>
         <MiniMetric label="إجمالي العملاء" value={totalCustomers} tone="info" />
         <MiniMetric
           label="إلغاء الاشتراك"
@@ -793,29 +832,29 @@ function GrowthPulseCard({
           tone="neutral"
         />
       </View>
-      <View className="mt-4 flex-row-reverse gap-3">
-        <View className="flex-1 rounded-[24px] border border-[#E5EAFB] bg-[#F8FAFF] p-4">
-          <Text className="text-right text-xs font-semibold text-[#1A2A78]">
+      <View style={styles.growthDualRow}>
+        <View style={styles.growthReadRateCard}>
+          <Text style={styles.growthReadRateLabel}>
             معدل القراءة
           </Text>
-          <Text className="mt-1 text-right text-2xl font-extrabold text-[#16245C]">
+          <Text style={styles.growthReadRateValue}>
             {readRate}%
           </Text>
-          <Text className="mt-1 text-right text-[11px] text-[#44559A]">
+          <Text style={styles.growthReadRateHint}>
             من الرسائل التي تم تسليمها
           </Text>
         </View>
-        <View className="flex-1 rounded-[24px] border border-[#F7E8B8] bg-[#FFFCEF] p-4">
-          <Text className="text-right text-xs font-semibold text-[#8A5E00]">
+        <View style={styles.growthLatestCustomerCard}>
+          <Text style={styles.growthLatestCustomerLabel}>
             آخر عميل مضاف
           </Text>
           <Text
-            className="mt-1 text-right text-sm font-bold text-[#8A5E00]"
+            style={styles.growthLatestCustomerValue}
             numberOfLines={1}
           >
             {latestCustomer?.full_name || latestCustomer?.phone_number || "لا يوجد بعد"}
           </Text>
-          <Text className="mt-1 text-right text-[11px] text-[#A37200]">
+          <Text style={styles.growthLatestCustomerHint}>
             {latestCustomer?.last_seen_at
               ? "له تفاعل مسجل حديثاً"
               : "لم يبدأ محادثة بعد"}
@@ -823,39 +862,39 @@ function GrowthPulseCard({
         </View>
       </View>
       {latestCampaign ? (
-        <View className="mt-4 rounded-[24px] border border-[#ECEFF7] bg-[#FEFEFF] p-4">
-          <View className="flex-row-reverse items-start justify-between gap-2">
-            <Text className="flex-1 text-right text-sm font-bold text-[#16245C]">
+        <View style={styles.campaignSummaryCard}>
+          <View style={styles.campaignSummaryHeader}>
+            <Text style={styles.campaignSummaryTitle}>
               {latestCampaign.name}
             </Text>
-            <Text className="rounded-full bg-[#F4F7FF] px-2 py-0.5 text-[10px] font-bold text-[#5E6A99]">
+            <Text style={styles.campaignStatusPill}>
               {campaignStatusLabel(latestCampaign.status)}
             </Text>
           </View>
-          <Text className="mt-1 text-right text-xs text-[#7A88B8]">
+          <Text style={styles.campaignSummaryMeta}>
             {latestCampaign.marketing_templates?.name ?? "بدون قالب"} ·{" "}
             {formatDistanceToNow(new Date(latestCampaign.created_at), {
               addSuffix: true,
               locale: ar,
             })}
           </Text>
-          <Text className="mt-2 text-right text-xs leading-5 text-[#5E6A99]">
+          <Text style={styles.campaignSummaryBody}>
             {latestCampaign.total_recipients > 0
               ? `استهدفت ${latestCampaign.total_recipients} جهة، تم التسليم إلى ${latestCampaign.delivered_count} وقراءة ${latestCampaign.read_count}.`
               : "الحملة لم تُربط بجمهور بعد."}
           </Text>
         </View>
       ) : (
-        <View className="mt-4 rounded-[24px] border border-dashed border-[#D7DDF0] bg-[#FEFEFF] p-4">
-          <Text className="text-right text-sm font-semibold text-[#16245C]">
+        <View style={styles.noCampaignCard}>
+          <Text style={styles.noCampaignTitle}>
             لا توجد حملات بعد
           </Text>
-          <Text className="mt-1 text-right text-xs text-[#7A88B8]">
+          <Text style={styles.noCampaignBody}>
             إضافة حملة واحدة هنا ستجعل شاشة المتابعة أذكى بكثير.
           </Text>
         </View>
       )}
-    </ManagerCard>
+    </View>
   );
 }
 
@@ -870,16 +909,25 @@ function MiniMetric({
 }) {
   const toneClasses =
     tone === "success"
-      ? "border-[#D6DDF8] bg-[#EDF2FF] text-[#16245C]"
+      ? styles.miniMetricSuccess
       : tone === "warning"
-      ? "border-amber-200 bg-amber-50 text-amber-900"
+      ? styles.miniMetricWarning
       : tone === "info"
-      ? "border-[#F4D774] bg-[#FFF7D8] text-[#8A5E00]"
-      : "border-[#E7EBFB] bg-white text-[#16245C]";
+      ? styles.miniMetricInfo
+      : styles.miniMetricNeutral;
   return (
-    <View className={`min-w-[47%] flex-1 rounded-[16px] border px-3 py-3 ${toneClasses}`}>
-      <Text className="text-right text-2xl font-extrabold">{value}</Text>
-      <Text className="mt-1 text-right text-[10px] font-medium text-[#7A88B8]">
+    <View style={[styles.miniMetricCard, toneClasses]}>
+      <Text
+        style={[
+          styles.miniMetricValue,
+          tone === "warning" || tone === "info"
+            ? styles.miniMetricValueWarm
+            : styles.miniMetricValueDefault,
+        ]}
+      >
+        {value}
+      </Text>
+      <Text style={styles.miniMetricLabel}>
         {label}
       </Text>
     </View>
@@ -900,29 +948,29 @@ function InsightRow({
   const tone =
     tint === "blue"
       ? {
-          box: "border-[#D6DDF8] bg-[#EDF2FF]",
-          icon: "#273B9A",
-          title: "text-[#16245C]",
+          box: styles.insightRowBlue,
+          icon: "#011F91",
+          title: styles.insightRowTitleBlue,
         }
       : tint === "yellow"
       ? {
-          box: "border-[#F4D774] bg-[#FFF7D8]",
+          box: styles.insightRowYellow,
           icon: "#C98500",
-          title: "text-[#8A5E00]",
+          title: styles.insightRowTitleYellow,
         }
       : {
-          box: "border-amber-200 bg-amber-50",
+          box: styles.insightRowAmber,
           icon: "#B45309",
-          title: "text-amber-950",
+          title: styles.insightRowTitleAmber,
         };
   return (
-    <View className={`flex-row-reverse items-start gap-3 rounded-[18px] border p-3 ${tone.box}`}>
-      <View className="h-9 w-9 items-center justify-center rounded-full border border-black/5 bg-white">
+    <View style={[styles.insightRow, tone.box]}>
+      <View style={styles.insightRowIconWrap}>
         <Ionicons name={icon} size={18} color={tone.icon} />
       </View>
-      <View className="flex-1">
-        <Text className={`text-right text-sm font-bold ${tone.title}`}>{title}</Text>
-        <Text className="mt-1 text-right text-[11px] leading-5 text-[#5E6A99]">
+      <View style={styles.insightRowContent}>
+        <Text style={[styles.insightRowTitle, tone.title]}>{title}</Text>
+        <Text style={styles.insightRowBody}>
           {body}
         </Text>
       </View>
@@ -944,24 +992,973 @@ function QuickLinkCard({
   return (
     <Pressable
       onPress={onPress}
-      className="flex-1 rounded-[20px] border p-4"
-      style={{ borderColor: "#E5EAFB", backgroundColor: "#FCFDFE" }}
+      style={styles.quickLinkCard}
     >
-      <View className="flex-row-reverse items-center justify-between">
-        <View className="h-11 w-11 items-center justify-center rounded-full border border-[#E7EBFB] bg-[#F8FAFF]">
+      <View style={styles.quickLinkHeader}>
+        <View style={styles.quickLinkIconWrap}>
           <Ionicons name={icon} size={18} color={managerColors.brand} />
         </View>
         <Ionicons name="chevron-back" size={18} color="#98A2B3" />
       </View>
-      <Text className="mt-5 text-right text-sm font-bold text-[#16245C]">
+      <Text style={styles.quickLinkTitle}>
         {title}
       </Text>
-      <Text className="mt-1 text-right text-[11px] leading-5 text-[#7A88B8]">
+      <Text style={styles.quickLinkDescription}>
         {description}
       </Text>
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: managerColors.bg,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 24,
+    rowGap: 16,
+  },
+  heroCard: {
+    overflow: "hidden",
+    borderRadius: 28,
+    padding: 20,
+    backgroundColor: managerColors.brandDark,
+  },
+  heroOrbLeft: {
+    position: "absolute",
+    left: -18,
+    top: -12,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "rgba(255, 201, 40, 0.18)",
+  },
+  heroOrbRight: {
+    position: "absolute",
+    bottom: -32,
+    right: -14,
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    backgroundColor: "rgba(255,255,255,0.10)",
+  },
+  heroRow: {
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    columnGap: 16,
+  },
+  heroContent: {
+    flex: 1,
+  },
+  heroBrandRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 8,
+  },
+  heroBrandText: {
+    textAlign: "right",
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#FCBD05",
+  },
+  heroTitle: {
+    marginTop: 8,
+    textAlign: "right",
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  heroDescription: {
+    marginTop: 8,
+    textAlign: "right",
+    fontSize: 14,
+    lineHeight: 24,
+    color: "rgba(255,255,255,0.70)",
+  },
+  heroPillsRow: {
+    marginTop: 16,
+    flexDirection: "row-reverse",
+    flexWrap: "wrap",
+    columnGap: 8,
+    rowGap: 8,
+  },
+  heroCountCard: {
+    minWidth: 80,
+    alignItems: "center",
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  heroCountCardDanger: {
+    borderColor: "#F87171",
+    backgroundColor: "#EF4444",
+  },
+  heroCountCardNormal: {
+    borderColor: "#FDD043",
+    backgroundColor: "#FCBD05",
+  },
+  heroCountValue: {
+    fontSize: 36,
+    fontWeight: "700",
+  },
+  heroCountLabel: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  heroCountTextLight: {
+    color: "#FFFFFF",
+  },
+  heroCountTextDark: {
+    color: "#16245C",
+  },
+  heroActionsRow: {
+    marginTop: 20,
+    flexDirection: "row-reverse",
+    columnGap: 8,
+  },
+  heroPrimaryAction: {
+    flex: 1,
+    alignItems: "center",
+    borderRadius: 16,
+    backgroundColor: "#FCBD05",
+    paddingVertical: 12,
+  },
+  heroPrimaryActionText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#16245C",
+  },
+  heroSecondaryAction: {
+    flex: 1,
+    alignItems: "center",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.20)",
+    paddingVertical: 12,
+  },
+  heroSecondaryActionText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  heroPill: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "rgba(255,255,255,0.10)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  heroPillText: {
+    textAlign: "right",
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#F8F9FF",
+  },
+  alertStack: {
+    rowGap: 8,
+  },
+  operationalSection: {
+    rowGap: 12,
+  },
+  operationalCard: {
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: "#E2E7FA",
+    backgroundColor: "#FCFDFE",
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  operationalHeaderRow: {
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    columnGap: 12,
+  },
+  operationalHeaderContent: {
+    flex: 1,
+  },
+  operationalEyebrow: {
+    textAlign: "right",
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.4,
+    color: "#5E6A99",
+  },
+  operationalStatusRow: {
+    marginTop: 8,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 12,
+  },
+  operationalStatusDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 999,
+  },
+  operationalStatusDotOn: {
+    backgroundColor: "#011F91",
+  },
+  operationalStatusDotOff: {
+    backgroundColor: "#EF4444",
+  },
+  operationalStatusText: {
+    textAlign: "right",
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#16245C",
+  },
+  operationalBadge: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#E7EBFB",
+    backgroundColor: "#F8FAFF",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  operationalBadgeRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 6,
+  },
+  operationalBadgeValue: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#16245C",
+  },
+  operationalBadgeLabel: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: "#5E6A99",
+  },
+  operationalMetricsGrid: {
+    marginTop: 16,
+    flexDirection: "row-reverse",
+    flexWrap: "wrap",
+    columnGap: 10,
+    rowGap: 10,
+  },
+  metricFeatureCard: {
+    minWidth: "45%",
+    flex: 1,
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  metricFeatureCardBlue: {
+    borderColor: "#D6DDF8",
+    backgroundColor: "#EDF2FF",
+  },
+  metricFeatureCardWarm: {
+    borderColor: "#F6E5AF",
+    backgroundColor: "#FFFBEF",
+  },
+  metricFeatureCardAmber: {
+    borderColor: "#FDE68A",
+    backgroundColor: "#FFFBEB",
+  },
+  metricFeatureCardRed: {
+    borderColor: "#FECACA",
+    backgroundColor: "#FEF2F2",
+  },
+  metricFeatureCardWhite: {
+    borderColor: "#E1E7FB",
+    backgroundColor: "#F7F9FF",
+  },
+  metricFeatureTopRow: {
+    marginBottom: 16,
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+  },
+  metricFeatureIconWrap: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  metricFeatureValue: {
+    fontSize: 30,
+    fontWeight: "800",
+  },
+  metricFeatureValueBlue: {
+    color: "#16245C",
+  },
+  metricFeatureValueWarm: {
+    color: "#8A5E00",
+  },
+  metricFeatureValueDanger: {
+    color: "#7F1D1D",
+  },
+  metricFeatureLabel: {
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  metricFeatureLabelBlue: {
+    color: "#011F91",
+  },
+  metricFeatureLabelWarm: {
+    color: "#8A5E00",
+  },
+  metricFeatureLabelDanger: {
+    color: "#7F1D1D",
+  },
+  metricFeatureHint: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 11,
+    lineHeight: 20,
+  },
+  metricFeatureHintBlue: {
+    color: "#44559A",
+  },
+  metricFeatureHintWarm: {
+    color: "#A37200",
+  },
+  metricFeatureHintDanger: {
+    color: "#B91C1C",
+  },
+  quickLinksRow: {
+    flexDirection: "row-reverse",
+    columnGap: 12,
+  },
+  quickLinkCard: {
+    flex: 1,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E5EAFB",
+    backgroundColor: "#FCFDFE",
+    padding: 16,
+  },
+  quickLinkHeader: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  quickLinkIconWrap: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#E7EBFB",
+    backgroundColor: "#F8FAFF",
+  },
+  quickLinkTitle: {
+    marginTop: 20,
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#16245C",
+  },
+  quickLinkDescription: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 11,
+    lineHeight: 20,
+    color: "#7A88B8",
+  },
+  dashboardButton: {
+    alignItems: "center",
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#E7EBFB",
+    backgroundColor: managerColors.surface,
+    paddingVertical: 14,
+  },
+  dashboardButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#5E6A99",
+  },
+  whatsAppSkeleton: {
+    marginTop: 4,
+    height: 20,
+    width: "66%",
+    borderRadius: 10,
+    backgroundColor: "#F2F4F7",
+  },
+  whatsAppEmptyCard: {
+    marginTop: 4,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#FCD34D",
+    backgroundColor: "#FFFBEB",
+    padding: 12,
+  },
+  whatsAppEmptyRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 8,
+  },
+  whatsAppEmptyTitle: {
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#78350F",
+  },
+  whatsAppHelperText: {
+    marginTop: 8,
+    textAlign: "right",
+    fontSize: 12,
+    color: "#7A88B8",
+  },
+  whatsAppStatusCard: {
+    marginTop: 4,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 12,
+  },
+  whatsAppStatusCardOk: {
+    borderColor: "#D6DDF8",
+    backgroundColor: "#EDF2FF",
+  },
+  whatsAppStatusCardWarn: {
+    borderColor: "#FCD34D",
+    backgroundColor: "#FFFBEB",
+  },
+  whatsAppStatusCardDanger: {
+    borderColor: "#FECACA",
+    backgroundColor: "#FEF2F2",
+  },
+  whatsAppStatusContentRow: {
+    flex: 1,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 10,
+  },
+  whatsAppStatusTextWrap: {
+    flex: 1,
+  },
+  whatsAppStatusTitle: {
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  whatsAppStatusTitleOk: {
+    color: "#16245C",
+  },
+  whatsAppStatusTitleWarn: {
+    color: "#78350F",
+  },
+  whatsAppStatusTitleDanger: {
+    color: "#991B1B",
+  },
+  whatsAppPhoneNumber: {
+    marginTop: 2,
+    textAlign: "right",
+    fontSize: 12,
+    color: "#667085",
+  },
+  whatsAppErrorText: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 12,
+    color: "#B91C1C",
+  },
+  insightCard: {
+    overflow: "hidden",
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#D6DDF8",
+    backgroundColor: "#FCFEFC",
+    padding: 16,
+    shadowColor: "#273B9A",
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  insightAccentBlue: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    backgroundColor: "#011F91",
+  },
+  insightAccentGold: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    backgroundColor: "#FCBD05",
+  },
+  cardHeaderRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  cardHeaderTitle: {
+    textAlign: "right",
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#16245C",
+  },
+  cardHeaderAction: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#273B9A",
+  },
+  miniMetricGrid: {
+    marginTop: 12,
+    flexDirection: "row-reverse",
+    flexWrap: "wrap",
+    columnGap: 10,
+    rowGap: 10,
+  },
+  miniMetricCard: {
+    minWidth: "47%",
+    flex: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  miniMetricNeutral: {
+    borderColor: "#E7EBFB",
+    backgroundColor: "#FFFFFF",
+  },
+  miniMetricSuccess: {
+    borderColor: "#D6DDF8",
+    backgroundColor: "#EDF2FF",
+  },
+  miniMetricWarning: {
+    borderColor: "#FDE68A",
+    backgroundColor: "#FFFBEB",
+  },
+  miniMetricInfo: {
+    borderColor: "#F4D774",
+    backgroundColor: "#FFF7D8",
+  },
+  miniMetricValue: {
+    textAlign: "right",
+    fontSize: 24,
+    fontWeight: "800",
+  },
+  miniMetricValueDefault: {
+    color: "#16245C",
+  },
+  miniMetricValueWarm: {
+    color: "#8A5E00",
+  },
+  miniMetricLabel: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 10,
+    fontWeight: "500",
+    color: "#7A88B8",
+  },
+  serviceSummaryCard: {
+    marginTop: 16,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#E7EBFB",
+    backgroundColor: "#FBFCFF",
+    padding: 16,
+  },
+  serviceSummaryRow: {
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    columnGap: 12,
+  },
+  serviceSummaryContent: {
+    flex: 1,
+  },
+  serviceSummaryEyebrow: {
+    textAlign: "right",
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#5E6A99",
+  },
+  serviceSummaryTitle: {
+    marginTop: 8,
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#16245C",
+  },
+  serviceSummaryBody: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 12,
+    lineHeight: 20,
+    color: "#5E6A99",
+  },
+  serviceSummaryBadge: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#EEF1FB",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  serviceSummaryBadgeValue: {
+    textAlign: "center",
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#16245C",
+  },
+  serviceSummaryBadgeLabel: {
+    fontSize: 11,
+    color: "#7A88B8",
+  },
+  insightStack: {
+    marginTop: 12,
+    rowGap: 8,
+  },
+  insightRow: {
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    columnGap: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 12,
+  },
+  insightRowBlue: {
+    borderColor: "#D6DDF8",
+    backgroundColor: "#EDF2FF",
+  },
+  insightRowYellow: {
+    borderColor: "#F4D774",
+    backgroundColor: "#FFF7D8",
+  },
+  insightRowAmber: {
+    borderColor: "#FDE68A",
+    backgroundColor: "#FFFBEB",
+  },
+  insightRowIconWrap: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
+    backgroundColor: "#FFFFFF",
+  },
+  insightRowContent: {
+    flex: 1,
+  },
+  insightRowTitle: {
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  insightRowTitleBlue: {
+    color: "#16245C",
+  },
+  insightRowTitleYellow: {
+    color: "#8A5E00",
+  },
+  insightRowTitleAmber: {
+    color: "#78350F",
+  },
+  insightRowBody: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 11,
+    lineHeight: 20,
+    color: "#5E6A99",
+  },
+  growthDualRow: {
+    marginTop: 16,
+    flexDirection: "row-reverse",
+    columnGap: 12,
+  },
+  growthReadRateCard: {
+    flex: 1,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#E5EAFB",
+    backgroundColor: "#F8FAFF",
+    padding: 16,
+  },
+  growthReadRateLabel: {
+    textAlign: "right",
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#011F91",
+  },
+  growthReadRateValue: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#16245C",
+  },
+  growthReadRateHint: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 11,
+    color: "#44559A",
+  },
+  growthLatestCustomerCard: {
+    flex: 1,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#F7E8B8",
+    backgroundColor: "#FFFCEF",
+    padding: 16,
+  },
+  growthLatestCustomerLabel: {
+    textAlign: "right",
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#8A5E00",
+  },
+  growthLatestCustomerValue: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#8A5E00",
+  },
+  growthLatestCustomerHint: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 11,
+    color: "#A37200",
+  },
+  campaignSummaryCard: {
+    marginTop: 16,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#ECEFF7",
+    backgroundColor: "#FEFEFF",
+    padding: 16,
+  },
+  campaignSummaryHeader: {
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    columnGap: 8,
+  },
+  campaignSummaryTitle: {
+    flex: 1,
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#16245C",
+  },
+  campaignStatusPill: {
+    borderRadius: 999,
+    backgroundColor: "#F4F7FF",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#5E6A99",
+  },
+  campaignSummaryMeta: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 12,
+    color: "#7A88B8",
+  },
+  campaignSummaryBody: {
+    marginTop: 8,
+    textAlign: "right",
+    fontSize: 12,
+    lineHeight: 20,
+    color: "#5E6A99",
+  },
+  noCampaignCard: {
+    marginTop: 16,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#D7DDF0",
+    backgroundColor: "#FEFEFF",
+    padding: 16,
+    borderStyle: "dashed",
+  },
+  noCampaignTitle: {
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#16245C",
+  },
+  noCampaignBody: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 12,
+    color: "#7A88B8",
+  },
+  ordersEmptyCard: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#E3E8FA",
+    backgroundColor: "#F8FAFF",
+    padding: 16,
+  },
+  ordersEmptyRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 12,
+  },
+  ordersEmptyIconWrap: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E2E7FA",
+    backgroundColor: "#FFFFFF",
+  },
+  ordersEmptyTitle: {
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#16245C",
+  },
+  ordersEmptyBody: {
+    marginTop: 2,
+    textAlign: "right",
+    fontSize: 12,
+    color: "#44559A",
+  },
+  ordersCard: {
+    overflow: "hidden",
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    backgroundColor: "#FFFFFF",
+  },
+  ordersCardRow: {
+    flexDirection: "row-reverse",
+  },
+  ordersAccent: {
+    width: 6,
+    backgroundColor: "#EF4444",
+  },
+  ordersBodyWrap: {
+    flex: 1,
+    padding: 16,
+  },
+  ordersHeaderRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 12,
+  },
+  ordersCountBox: {
+    width: 56,
+    height: 56,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    backgroundColor: "#FEF2F2",
+  },
+  ordersCountValue: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#B91C1C",
+  },
+  ordersHeaderContent: {
+    flex: 1,
+  },
+  ordersHeaderTitleRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 6,
+  },
+  ordersHeaderTitle: {
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#991B1B",
+  },
+  ordersHeaderBody: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 12,
+    color: "#5E6A99",
+  },
+  ordersPreviewPressable: {
+    marginTop: 12,
+  },
+  ordersPreviewCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#EEF1F8",
+    backgroundColor: "#FCFCFE",
+    padding: 12,
+  },
+  ordersPreviewHeader: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    columnGap: 8,
+  },
+  ordersPreviewCustomer: {
+    flex: 1,
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#16245C",
+  },
+  ordersReasonPill: {
+    borderRadius: 999,
+    backgroundColor: "#FEF2F2",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#991B1B",
+  },
+  ordersPreviewBody: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#5E6A99",
+  },
+  ordersActionButton: {
+    marginTop: 12,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "center",
+    columnGap: 8,
+    borderRadius: 18,
+    backgroundColor: "#DC2626",
+    paddingVertical: 12,
+  },
+  ordersActionButtonText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+});
 
 function campaignStatusLabel(status: MarketingCampaignRow["status"]) {
   switch (status) {
@@ -990,18 +1987,17 @@ function OrdersWidget({ approvals }: { approvals: PendingApproval[] }) {
     return (
       <Pressable
         onPress={() => router.push("/(app)/approvals")}
-        className="flex-row-reverse items-center justify-between rounded-[24px] border p-4"
-        style={{ borderColor: "#E3E8FA", backgroundColor: "#F8FAFF" }}
+        style={styles.ordersEmptyCard}
       >
-        <View className="flex-row-reverse items-center gap-3">
-          <View className="h-11 w-11 items-center justify-center rounded-[16px] border border-[#E2E7FA] bg-white">
+        <View style={styles.ordersEmptyRow}>
+          <View style={styles.ordersEmptyIconWrap}>
             <Ionicons name="checkmark-done" size={22} color={managerColors.brand} />
           </View>
           <View>
-            <Text className="text-right text-sm font-bold text-[#16245C]">
+            <Text style={styles.ordersEmptyTitle}>
               لا توجد طلبات تنتظر قرارك
             </Text>
-            <Text className="mt-0.5 text-right text-xs text-[#44559A]">
+            <Text style={styles.ordersEmptyBody}>
               البوت يتولى المحادثات حالياً
             </Text>
           </View>
@@ -1015,40 +2011,40 @@ function OrdersWidget({ approvals }: { approvals: PendingApproval[] }) {
   const topCustomer = top.customer_name ?? top.customer_phone;
 
   return (
-    <View className="overflow-hidden rounded-[24px] border border-red-200 bg-white">
-      <View className="flex-row-reverse">
-        <View className="w-1.5 bg-red-500" />
-        <View className="flex-1 p-4">
-          <View className="flex-row-reverse items-center gap-3">
-            <View className="h-14 w-14 items-center justify-center rounded-[18px] border border-red-100 bg-red-50">
-              <Text className="text-2xl font-bold text-red-700">{count}</Text>
+    <View style={styles.ordersCard}>
+      <View style={styles.ordersCardRow}>
+        <View style={styles.ordersAccent} />
+        <View style={styles.ordersBodyWrap}>
+          <View style={styles.ordersHeaderRow}>
+            <View style={styles.ordersCountBox}>
+              <Text style={styles.ordersCountValue}>{count}</Text>
             </View>
-            <View className="flex-1">
-              <View className="flex-row-reverse items-center gap-1.5">
+            <View style={styles.ordersHeaderContent}>
+              <View style={styles.ordersHeaderTitleRow}>
                 <Ionicons name="alert-circle" size={16} color="#B91C1C" />
-                <Text className="text-right text-sm font-bold text-red-800">
+                <Text style={styles.ordersHeaderTitle}>
                   {count === 1 ? "طلب ينتظر قرارك" : "طلبات تنتظر قرارك"}
                 </Text>
               </View>
-              <Text className="mt-1 text-right text-xs text-[#5E6A99]">
+              <Text style={styles.ordersHeaderBody}>
                 البوت أوقف الرد على هذه المحادثات ويحتاج تدخلك
               </Text>
             </View>
           </View>
           <Pressable
             onPress={() => router.push(`/(app)/inbox/${top.conversation_id}`)}
-            className="mt-3"
+            style={styles.ordersPreviewPressable}
           >
-            <View className="rounded-[16px] border border-[#EEF1F8] bg-[#FCFCFE] p-3">
-              <View className="flex-row-reverse items-center justify-between gap-2">
+            <View style={styles.ordersPreviewCard}>
+              <View style={styles.ordersPreviewHeader}>
                 <Text
-                  className="flex-1 text-right text-sm font-semibold text-[#16245C]"
+                  style={styles.ordersPreviewCustomer}
                   numberOfLines={1}
                 >
                   {topCustomer}
                 </Text>
                 {top.reasonCode ? (
-                  <Text className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-800">
+                  <Text style={styles.ordersReasonPill}>
                     {escalationReasonLabel(top.reasonCode)}
                   </Text>
                 ) : null}
@@ -1060,9 +2056,9 @@ function OrdersWidget({ approvals }: { approvals: PendingApproval[] }) {
                     variant="compact"
                   />
                 </View>
-              ) : topBody ? (
+                ) : topBody ? (
                 <Text
-                  className="mt-1 text-right text-sm leading-5 text-[#5E6A99]"
+                  style={styles.ordersPreviewBody}
                   numberOfLines={2}
                 >
                   {topBody}
@@ -1072,10 +2068,10 @@ function OrdersWidget({ approvals }: { approvals: PendingApproval[] }) {
           </Pressable>
           <Pressable
             onPress={() => router.push("/(app)/approvals")}
-            className="mt-3 flex-row-reverse items-center justify-center gap-2 rounded-[18px] bg-red-600 py-3"
+            style={styles.ordersActionButton}
           >
             <Ionicons name="shield-checkmark" size={16} color="#fff" />
-            <Text className="text-sm font-bold text-white">
+            <Text style={styles.ordersActionButtonText}>
               {count > 1 ? `عرض كل الطلبات (${count})` : "عرض الطلب"}
             </Text>
           </Pressable>
@@ -1111,7 +2107,7 @@ function WhatsAppHealthCard({
     return (
       <ManagerCard>
         <SectionHeader title="رقم واتساب" />
-        <View className="h-5 w-2/3 rounded-lg bg-[#F2F4F7]" />
+        <View style={styles.whatsAppSkeleton} />
       </ManagerCard>
     );
   }
@@ -1122,17 +2118,17 @@ function WhatsAppHealthCard({
         <SectionHeader title="رقم واتساب" />
         <Pressable
           onPress={onOpenSetup}
-          className="mt-1 flex-row-reverse items-center justify-between rounded-[18px] border border-amber-200 bg-amber-50 p-3"
+          style={styles.whatsAppEmptyCard}
         >
-          <View className="flex-row-reverse items-center gap-2">
+          <View style={styles.whatsAppEmptyRow}>
             <Ionicons name="warning-outline" size={20} color="#B45309" />
-            <Text className="text-right text-sm font-semibold text-amber-900">
+            <Text style={styles.whatsAppEmptyTitle}>
               لم يتم ربط رقم بعد
             </Text>
           </View>
           <Ionicons name="chevron-back" size={18} color="#B45309" />
         </Pressable>
-        <Text className="mt-2 text-right text-xs text-[#7A88B8]">
+        <Text style={styles.whatsAppHelperText}>
           افتح لوحة التحكم لإكمال الإعداد ومشاركة الرابط مع مزود واتساب.
         </Text>
       </ManagerCard>
@@ -1146,7 +2142,7 @@ function WhatsAppHealthCard({
           border: "border-[#D6DDF8]",
           bg: "bg-[#EDF2FF]",
           text: "text-[#16245C]",
-          icon: "#273B9A",
+          icon: "#011F91",
         }
       : p.severity === "warn"
       ? {
@@ -1175,25 +2171,39 @@ function WhatsAppHealthCard({
       <SectionHeader title="رقم واتساب" />
       <Container
         onPress={tappable ? onOpenSetup : undefined}
-        className={`mt-1 flex-row-reverse items-center justify-between rounded-[18px] border p-3 ${toneClasses.border} ${toneClasses.bg}`}
+        style={[
+          styles.whatsAppStatusCard,
+          p.severity === "ok"
+            ? styles.whatsAppStatusCardOk
+            : p.severity === "warn"
+            ? styles.whatsAppStatusCardWarn
+            : styles.whatsAppStatusCardDanger,
+        ]}
       >
-        <View className="flex-1 flex-row-reverse items-center gap-2.5">
+        <View style={styles.whatsAppStatusContentRow}>
           <Ionicons name={iconName} size={20} color={toneClasses.icon} />
-          <View className="flex-1">
+          <View style={styles.whatsAppStatusTextWrap}>
             <Text
-              className={`text-right text-sm font-semibold ${toneClasses.text}`}
+              style={[
+                styles.whatsAppStatusTitle,
+                p.severity === "ok"
+                  ? styles.whatsAppStatusTitleOk
+                  : p.severity === "warn"
+                  ? styles.whatsAppStatusTitleWarn
+                  : styles.whatsAppStatusTitleDanger,
+              ]}
               numberOfLines={1}
             >
               {p.label}
             </Text>
             {p.phoneNumber ? (
-              <Text className="mt-0.5 text-right text-xs text-[#667085]" selectable>
+              <Text style={styles.whatsAppPhoneNumber} selectable>
                 {p.phoneNumber}
               </Text>
             ) : null}
             {p.lastError ? (
               <Text
-                className="mt-1 text-right text-xs text-red-700"
+                style={styles.whatsAppErrorText}
                 numberOfLines={2}
               >
                 {p.lastError}

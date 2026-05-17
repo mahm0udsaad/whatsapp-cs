@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "حذف الحساب — نِهجز",
+  title: "حذف الحساب — نِحجز",
   description:
-    "كيف تطلب حذف حسابك في نِهجز ولوحة التحكم وتطبيق نِهجز بوت، وما البيانات التي تُحذف ومتى.",
+    "كيف تطلب حذف حسابك في نِحجز ولوحة التحكم وتطبيق نِحجز بوت، وما البيانات التي تُحذف ومتى.",
   alternates: {
     canonical: "/delete-account",
   },
@@ -14,7 +14,7 @@ const SUPPORT_EMAIL = "support@nehgzbot.com";
 const PRIVACY_EMAIL = "privacy@nehgzbot.com";
 const WHATSAPP_NUMBER = "966554866685";
 const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-  "السلام عليكم، أرغب في حذف حسابي في نِهجز."
+  "السلام عليكم، أرغب في حذف حسابي في نِحجز."
 )}`;
 
 export default function DeleteAccountPage() {
@@ -22,7 +22,7 @@ export default function DeleteAccountPage() {
     <article className="mx-auto max-w-3xl px-6 py-16 text-gray-700 leading-loose">
       <h1 className="text-3xl font-extrabold text-gray-900">حذف الحساب وبياناتك</h1>
       <p className="mt-4">
-        نلتزم في <strong>نِهجز</strong> بحقّك في التحكم ببياناتك. تقدر تطلب حذف حسابك في أيّ وقت
+        نلتزم في <strong>نِحجز</strong> بحقّك في التحكم ببياناتك. تقدر تطلب حذف حسابك في أيّ وقت
         من داخل التطبيق أو عبر هذه الصفحة، بدون الحاجة لتسجيل دخول.
       </p>
 
@@ -30,7 +30,7 @@ export default function DeleteAccountPage() {
         الطريقة الأسرع: من داخل التطبيق
       </h2>
       <ol className="mt-4 list-decimal pr-6 space-y-1">
-        <li>افتح تطبيق نِهجز بوت على جوّالك.</li>
+        <li>افتح تطبيق نِحجز بوت على جوّالك.</li>
         <li>اضغط على "ملفي" في شريط التنقل السفلي.</li>
         <li>اختر "حذف الحساب" وأكِّد الطلب.</li>
       </ol>
@@ -47,7 +47,7 @@ export default function DeleteAccountPage() {
           href={`mailto:${PRIVACY_EMAIL}?subject=${encodeURIComponent(
             "طلب حذف حساب"
           )}&body=${encodeURIComponent(
-            "السلام عليكم،\n\nأرغب في حذف حسابي في نِهجز.\n\nالبريد المسجَّل بالحساب: \nاسم المتجر (إن أمكن): \n\nشكرًا."
+            "السلام عليكم،\n\nأرغب في حذف حسابي في نِحجز.\n\nالبريد المسجَّل بالحساب: \nاسم المتجر (إن أمكن): \n\nشكرًا."
           )}`}
           className="text-emerald-700 underline hover:text-emerald-800"
           dir="ltr"
@@ -77,7 +77,7 @@ export default function DeleteAccountPage() {
       <h2 className="mt-10 mb-3 text-xl font-bold text-gray-900">ما الذي يُحذَف؟</h2>
       <ul className="mt-4 list-disc pr-6 space-y-1">
         <li>بيانات حسابك الشخصي (الاسم، البريد، رقم الجوّال، الدور).</li>
-        <li>إعدادات متجرك على نِهجز (قاعدة المعرفة، تعليمات المساعد، أعضاء الفريق).</li>
+        <li>إعدادات متجرك على نِحجز (قاعدة المعرفة، تعليمات المساعد، أعضاء الفريق).</li>
         <li>محادثات الواتساب وسجلّات التسليم المرتبطة بمتجرك.</li>
         <li>سجلّات الجلسات وتقارير الأخطاء المرتبطة بحسابك.</li>
         <li>رموز الإشعارات للأجهزة المرتبطة بحسابك.</li>

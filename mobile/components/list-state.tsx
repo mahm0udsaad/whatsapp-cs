@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { managerColors } from "./manager-ui";
 
 interface EmptyStateProps {
@@ -14,18 +14,15 @@ export function EmptyState({
   description,
 }: EmptyStateProps) {
   return (
-    <View className="items-center px-8 py-20">
-      <View
-        className="h-14 w-14 items-center justify-center rounded-[18px]"
-        style={{ backgroundColor: managerColors.brandSoft }}
-      >
+    <View style={styles.container}>
+      <View style={styles.iconWrap}>
         <Ionicons name={icon} size={26} color={managerColors.brand} />
       </View>
-      <Text className="mt-4 text-center text-base font-bold text-gray-950">
+      <Text style={styles.title}>
         {title}
       </Text>
       {description ? (
-        <Text className="mt-1 text-center text-sm leading-6 text-gray-500">
+        <Text style={styles.description}>
           {description}
         </Text>
       ) : null}
@@ -47,31 +44,80 @@ export function ErrorState({
   retryLabel = "إعادة المحاولة",
 }: ErrorStateProps) {
   return (
-    <View className="items-center px-8 py-20">
-      <View className="h-14 w-14 items-center justify-center rounded-lg bg-red-50">
+    <View style={styles.container}>
+      <View style={styles.errorIconWrap}>
         <Ionicons
           name="cloud-offline-outline"
           size={26}
           color={managerColors.danger}
         />
       </View>
-      <Text className="mt-4 text-center text-base font-bold text-gray-950">
+      <Text style={styles.title}>
         {title}
       </Text>
-      <Text className="mt-1 text-center text-sm leading-6 text-gray-500">
+      <Text style={styles.description}>
         {description}
       </Text>
       {onRetry ? (
         <Pressable
           onPress={onRetry}
-          className="mt-4 rounded-[16px] px-5 py-2.5"
-          style={{ backgroundColor: managerColors.brandDark }}
+          style={styles.retryButton}
           accessibilityRole="button"
           accessibilityLabel={retryLabel}
         >
-          <Text className="text-sm font-bold text-white">{retryLabel}</Text>
+          <Text style={styles.retryButtonText}>{retryLabel}</Text>
         </Pressable>
       ) : null}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    alignItems: "center",
+    paddingHorizontal: 32,
+    paddingVertical: 80,
+  },
+  iconWrap: {
+    width: 56,
+    height: 56,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 18,
+    backgroundColor: managerColors.brandSoft,
+  },
+  errorIconWrap: {
+    width: 56,
+    height: 56,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 8,
+    backgroundColor: "#FEF2F2",
+  },
+  title: {
+    marginTop: 16,
+    textAlign: "center",
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#030712",
+  },
+  description: {
+    marginTop: 4,
+    textAlign: "center",
+    fontSize: 14,
+    lineHeight: 24,
+    color: "#6B7280",
+  },
+  retryButton: {
+    marginTop: 16,
+    borderRadius: 16,
+    backgroundColor: managerColors.brandDark,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+});

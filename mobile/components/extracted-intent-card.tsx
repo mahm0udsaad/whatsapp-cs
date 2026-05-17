@@ -8,19 +8,24 @@
  * failures).
  */
 
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { ExtractedIntent } from "../lib/api";
 
 const KIND_META: Record<
   ExtractedIntent["kind"],
-  { label: string; icon: keyof typeof Ionicons.glyphMap; tone: string }
+  {
+    label: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    backgroundColor: string;
+    textColor: string;
+  }
 > = {
-  booking: { label: "طلب حجز", icon: "calendar", tone: "bg-indigo-50 text-indigo-900" },
-  complaint: { label: "شكوى", icon: "warning", tone: "bg-red-50 text-red-900" },
-  question: { label: "استفسار", icon: "help-circle", tone: "bg-sky-50 text-sky-900" },
-  refund: { label: "طلب استرداد", icon: "cash", tone: "bg-amber-50 text-amber-900" },
-  other: { label: "طلب آخر", icon: "document-text", tone: "bg-gray-100 text-gray-900" },
+  booking: { label: "طلب حجز", icon: "calendar", backgroundColor: "#EEF2FF", textColor: "#312E81" },
+  complaint: { label: "شكوى", icon: "warning", backgroundColor: "#FEF2F2", textColor: "#7F1D1D" },
+  question: { label: "استفسار", icon: "help-circle", backgroundColor: "#F0F9FF", textColor: "#0C4A6E" },
+  refund: { label: "طلب استرداد", icon: "cash", backgroundColor: "#FFFBEB", textColor: "#78350F" },
+  other: { label: "طلب آخر", icon: "document-text", backgroundColor: "#F3F4F6", textColor: "#111827" },
 };
 
 const FIELD_LABELS: Record<string, string> = {
@@ -48,60 +53,56 @@ export function ExtractedIntentCard({ intent, variant = "full" }: Props) {
 
   return (
     <View
-      className={`rounded-lg border border-gray-100 bg-white ${
-        compact ? "p-3" : "p-4"
-      }`}
+      style={[styles.card, compact ? styles.cardCompact : styles.cardFull]}
     >
-      {/* Kind pill + ready badge */}
-      <View className="flex-row-reverse items-center gap-2">
+      <View style={styles.topRow}>
         <View
-          className={`flex-row-reverse items-center gap-1.5 rounded-lg px-2.5 py-1 ${meta.tone}`}
+          style={[
+            styles.kindPill,
+            { backgroundColor: meta.backgroundColor },
+          ]}
         >
-          <Ionicons name={meta.icon} size={13} />
-          <Text className={`text-[11px] font-bold ${meta.tone.split(" ")[1]}`}>
+          <Ionicons name={meta.icon} size={13} color={meta.textColor} />
+          <Text style={[styles.kindText, { color: meta.textColor }]}>
             {meta.label}
           </Text>
         </View>
         {intent.ready_to_act ? (
-          <View className="flex-row-reverse items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-0.5">
+          <View style={styles.readyPill}>
             <Ionicons name="checkmark-circle" size={12} color="#047857" />
-            <Text className="text-[11px] font-semibold text-emerald-800">
+            <Text style={styles.readyText}>
               جاهز للتنفيذ
             </Text>
           </View>
         ) : intent.missing.length > 0 ? (
-          <View className="flex-row-reverse items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-0.5">
+          <View style={styles.missingPill}>
             <Ionicons name="alert-circle" size={12} color="#B45309" />
-            <Text className="text-[11px] font-semibold text-amber-800">
+            <Text style={styles.missingText}>
               ناقص
             </Text>
           </View>
         ) : null}
       </View>
 
-      {/* Summary */}
       <Text
-        className={`mt-2 text-right text-gray-950 ${
-          compact ? "text-sm leading-5" : "text-sm leading-6"
-        }`}
+        style={[styles.summary, compact ? styles.summaryCompact : styles.summaryFull]}
         numberOfLines={compact ? 2 : 3}
       >
         {intent.summary}
       </Text>
 
-      {/* Provided fields */}
       {providedEntries.length > 0 ? (
-        <View className="mt-3 gap-1.5">
+        <View style={styles.providedList}>
           {providedEntries.map(([key, value]) => (
             <View
               key={key}
-              className="flex-row-reverse items-center justify-between"
+              style={styles.providedRow}
             >
-              <Text className="text-[11px] font-semibold text-gray-500">
+              <Text style={styles.providedLabel}>
                 {FIELD_LABELS[key] ?? key}
               </Text>
               <Text
-                className="max-w-[70%] text-right text-[13px] font-semibold text-gray-950"
+                style={styles.providedValue}
                 numberOfLines={1}
                 selectable
               >
@@ -112,19 +113,18 @@ export function ExtractedIntentCard({ intent, variant = "full" }: Props) {
         </View>
       ) : null}
 
-      {/* Missing fields as chips */}
       {intent.missing.length > 0 ? (
-        <View className="mt-3">
-          <Text className="mb-1.5 text-right text-[11px] font-semibold text-gray-500">
+        <View style={styles.missingSection}>
+          <Text style={styles.missingSectionTitle}>
             يحتاج منك
           </Text>
-          <View className="flex-row-reverse flex-wrap gap-1.5">
+          <View style={styles.missingList}>
             {intent.missing.map((m) => (
               <View
                 key={m}
-                className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-0.5"
+                style={styles.missingChip}
               >
-                <Text className="text-[11px] font-semibold text-amber-900">
+                <Text style={styles.missingChipText}>
                   {m}
                 </Text>
               </View>
@@ -133,9 +133,8 @@ export function ExtractedIntentCard({ intent, variant = "full" }: Props) {
         </View>
       ) : null}
 
-      {/* Suggested action */}
       {intent.suggested_action ? (
-        <View className="mt-3 flex-row-reverse items-start gap-1.5 rounded-lg bg-[#F6F7F9] px-3 py-2">
+        <View style={styles.actionBox}>
           <Ionicons
             name="sparkles-outline"
             size={14}
@@ -143,7 +142,7 @@ export function ExtractedIntentCard({ intent, variant = "full" }: Props) {
             style={{ marginTop: 2 }}
           />
           <Text
-            className="flex-1 text-right text-xs leading-5 text-gray-700"
+            style={styles.actionText}
             numberOfLines={compact ? 2 : 3}
           >
             {intent.suggested_action}
@@ -153,3 +152,147 @@ export function ExtractedIntentCard({ intent, variant = "full" }: Props) {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+    backgroundColor: "#FFFFFF",
+  },
+  cardCompact: {
+    padding: 12,
+  },
+  cardFull: {
+    padding: 16,
+  },
+  topRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 8,
+  },
+  kindPill: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 6,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  kindText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  readyPill: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#A7F3D0",
+    backgroundColor: "#ECFDF5",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  readyText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#065F46",
+  },
+  missingPill: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    backgroundColor: "#FFFBEB",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  missingText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#92400E",
+  },
+  summary: {
+    marginTop: 8,
+    textAlign: "right",
+    color: "#111827",
+  },
+  summaryCompact: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  summaryFull: {
+    fontSize: 14,
+    lineHeight: 24,
+  },
+  providedList: {
+    marginTop: 12,
+    rowGap: 6,
+  },
+  providedRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  providedLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  providedValue: {
+    maxWidth: "70%",
+    textAlign: "right",
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  missingSection: {
+    marginTop: 12,
+  },
+  missingSectionTitle: {
+    marginBottom: 6,
+    textAlign: "right",
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  missingList: {
+    flexDirection: "row-reverse",
+    flexWrap: "wrap",
+    columnGap: 6,
+    rowGap: 6,
+  },
+  missingChip: {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    backgroundColor: "#FFFBEB",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  missingChipText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#78350F",
+  },
+  actionBox: {
+    marginTop: 12,
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    columnGap: 6,
+    borderRadius: 8,
+    backgroundColor: "#F6F7F9",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  actionText: {
+    flex: 1,
+    textAlign: "right",
+    fontSize: 12,
+    lineHeight: 20,
+    color: "#374151",
+  },
+});

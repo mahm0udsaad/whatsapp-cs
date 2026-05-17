@@ -2,12 +2,8 @@ import { useMemo } from "react";
 import {
   Alert,
   FlatList,
-  Pressable,
   RefreshControl,
-  Text,
-  View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -27,6 +23,7 @@ import {
   ManagerMetric,
   managerColors,
 } from "../../../components/manager-ui";
+import { Pressable, SafeAreaView, Text, View } from "../../../components/tw";
 
 export default function CampaignDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

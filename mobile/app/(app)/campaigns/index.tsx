@@ -1,8 +1,8 @@
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { managerColors, softShadow } from "../../../components/manager-ui";
+import { managerColors } from "../../../components/manager-ui";
 
 interface ChannelCardProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -16,29 +16,22 @@ function ChannelCard({ icon, title, subtitle, color, onPress }: ChannelCardProps
   return (
     <Pressable onPress={onPress}>
       <View
-        className="overflow-hidden rounded-[28px] border bg-[#FCFEFC] p-4"
-        style={{ borderColor: managerColors.border, ...softShadow }}
+        style={styles.channelCard}
       >
-        <View
-          className="absolute -left-6 top-5 h-24 w-24 rounded-full"
-          style={{ backgroundColor: `${color}12` }}
-        />
-        <View className="flex-row-reverse items-center gap-4">
+        <View style={[styles.channelCardOrb, { backgroundColor: `${color}12` }]} />
+        <View style={styles.channelCardRow}>
           <View
-            className="h-16 w-16 items-center justify-center rounded-[20px]"
-            style={{ backgroundColor: color }}
+            style={[styles.channelIconWrap, { backgroundColor: color }]}
           >
             <Ionicons name={icon} size={30} color="#fff" />
           </View>
-          <View className="flex-1">
-            <View className="flex-row-reverse items-center justify-between gap-3">
+          <View style={styles.channelContent}>
+            <View style={styles.channelHeaderRow}>
               <View
-                className="rounded-full px-2.5 py-1"
-                style={{ backgroundColor: `${color}12` }}
+                style={[styles.channelPill, { backgroundColor: `${color}12` }]}
               >
                 <Text
-                  className="text-[11px] font-semibold"
-                  style={{ color }}
+                  style={[styles.channelPillText, { color }]}
                 >
                   قناة جاهزة
                 </Text>
@@ -50,26 +43,24 @@ function ChannelCard({ icon, title, subtitle, color, onPress }: ChannelCardProps
               />
             </View>
             <Text
-              className="mt-3 text-right text-[24px] font-bold"
-              style={{ color: managerColors.ink }}
+              style={styles.channelTitle}
             >
               {title}
             </Text>
             <Text
-              className="mt-1 text-right text-[14px] leading-6"
-              style={{ color: managerColors.muted }}
+              style={styles.channelSubtitle}
             >
               {subtitle}
             </Text>
           </View>
         </View>
-        <View className="mt-4 flex-row-reverse items-center justify-between">
-          <Text className="text-right text-xs font-semibold" style={{ color }}>
+        <View style={styles.channelFooterRow}>
+          <Text style={[styles.channelFooterAction, { color }]}>
             افتح الإدارة
           </Text>
-          <View className="flex-row-reverse items-center gap-1.5">
-            <View className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-            <Text className="text-[12px]" style={{ color: managerColors.muted }}>
+          <View style={styles.channelFooterMeta}>
+            <View style={[styles.channelFooterDot, { backgroundColor: color }]} />
+            <Text style={styles.channelFooterText}>
               منشورات وحملات وتقارير
             </Text>
           </View>
@@ -82,79 +73,64 @@ function ChannelCard({ icon, title, subtitle, color, onPress }: ChannelCardProps
 export default function CampaignsHubScreen() {
   return (
     <SafeAreaView
-      className="flex-1"
-      style={{ backgroundColor: managerColors.bg }}
+      style={styles.screen}
       edges={["left", "right"]}
     >
       <ScrollView
         contentInsetAdjustmentBehavior="never"
-        contentContainerClassName="px-4 pb-8 pt-4 gap-4"
+        contentContainerStyle={styles.scrollContent}
       >
         <View
-          className="overflow-hidden rounded-[32px] px-5 py-6"
-          style={{ backgroundColor: managerColors.brand }}
+          style={styles.heroCard}
         >
-          <View
-            className="absolute -right-8 -top-8 h-28 w-28 rounded-full"
-            style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
-          />
-          <View
-            className="absolute -left-10 bottom-0 h-32 w-32 rounded-full"
-            style={{ backgroundColor: "rgba(255,201,40,0.16)" }}
-          />
-          <View className="flex-row-reverse items-start justify-between gap-4">
-            <View className="flex-1">
-              <View className="self-end rounded-full bg-white/10 px-3 py-1">
+          <View style={styles.heroOrbTop} />
+          <View style={styles.heroOrbBottom} />
+          <View style={styles.heroRow}>
+            <View style={styles.heroContent}>
+              <View style={styles.heroPill}>
                 <Text
-                  className="text-[11px] font-semibold"
-                  style={{ color: "rgba(255,255,255,0.82)" }}
+                  style={styles.heroPillText}
                 >
                   مركز التسويق
                 </Text>
               </View>
               <Text
-                className="mt-3 text-right text-[28px] font-bold"
-                style={{ color: "#FFFFFF" }}
+                style={styles.heroTitle}
               >
                 الحملات والقنوات
               </Text>
               <Text
-                className="mt-2 text-right text-[14px] leading-6"
-                style={{ color: "rgba(255,255,255,0.82)" }}
+                style={styles.heroSubtitle}
               >
                 اختر القناة المناسبة للنشر أو الإعلانات أو الرسائل الجماعية، ثم
                 تابع الأداء من شاشة واحدة.
               </Text>
             </View>
-            <View className="h-14 w-14 items-center justify-center rounded-[20px] bg-white/12">
+            <View style={styles.heroIconWrap}>
               <Ionicons name="megaphone-outline" size={26} color="#FFFFFF" />
             </View>
           </View>
-          <View className="mt-5 flex-row-reverse gap-2">
-            <View className="flex-1 rounded-[18px] bg-white/10 px-4 py-3">
+          <View style={styles.heroStatsRow}>
+            <View style={styles.heroStatCard}>
               <Text
-                className="text-right text-xl font-bold"
-                style={{ color: "#FFFFFF" }}
+                style={styles.heroStatValue}
               >
                 3
               </Text>
               <Text
-                className="mt-1 text-right text-xs"
-                style={{ color: "rgba(255,255,255,0.72)" }}
+                style={styles.heroStatLabel}
               >
                 قنوات نشطة
               </Text>
             </View>
-            <View className="flex-1 rounded-[18px] bg-white/10 px-4 py-3">
+            <View style={styles.heroStatCard}>
               <Text
-                className="text-right text-xl font-bold"
-                style={{ color: "#FFFFFF" }}
+                style={styles.heroStatValue}
               >
                 الآن
               </Text>
               <Text
-                className="mt-1 text-right text-xs"
-                style={{ color: "rgba(255,255,255,0.72)" }}
+                style={styles.heroStatLabel}
               >
                 إدارة المحتوى والحملات
               </Text>
@@ -192,3 +168,198 @@ export default function CampaignsHubScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: managerColors.bg,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 32,
+    rowGap: 16,
+  },
+  heroCard: {
+    overflow: "hidden",
+    borderRadius: 32,
+    backgroundColor: managerColors.brand,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+  },
+  heroOrbTop: {
+    position: "absolute",
+    right: -32,
+    top: -32,
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  heroOrbBottom: {
+    position: "absolute",
+    left: -40,
+    bottom: 0,
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    backgroundColor: "rgba(255,201,40,0.16)",
+  },
+  heroRow: {
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    columnGap: 16,
+  },
+  heroContent: {
+    flex: 1,
+  },
+  heroPill: {
+    alignSelf: "flex-end",
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.10)",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  heroPillText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.82)",
+  },
+  heroTitle: {
+    marginTop: 12,
+    textAlign: "right",
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  heroSubtitle: {
+    marginTop: 8,
+    textAlign: "right",
+    fontSize: 14,
+    lineHeight: 24,
+    color: "rgba(255,255,255,0.82)",
+  },
+  heroIconWrap: {
+    width: 56,
+    height: 56,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+  heroStatsRow: {
+    marginTop: 20,
+    flexDirection: "row-reverse",
+    columnGap: 8,
+  },
+  heroStatCard: {
+    flex: 1,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.10)",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  heroStatValue: {
+    textAlign: "right",
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  heroStatLabel: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 12,
+    color: "rgba(255,255,255,0.72)",
+  },
+  channelCard: {
+    overflow: "hidden",
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: managerColors.border,
+    backgroundColor: "#FCFEFC",
+    padding: 16,
+    shadowColor: "#273B9A",
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  channelCardOrb: {
+    position: "absolute",
+    left: -24,
+    top: 20,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+  },
+  channelCardRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 16,
+  },
+  channelIconWrap: {
+    width: 64,
+    height: 64,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 20,
+  },
+  channelContent: {
+    flex: 1,
+  },
+  channelHeaderRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    columnGap: 12,
+  },
+  channelPill: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  channelPillText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  channelTitle: {
+    marginTop: 12,
+    textAlign: "right",
+    fontSize: 24,
+    fontWeight: "700",
+    color: managerColors.ink,
+  },
+  channelSubtitle: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 14,
+    lineHeight: 24,
+    color: managerColors.muted,
+  },
+  channelFooterRow: {
+    marginTop: 16,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  channelFooterAction: {
+    textAlign: "right",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  channelFooterMeta: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 6,
+  },
+  channelFooterDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+  },
+  channelFooterText: {
+    fontSize: 12,
+    color: managerColors.muted,
+  },
+});

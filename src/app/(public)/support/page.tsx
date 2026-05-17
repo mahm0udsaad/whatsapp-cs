@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "الدعم — نِهجز",
-  description: "تواصل معنا للمساعدة في إعداد نِهجز أو الحصول على إجابات للأسئلة الشائعة.",
+  title: "الدعم — نِحجز",
+  description: "تواصل معنا للمساعدة في إعداد نِحجز أو الحصول على إجابات للأسئلة الشائعة.",
 };
 
 const SUPPORT_EMAIL = "support@nehgzbot.com";
 const WHATSAPP_NUMBER = "966554866685";
-const WA_MSG = encodeURIComponent("السلام عليكم، أحتاج مساعدة في نِهجز.");
+const WA_MSG = encodeURIComponent("السلام عليكم، أحتاج مساعدة في نِحجز.");
 const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}?text=${WA_MSG}`;
 
 export default function SupportPage() {
@@ -16,7 +16,7 @@ export default function SupportPage() {
     <div className="mx-auto max-w-3xl px-6 py-16">
       <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900">الدعم الفني</h1>
       <p className="mt-4 text-gray-600 leading-relaxed">
-        نبي نِهجز يشتغل بدون ما تحس فيه، ويتصلح بسرعة لما يحتاج. اختر القناة المناسبة لك:
+        نبي نِحجز يشتغل بدون ما تحس فيه، ويتصلح بسرعة لما يحتاج. اختر القناة المناسبة لك:
       </p>
 
       <section className="mt-10 grid gap-4 sm:grid-cols-2">
@@ -92,7 +92,7 @@ export default function SupportPage() {
           <div className="rounded-xl border border-gray-200 p-5">
             <dt className="font-bold text-gray-900">هل تكلفة واتساب من Meta مشمولة؟</dt>
             <dd className="mt-2 text-sm text-gray-600 leading-relaxed">
-              لا. واتساب تحتسب رسوم على المحادثة (تختلف حسب نوعها) وهي منفصلة عن اشتراكك في نِهجز.
+              لا. واتساب تحتسب رسوم على المحادثة (تختلف حسب نوعها) وهي منفصلة عن اشتراكك في نِحجز.
               نوضح لك التكلفة المتوقعة قبل البداية.
             </dd>
           </div>

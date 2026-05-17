@@ -12,10 +12,10 @@ export const managerColors = {
   ink: "#16245C",
   muted: "#5E6A99",
   border: "#D6DDF8",
-  brand: "#273B9A",
-  brandDark: "#1A2A78",
+  brand: "#011F91",
+  brandDark: "#011F91",
   brandSoft: "#E2E8FF",
-  bot: "#FFC928",
+  bot: "#FCBD05",
   danger: "#E11D48",
   warning: "#C98500",
 };

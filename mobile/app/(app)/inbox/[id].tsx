@@ -1,22 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   ActionSheetIOS,
   Alert,
   FlatList,
-  Image,
-  KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
+  StyleSheet,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -56,6 +48,17 @@ import {
 } from "../../../lib/escalation-labels";
 import { setActiveConv } from "../../../lib/active-conv";
 import { captureException } from "../../../lib/observability";
+import {
+  ActivityIndicator,
+  Image,
+  KeyboardAvoidingView,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "../../../components/tw";
 
 type TwilioStatus =
   | "queued"
@@ -948,45 +951,35 @@ export default function ConversationDetail() {
 
   return (
     <SafeAreaView
-      className="flex-1"
+      style={styles.screen}
       edges={["top", "bottom"]}
-      style={{ backgroundColor: chatTheme.screenBg }}
     >
       <View
-        className="border-b px-3 pb-2 pt-2 z-10"
-        style={{
-          borderColor: chatTheme.headerBorder,
-          backgroundColor: chatTheme.headerBg,
-        }}
+        style={styles.header}
       >
-        <View
-          className="flex-row-reverse items-center gap-2 px-1 py-1"
-        >
+        <View style={styles.headerRow}>
           <Pressable
             onPress={() => router.back()}
             hitSlop={12}
-            className="h-10 w-10 items-center justify-center rounded-full"
-            style={{ backgroundColor: "rgba(255,255,255,0.14)" }}
+            style={styles.headerIconButton}
           >
             <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
           </Pressable>
           <View
-            className="h-10 w-10 items-center justify-center rounded-full"
-            style={{ backgroundColor: managerColors.bot }}
+            style={styles.headerAvatar}
           >
             <Ionicons name="person" size={19} color={managerColors.brandDark} />
           </View>
-          <View className="flex-1 justify-center">
+          <View style={styles.headerContent}>
             <Text
-              className="text-right text-base font-bold text-white"
+              style={styles.headerTitle}
               numberOfLines={1}
             >
               {conv.customer_name || conv.customer_phone}
             </Text>
             {conv.customer_name ? (
               <Text
-                className="mt-0.5 text-right text-[11px]"
-                style={{ color: "rgba(255,255,255,0.82)" }}
+                style={styles.headerSubtitle}
                 selectable
               >
                 {conv.customer_phone}
@@ -997,34 +990,24 @@ export default function ConversationDetail() {
             <Pressable
               onPress={openManageActionSheet}
               hitSlop={12}
-              className="h-10 w-10 items-center justify-center rounded-full"
-              style={{ backgroundColor: "rgba(255,255,255,0.14)" }}
+              style={styles.headerIconButton}
             >
               <Ionicons name="ellipsis-horizontal" size={20} color="#FFFFFF" />
             </Pressable>
           ) : null}
         </View>
-        <View className="mt-2 flex-row-reverse items-center gap-2">
+        <View style={styles.headerStatusRow}>
           <View
-            className={`flex-1 rounded-full border px-3 py-2 ${
-              windowState.tone === "danger"
-                ? "border-red-400 bg-red-600"
-                : windowState.tone === "warning"
-                ? "border-amber-400 bg-amber-600"
-                : "border-[#D6DDF8] bg-[#3147AA]"
-            }`}
             style={[
-              {
-                backgroundColor:
-                  windowState.tone === "danger"
-                    ? "#DC2626"
-                    : windowState.tone === "warning"
-                    ? "#FFC928"
-                    : "#3147AA",
-              },
+              styles.windowPill,
+              windowState.tone === "danger"
+                ? styles.windowPillDanger
+                : windowState.tone === "warning"
+                ? styles.windowPillWarning
+                : styles.windowPillDefault,
             ]}
           >
-            <View className="flex-row-reverse items-center gap-2">
+            <View style={styles.windowPillRow}>
               <Ionicons
                 name={
                   windowState.tone === "success"
@@ -1043,13 +1026,12 @@ export default function ConversationDetail() {
                 }
               />
               <Text
-                className={`flex-1 text-right text-xs font-semibold ${
-                  windowState.tone === "danger"
-                    ? "text-white"
-                    : windowState.tone === "warning"
-                    ? "text-[#273B9A]"
-                    : "text-white"
-                }`}
+                style={[
+                  styles.windowPillText,
+                  windowState.tone === "warning"
+                    ? styles.windowPillTextWarning
+                    : styles.windowPillTextDefault,
+                ]}
                 numberOfLines={1}
               >
                 {windowState.title}
@@ -1057,21 +1039,18 @@ export default function ConversationDetail() {
             </View>
           </View>
           <Text
-            className={`rounded-full px-3 py-2 text-[10px] font-semibold ${
-              conv.handler_mode === "unassigned"
-                ? "text-white"
-                : conv.handler_mode === "bot"
-                ? "text-[#273B9A]"
-                : "text-white"
-            }`}
             style={
-              conv.handler_mode === "unassigned"
-                ? { backgroundColor: "#DC2626" }
-                : conv.handler_mode === "bot"
-                ? { backgroundColor: "#FFC928" }
-                : conv.handler_mode === "human"
-                ? { backgroundColor: "rgba(255,255,255,0.14)" }
-                : undefined
+              [
+                styles.ownerPill,
+                conv.handler_mode === "unassigned"
+                  ? styles.ownerPillUnassigned
+                  : conv.handler_mode === "bot"
+                  ? styles.ownerPillBot
+                  : styles.ownerPillHuman,
+                conv.handler_mode === "bot"
+                  ? styles.ownerPillTextBot
+                  : styles.ownerPillTextDefault,
+              ]
             }
           >
             {getOwnerLabel(conv)}
@@ -1082,7 +1061,7 @@ export default function ConversationDetail() {
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        className="flex-1"
+        style={styles.keyboardArea}
       >
         <FlatList
           ref={listRef}
@@ -1127,11 +1106,11 @@ export default function ConversationDetail() {
             );
           }}
           ListEmptyComponent={
-            <View className="items-center px-8 py-20">
-              <Text className="text-center text-base font-semibold text-[#16245C]">
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>
                 لا توجد رسائل بعد
               </Text>
-              <Text className="mt-2 text-center text-sm text-[#5E6A99]">
+              <Text style={styles.emptyDescription}>
                 عند وصول أول رسالة من العميل ستظهر هنا.
               </Text>
             </View>
@@ -1164,18 +1143,18 @@ export default function ConversationDetail() {
         onRequestClose={() => setReassignOpen(false)}
       >
         <Pressable
-          className="flex-1 justify-end bg-black/40"
+          style={styles.modalBackdrop}
           onPress={() => setReassignOpen(false)}
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            className="rounded-t-lg bg-white p-4 pb-8"
+            style={styles.sheet}
           >
-            <Text className="text-right text-lg font-bold text-[#16245C]">
+            <Text style={styles.sheetTitle}>
               إدارة المحادثة
             </Text>
-            <View className="mt-4">
-              <Text className="mb-2 text-right text-xs font-semibold text-gray-600">
+            <View style={styles.sheetSection}>
+              <Text style={styles.sheetSectionTitle}>
                 نقل إلى موظف
               </Text>
               {rosterQuery.isLoading ? (
@@ -1195,23 +1174,24 @@ export default function ConversationDetail() {
                             assignToTeamMemberId: m.id,
                           })
                         }
-                        className="flex-row-reverse items-center justify-between border-b border-gray-100 py-3"
+                        style={styles.sheetListRow}
                       >
-                        <View className="flex-row-reverse items-center gap-2">
+                        <View style={styles.sheetListRowStart}>
                           <View
-                            className={`h-2 w-2 rounded-full ${
+                            style={[
+                              styles.staffDot,
                               m.is_available && m.on_shift_now
-                                ? "bg-emerald-500"
+                                ? styles.staffDotLive
                                 : m.is_available
-                                ? "bg-emerald-300"
-                                : "bg-gray-300"
-                            }`}
+                                ? styles.staffDotAvailable
+                                : styles.staffDotOffline,
+                            ]}
                           />
-                          <Text className="text-right text-sm font-semibold text-[#16245C]">
+                          <Text style={styles.sheetListRowName}>
                             {m.full_name ?? "—"}
                           </Text>
                         </View>
-                        <Text className="text-xs text-gray-500">
+                        <Text style={styles.sheetListRowMeta}>
                           {m.role === "admin" ? "مدير" : "موظف"}
                         </Text>
                       </Pressable>
@@ -1220,7 +1200,7 @@ export default function ConversationDetail() {
               )}
             </View>
 
-            <View className="mt-4 gap-2">
+            <View style={styles.sheetActionStack}>
               <Pressable
                 disabled={reassignMutation.isPending}
                 onPress={() =>
@@ -1230,9 +1210,9 @@ export default function ConversationDetail() {
                     forceBot: true,
                   })
                 }
-                className="flex-row-reverse items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 p-3"
+                style={styles.sheetBotAction}
               >
-                <Text className="text-right text-sm font-semibold text-indigo-900">
+                <Text style={styles.sheetBotActionText}>
                   إرجاع للبوت
                 </Text>
                 <Ionicons
@@ -1250,9 +1230,9 @@ export default function ConversationDetail() {
                     unassign: true,
                   })
                 }
-                className="flex-row-reverse items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3"
+                style={styles.sheetNeutralAction}
               >
-                <Text className="text-right text-sm font-semibold text-[#16245C]">
+                <Text style={styles.sheetNeutralActionText}>
                   إلغاء التعيين
                 </Text>
                 <Ionicons name="refresh" size={20} color="#374151" />
@@ -1263,9 +1243,9 @@ export default function ConversationDetail() {
                   setReassignOpen(false);
                   setLabelsOpen(true);
                 }}
-                className="flex-row-reverse items-center justify-between rounded-lg border border-stone-200 bg-stone-50 p-3"
+                style={styles.sheetStoneAction}
               >
-                <Text className="text-right text-sm font-semibold text-stone-800">
+                <Text style={styles.sheetStoneActionText}>
                   إدارة التسميات
                 </Text>
                 <Ionicons name="pricetags-outline" size={20} color="#44403C" />
@@ -1279,9 +1259,9 @@ export default function ConversationDetail() {
               />
               <Pressable
                 onPress={() => setReassignOpen(false)}
-                className="mt-1 items-center rounded-lg border border-gray-200 py-3"
+                style={styles.sheetCloseButton}
               >
-                <Text className="text-sm text-gray-700">إغلاق</Text>
+                <Text style={styles.sheetCloseButtonText}>إغلاق</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -1298,6 +1278,274 @@ export default function ConversationDetail() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: chatTheme.screenBg,
+  },
+  header: {
+    zIndex: 10,
+    borderBottomWidth: 1,
+    borderColor: chatTheme.headerBorder,
+    backgroundColor: chatTheme.headerBg,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  headerRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  headerIconButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.14)",
+  },
+  headerAvatar: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 999,
+    backgroundColor: managerColors.bot,
+  },
+  headerContent: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  headerTitle: {
+    textAlign: "right",
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  headerSubtitle: {
+    marginTop: 2,
+    textAlign: "right",
+    fontSize: 11,
+    color: "rgba(255,255,255,0.82)",
+  },
+  headerStatusRow: {
+    marginTop: 8,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 8,
+  },
+  windowPill: {
+    flex: 1,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  windowPillDefault: {
+    borderColor: "#D6DDF8",
+    backgroundColor: "#3147AA",
+  },
+  windowPillDanger: {
+    borderColor: "#F87171",
+    backgroundColor: "#DC2626",
+  },
+  windowPillWarning: {
+    borderColor: "#FBBF24",
+    backgroundColor: "#FFC928",
+  },
+  windowPillRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 8,
+  },
+  windowPillText: {
+    flex: 1,
+    textAlign: "right",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  windowPillTextDefault: {
+    color: "#FFFFFF",
+  },
+  windowPillTextWarning: {
+    color: "#273B9A",
+  },
+  ownerPill: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  ownerPillUnassigned: {
+    backgroundColor: "#DC2626",
+  },
+  ownerPillBot: {
+    backgroundColor: "#FFC928",
+  },
+  ownerPillHuman: {
+    backgroundColor: "rgba(255,255,255,0.14)",
+  },
+  ownerPillTextDefault: {
+    color: "#FFFFFF",
+  },
+  ownerPillTextBot: {
+    color: "#273B9A",
+  },
+  keyboardArea: {
+    flex: 1,
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingHorizontal: 32,
+    paddingVertical: 80,
+  },
+  emptyTitle: {
+    textAlign: "center",
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#16245C",
+  },
+  emptyDescription: {
+    marginTop: 8,
+    textAlign: "center",
+    fontSize: 14,
+    color: "#5E6A99",
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  sheet: {
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+    paddingBottom: 32,
+  },
+  sheetTitle: {
+    textAlign: "right",
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#16245C",
+  },
+  sheetSection: {
+    marginTop: 16,
+  },
+  sheetSectionTitle: {
+    marginBottom: 8,
+    textAlign: "right",
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#4B5563",
+  },
+  sheetListRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+    paddingVertical: 12,
+  },
+  sheetListRowStart: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 8,
+  },
+  staffDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+  },
+  staffDotLive: {
+    backgroundColor: "#10B981",
+  },
+  staffDotAvailable: {
+    backgroundColor: "#6EE7B7",
+  },
+  staffDotOffline: {
+    backgroundColor: "#D1D5DB",
+  },
+  sheetListRowName: {
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#16245C",
+  },
+  sheetListRowMeta: {
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  sheetActionStack: {
+    marginTop: 16,
+    rowGap: 8,
+  },
+  sheetBotAction: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#C7D2FE",
+    backgroundColor: "#EEF2FF",
+    padding: 12,
+  },
+  sheetBotActionText: {
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#312E81",
+  },
+  sheetNeutralAction: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#F9FAFB",
+    padding: 12,
+  },
+  sheetNeutralActionText: {
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#16245C",
+  },
+  sheetStoneAction: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#D6D3D1",
+    backgroundColor: "#FAFAF9",
+    padding: 12,
+  },
+  sheetStoneActionText: {
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#44403C",
+  },
+  sheetCloseButton: {
+    marginTop: 4,
+    alignItems: "center",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    paddingVertical: 12,
+  },
+  sheetCloseButtonText: {
+    fontSize: 14,
+    color: "#374151",
+  },
+});
 
 function ChatSkeleton() {
   return (
@@ -1442,6 +1690,17 @@ function MessageText({
   );
 }
 
+function isMediaPlaceholderText(content: string | null | undefined) {
+  const normalized = (content ?? "").trim().toLowerCase();
+  return (
+    normalized === "[صورة]" ||
+    normalized === "[image]" ||
+    normalized === "[photo]" ||
+    normalized === "image" ||
+    normalized === "photo"
+  );
+}
+
 function MediaAttachment({
   slot,
   messageType,
@@ -1517,10 +1776,13 @@ function MediaAttachment({
   if (messageType === "image") {
     return (
       <>
-        <Pressable onPress={() => setPreviewOpen(true)}>
+        <Pressable
+          onPress={() => setPreviewOpen(true)}
+          style={mediaStyles.imagePressable}
+        >
           <Image
             source={{ uri: url }}
-            className="h-56 w-full rounded-[18px]"
+            style={mediaStyles.imageAttachment}
             resizeMode="cover"
           />
         </Pressable>
@@ -1593,6 +1855,8 @@ function MessageBubble({ message }: { message: Msg }) {
   const isCustomer = message.role === "customer";
   const isSystem = message.role === "system";
   const slots = messageMediaSlots(message);
+  const hasOnlyMediaPlaceholder =
+    slots.length > 0 && isMediaPlaceholderText(message.content);
   if (isSystem) {
     return (
       <View className="my-2 items-center">
@@ -1637,7 +1901,7 @@ function MessageBubble({ message }: { message: Msg }) {
                 bubbleTone={isCustomer ? "customer" : "agent"}
               />
             ))}
-            {message.content ? (
+            {message.content && !hasOnlyMediaPlaceholder ? (
               <MessageText content={message.content} isCustomer={isCustomer} />
             ) : null}
           </View>
@@ -1658,6 +1922,20 @@ function MessageBubble({ message }: { message: Msg }) {
     </View>
   );
 }
+
+const mediaStyles = StyleSheet.create({
+  imagePressable: {
+    alignSelf: "stretch",
+    minWidth: 220,
+    maxWidth: 280,
+  },
+  imageAttachment: {
+    width: "100%",
+    height: 260,
+    borderRadius: 18,
+    backgroundColor: "#E8EEFF",
+  },
+});
 
 // Red banner in the chat header when a pending escalation/approval exists for
 // this conversation. Lets the owner see at a glance that their intervention is

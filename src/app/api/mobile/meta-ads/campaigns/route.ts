@@ -36,7 +36,11 @@ export async function GET() {
     );
   }
 
-  // Fetch campaigns + inline last-7-day insights in one request.
+  // Fetch campaigns with:
+  //   - last-7-day insights (headline metrics on the card)
+  //   - lifetime insights (aliased) — total spend since launch
+  //   - first ad's creative thumbnail (for the card preview)
+  // All in a single Graph API call via inline field expansion.
   const params = new URLSearchParams({
     fields: [
       "id",
@@ -48,7 +52,10 @@ export async function GET() {
       "lifetime_budget",
       "start_time",
       "stop_time",
+      "created_time",
       "insights.date_preset(last_7d){spend,impressions,clicks,reach,ctr}",
+      "lifetime_insights:insights.date_preset(maximum){spend,impressions,reach}",
+      "ads.limit(1){creative{thumbnail_url,image_url,object_story_spec}}",
     ].join(","),
     access_token: conn.user_access_token,
     limit: "50",

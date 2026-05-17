@@ -1,15 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
-  Image,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -33,6 +25,16 @@ import {
 import { qk } from "../../../lib/query-keys";
 import { useSessionStore } from "../../../lib/session-store";
 import { ManagerCard, managerColors } from "../../../components/manager-ui";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "../../../components/tw";
 
 const SELECTED_PHONES_KEY = "whatsapp-cs:campaign-prefill-phones";
 

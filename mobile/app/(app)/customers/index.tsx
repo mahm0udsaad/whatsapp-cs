@@ -5,6 +5,7 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  StyleSheet,
   Text,
   TextInput,
   View,
@@ -21,7 +22,7 @@ import {
 } from "../../../lib/api";
 import { qk } from "../../../lib/query-keys";
 import { useSessionStore } from "../../../lib/session-store";
-import { ManagerCard, managerColors } from "../../../components/manager-ui";
+import { managerColors } from "../../../components/manager-ui";
 
 const PAGE_SIZE = 30;
 const SELECTED_PHONES_STORAGE_KEY =
@@ -118,15 +119,12 @@ export default function CustomersListScreen() {
   const selectedCount = useMemo(() => selected.size, [selected]);
 
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: managerColors.bg }} edges={["top"]}>
-      {/* Search + filter bar */}
+    <SafeAreaView style={styles.screen} edges={["top"]}>
       <View
-        className="border-b px-3 pb-2 pt-3"
-        style={{ borderBottomColor: managerColors.border, backgroundColor: managerColors.surface }}
+        style={styles.header}
       >
         <View
-          className="flex-row-reverse items-center rounded-[18px] border px-3"
-          style={{ borderColor: managerColors.border, backgroundColor: managerColors.surfaceMuted }}
+          style={styles.searchBox}
         >
           <Ionicons name="search" size={16} color={managerColors.muted} />
           <TextInput
@@ -135,7 +133,7 @@ export default function CustomersListScreen() {
             placeholder="ابحث بالاسم أو الرقم"
             placeholderTextColor={managerColors.muted}
             textAlign="right"
-            className="flex-1 px-2 py-2 text-sm text-gray-950"
+            style={styles.searchInput}
           />
           {q.length > 0 ? (
             <Pressable onPress={() => setQ("")}>
@@ -143,7 +141,7 @@ export default function CustomersListScreen() {
             </Pressable>
           ) : null}
         </View>
-        <View className="mt-2 flex-row-reverse gap-2">
+        <View style={styles.filterRow}>
           <FilterChip
             label="الكل"
             active={filter === "all"}
@@ -173,48 +171,48 @@ export default function CustomersListScreen() {
           />
         }
         ListHeaderComponent={
-          <View className="mb-2 flex-row-reverse items-center justify-between">
-            <Text className="text-xs text-gray-500">
+          <View style={styles.listHeader}>
+            <Text style={styles.listHeaderMeta}>
               {total.toLocaleString()} عميل · صفحة {page}/{totalPages}
             </Text>
             {selecting ? (
               <Pressable
                 onPress={cancelSelect}
-                className="rounded-full border border-gray-200 px-3 py-1"
+                style={styles.cancelSelectButton}
               >
-                <Text className="text-[11px] text-gray-700">إلغاء التحديد</Text>
+                <Text style={styles.cancelSelectButtonText}>إلغاء التحديد</Text>
               </Pressable>
             ) : null}
           </View>
         }
         ListEmptyComponent={
           customersQuery.isLoading ? (
-            <View className="items-center py-16">
+            <View style={styles.stateCenter}>
               <ActivityIndicator />
             </View>
           ) : customersQuery.isError ? (
-            <View className="items-center px-6 py-16">
+            <View style={styles.errorState}>
               <Ionicons name="cloud-offline-outline" size={48} color="#DC2626" />
-              <Text className="mt-3 text-center text-sm text-red-700">
+              <Text style={styles.errorTitle}>
                 تعذر تحميل العملاء
               </Text>
-              <Text className="mt-1 text-center text-[11px] text-gray-500">
+              <Text style={styles.errorDescription}>
                 {customersQuery.error instanceof Error
                   ? customersQuery.error.message
                   : "تأكد من اتصالك ثم حاول مرة أخرى"}
               </Text>
               <Pressable
                 onPress={() => customersQuery.refetch()}
-                className="mt-3 rounded-full border border-gray-200 px-4 py-2"
+                style={styles.retryButton}
               >
-                <Text className="text-xs text-gray-700">إعادة المحاولة</Text>
+                <Text style={styles.retryButtonText}>إعادة المحاولة</Text>
               </Pressable>
             </View>
           ) : (
-            <View className="items-center py-16">
+            <View style={styles.stateCenter}>
               <Ionicons name="people-outline" size={48} color="#9CA3AF" />
-              <Text className="mt-3 text-gray-500">لا يوجد عملاء بعد</Text>
-              <Text className="mt-1 text-xs text-gray-400">
+              <Text style={styles.emptyTitle}>لا يوجد عملاء بعد</Text>
+              <Text style={styles.emptyDescription}>
                 أضف عميلاً جديداً أو استوردهم من حملة سابقة.
               </Text>
             </View>
@@ -241,41 +239,31 @@ export default function CustomersListScreen() {
         )}
         ListFooterComponent={
           rows.length > 0 ? (
-            <View className="mt-3 flex-row-reverse items-center justify-between">
+            <View style={styles.paginationRow}>
               <Pressable
                 disabled={page <= 1}
                 onPress={() => setPage((p) => Math.max(1, p - 1))}
-                className={`rounded-full border px-4 py-2 ${
-                  page <= 1
-                    ? "border-gray-100 bg-gray-50"
-                    : "border-gray-200 bg-white"
-                }`}
+                style={[
+                  styles.paginationButton,
+                  page <= 1 ? styles.paginationButtonDisabled : styles.paginationButtonEnabled,
+                ]}
               >
-                <Text
-                  className={`text-xs ${
-                    page <= 1 ? "text-gray-400" : "text-gray-700"
-                  }`}
-                >
+                <Text style={[styles.paginationButtonText, page <= 1 ? styles.paginationButtonTextDisabled : styles.paginationButtonTextEnabled]}>
                   السابق
                 </Text>
               </Pressable>
-              <Text className="text-xs text-gray-500">
+              <Text style={styles.paginationMeta}>
                 صفحة {page} / {totalPages}
               </Text>
               <Pressable
                 disabled={page >= totalPages}
                 onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className={`rounded-full border px-4 py-2 ${
-                  page >= totalPages
-                    ? "border-gray-100 bg-gray-50"
-                    : "border-gray-200 bg-white"
-                }`}
+                style={[
+                  styles.paginationButton,
+                  page >= totalPages ? styles.paginationButtonDisabled : styles.paginationButtonEnabled,
+                ]}
               >
-                <Text
-                  className={`text-xs ${
-                    page >= totalPages ? "text-gray-400" : "text-gray-700"
-                  }`}
-                >
+                <Text style={[styles.paginationButtonText, page >= totalPages ? styles.paginationButtonTextDisabled : styles.paginationButtonTextEnabled]}>
                   التالي
                 </Text>
               </Pressable>
@@ -284,38 +272,28 @@ export default function CustomersListScreen() {
         }
       />
 
-      {/* Bottom action bar in select-mode */}
       {selecting && selectedCount > 0 ? (
-        <View className="absolute bottom-0 left-0 right-0 border-t border-gray-200 bg-white p-3">
-          <View className="flex-row-reverse items-center justify-between">
-            <Text className="text-sm font-bold text-gray-950">
+        <View style={styles.selectionBar}>
+          <View style={styles.selectionBarRow}>
+            <Text style={styles.selectionCount}>
               {selectedCount} محدد
             </Text>
             <Pressable
               onPress={launchCampaign}
-              className="flex-row-reverse items-center gap-2 rounded-[16px] px-4 py-3"
-              style={{ backgroundColor: managerColors.brand }}
+              style={styles.selectionAction}
             >
               <Ionicons name="megaphone" size={16} color="#fff" />
-              <Text className="font-bold text-white">إنشاء حملة لهم</Text>
+              <Text style={styles.selectionActionText}>إنشاء حملة لهم</Text>
             </Pressable>
           </View>
         </View>
       ) : (
         <Pressable
           onPress={() => router.push("/customers/new")}
-          className="absolute bottom-6 left-6 h-14 flex-row items-center gap-2 rounded-full px-5"
-          style={{
-            backgroundColor: managerColors.brand,
-            shadowColor: managerColors.brandDark,
-            shadowOpacity: 0.18,
-            shadowRadius: 10,
-            shadowOffset: { width: 0, height: 6 },
-            elevation: 6,
-          }}
+          style={styles.fab}
         >
           <Ionicons name="add" size={22} color="#fff" />
-          <Text className="font-bold text-white">إضافة</Text>
+          <Text style={styles.fabText}>إضافة</Text>
         </Pressable>
       )}
     </SafeAreaView>
@@ -334,17 +312,12 @@ function FilterChip({
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-1 items-center rounded-full border py-2 ${
-        active
-          ? "border-emerald-300 bg-emerald-50"
-          : "border-gray-200 bg-white"
-      }`}
+      style={[
+        styles.filterChip,
+        active ? styles.filterChipActive : styles.filterChipIdle,
+      ]}
     >
-      <Text
-        className={`text-xs font-semibold ${
-          active ? "text-emerald-900" : "text-gray-700"
-        }`}
-      >
+      <Text style={[styles.filterChipText, active ? styles.filterChipTextActive : styles.filterChipTextIdle]}>
         {label}
       </Text>
     </Pressable>
@@ -369,11 +342,11 @@ function CustomerRowCard({
   sending: boolean;
 }) {
   return (
-    <ManagerCard className="mb-2">
+    <View style={styles.customerCard}>
       <Pressable onPress={onPress} onLongPress={onLongPress}>
-        <View className="flex-row-reverse items-center justify-between gap-2">
-          <View className="flex-1">
-            <View className="flex-row-reverse items-center gap-2">
+        <View style={styles.customerRow}>
+          <View style={styles.customerContent}>
+            <View style={styles.customerNameRow}>
               {selecting ? (
                 <Ionicons
                   name={selected ? "checkbox" : "square-outline"}
@@ -382,21 +355,21 @@ function CustomerRowCard({
                 />
               ) : null}
               <Text
-                className="flex-1 text-right text-base font-semibold text-gray-950"
+                style={styles.customerName}
                 numberOfLines={1}
               >
                 {row.full_name || "بدون اسم"}
               </Text>
               {row.opted_out ? (
-                <View className="rounded-full bg-red-50 px-2 py-0.5">
-                  <Text className="text-[10px] font-bold text-red-700">
+                <View style={styles.optedOutBadge}>
+                  <Text style={styles.optedOutBadgeText}>
                     ملغى
                   </Text>
                 </View>
               ) : null}
             </View>
             <Text
-              className="mt-1 text-right text-[11px] text-gray-500"
+              style={styles.customerMeta}
               numberOfLines={1}
             >
               {row.phone_number} ·{" "}
@@ -411,7 +384,7 @@ function CustomerRowCard({
               onPress={onSendMessage}
               disabled={sending}
               hitSlop={6}
-              className="h-10 w-10 items-center justify-center rounded-full bg-emerald-50"
+              style={styles.sendButton}
             >
               {sending ? (
                 <ActivityIndicator size="small" color={managerColors.brand} />
@@ -426,6 +399,278 @@ function CustomerRowCard({
           ) : null}
         </View>
       </Pressable>
-    </ManagerCard>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: managerColors.bg,
+  },
+  header: {
+    borderBottomWidth: 1,
+    borderBottomColor: managerColors.border,
+    backgroundColor: managerColors.surface,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  searchBox: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: managerColors.border,
+    backgroundColor: managerColors.surfaceMuted,
+    paddingHorizontal: 12,
+    columnGap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: "#111827",
+    textAlign: "right",
+  },
+  filterRow: {
+    marginTop: 8,
+    flexDirection: "row-reverse",
+    columnGap: 8,
+  },
+  listHeader: {
+    marginBottom: 8,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  listHeaderMeta: {
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  cancelSelectButton: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  cancelSelectButtonText: {
+    fontSize: 11,
+    color: "#374151",
+  },
+  stateCenter: {
+    alignItems: "center",
+    paddingVertical: 64,
+  },
+  errorState: {
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 64,
+  },
+  errorTitle: {
+    marginTop: 12,
+    textAlign: "center",
+    fontSize: 14,
+    color: "#B91C1C",
+  },
+  errorDescription: {
+    marginTop: 4,
+    textAlign: "center",
+    fontSize: 11,
+    color: "#6B7280",
+  },
+  retryButton: {
+    marginTop: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  retryButtonText: {
+    fontSize: 12,
+    color: "#374151",
+  },
+  emptyTitle: {
+    marginTop: 12,
+    color: "#6B7280",
+  },
+  emptyDescription: {
+    marginTop: 4,
+    fontSize: 12,
+    color: "#9CA3AF",
+  },
+  paginationRow: {
+    marginTop: 12,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  paginationButton: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  paginationButtonEnabled: {
+    borderColor: "#E5E7EB",
+    backgroundColor: "#FFFFFF",
+  },
+  paginationButtonDisabled: {
+    borderColor: "#F3F4F6",
+    backgroundColor: "#F9FAFB",
+  },
+  paginationButtonText: {
+    fontSize: 12,
+  },
+  paginationButtonTextEnabled: {
+    color: "#374151",
+  },
+  paginationButtonTextDisabled: {
+    color: "#9CA3AF",
+  },
+  paginationMeta: {
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  selectionBar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+    backgroundColor: "#FFFFFF",
+    padding: 12,
+  },
+  selectionBarRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  selectionCount: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  selectionAction: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 8,
+    borderRadius: 16,
+    backgroundColor: managerColors.brand,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  selectionActionText: {
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  fab: {
+    position: "absolute",
+    left: 24,
+    bottom: 24,
+    height: 56,
+    flexDirection: "row",
+    alignItems: "center",
+    columnGap: 8,
+    borderRadius: 999,
+    paddingHorizontal: 20,
+    backgroundColor: managerColors.brand,
+    shadowColor: managerColors.brandDark,
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+  },
+  fabText: {
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  filterChip: {
+    flex: 1,
+    alignItems: "center",
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingVertical: 8,
+  },
+  filterChipActive: {
+    borderColor: "#86EFAC",
+    backgroundColor: "#ECFDF5",
+  },
+  filterChipIdle: {
+    borderColor: "#E5E7EB",
+    backgroundColor: "#FFFFFF",
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  filterChipTextActive: {
+    color: "#14532D",
+  },
+  filterChipTextIdle: {
+    color: "#374151",
+  },
+  customerCard: {
+    marginBottom: 8,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#D6DDF8",
+    backgroundColor: "#FCFEFC",
+    padding: 16,
+    shadowColor: "#273B9A",
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  customerRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    columnGap: 8,
+  },
+  customerContent: {
+    flex: 1,
+  },
+  customerNameRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 8,
+  },
+  customerName: {
+    flex: 1,
+    textAlign: "right",
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  optedOutBadge: {
+    borderRadius: 999,
+    backgroundColor: "#FEF2F2",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  optedOutBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#B91C1C",
+  },
+  customerMeta: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 11,
+    color: "#6B7280",
+  },
+  sendButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 999,
+    backgroundColor: "#ECFDF5",
+  },
+});

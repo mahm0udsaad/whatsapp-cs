@@ -58,6 +58,10 @@ export const qk = {
     ["manager", "meta-campaigns", restaurantId] as const,
   metaPages: (restaurantId: string) =>
     ["manager", "meta-pages", restaurantId] as const,
+  metaRecentPosts: (restaurantId: string) =>
+    ["manager", "meta-recent-posts", restaurantId] as const,
+  metaCampaignDetail: (restaurantId: string, campaignId: string) =>
+    ["manager", "meta-campaign-detail", restaurantId, campaignId] as const,
   aiUsage: (restaurantId: string) =>
     ["manager", "ai-usage", restaurantId] as const,
 

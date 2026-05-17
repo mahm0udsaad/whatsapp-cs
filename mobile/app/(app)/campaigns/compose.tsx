@@ -1,17 +1,8 @@
 import { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
-  Image,
   Modal,
-  Pressable,
-  ScrollView,
-  Switch,
-  Text,
-  TextInput,
-  View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -19,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   generateCaptions,
   generatePostImage,
+  getApiErrorMessage,
   getAiUsage,
   getMetaAdsStatus,
   listMetaPages,
@@ -29,6 +21,17 @@ import {
 import { qk } from "../../../lib/query-keys";
 import { useSessionStore } from "../../../lib/session-store";
 import { ManagerCard, managerColors, softShadow } from "../../../components/manager-ui";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from "../../../components/tw";
 
 // ---- page picker -----------------------------------------------------------
 
@@ -132,7 +135,10 @@ interface PickedImage {
   uri: string;
   base64: string;
   mimeType: string;
+  fileSize?: number;
 }
+
+const MAX_REFERENCE_IMAGE_BYTES = 4 * 1024 * 1024;
 
 function ComposerScreen({
   pageName,
@@ -207,7 +213,7 @@ function ComposerScreen({
         "تعذّر توليد الصورة",
         (e as Error).message.includes("429")
           ? "تجاوزت الحد الشهري لتوليد الصور."
-          : "حاول مرة أخرى."
+          : getApiErrorMessage(e, "حاول مرة أخرى.")
       ),
   });
 
@@ -221,10 +227,18 @@ function ComposerScreen({
     });
     if (result.canceled || !result.assets[0].base64) return;
     const a = result.assets[0];
+    if ((a.fileSize ?? 0) > MAX_REFERENCE_IMAGE_BYTES) {
+      Alert.alert(
+        "الصورة المرجعية كبيرة جدًا",
+        "اختر صورة أصغر من 4MB أو استخدم التوليد بدون صورة مرجعية."
+      );
+      return;
+    }
     setAiRefImage({
       uri: a.uri,
       base64: a.base64!,
       mimeType: a.mimeType ?? "image/jpeg",
+      fileSize: a.fileSize,
     });
   }
 
@@ -286,6 +300,7 @@ function ComposerScreen({
       uri: asset.uri,
       base64: asset.base64!,
       mimeType: asset.mimeType ?? "image/jpeg",
+      fileSize: asset.fileSize,
     });
   }
 

@@ -3,6 +3,7 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  StyleSheet,
   Text,
   View,
 } from "react-native";
@@ -18,7 +19,6 @@ import { useSessionStore } from "../../lib/session-store";
 import {
   ListSkeleton,
   managerColors,
-  softShadow,
 } from "../../components/manager-ui";
 import { ExtractedIntentCard } from "../../components/extracted-intent-card";
 import { EmptyState, ErrorState } from "../../components/list-state";
@@ -40,7 +40,7 @@ export default function ApprovalsScreen() {
 
   if (!restaurantId) {
     return (
-      <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["top"]}>
+      <SafeAreaView style={styles.screen} edges={["top"]}>
         <ApprovalsHeader count={0} fetching={false} />
         <ListSkeleton count={4} />
       </SafeAreaView>
@@ -53,7 +53,7 @@ export default function ApprovalsScreen() {
   const items: PendingApproval[] = Array.isArray(query.data) ? query.data : [];
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["top"]}>
+    <SafeAreaView style={styles.screen} edges={["top"]}>
       <ApprovalsHeader count={items.length} fetching={query.isFetching} />
 
       {query.isLoading ? (
@@ -98,23 +98,23 @@ function ApprovalsHeader({
   fetching: boolean;
 }) {
   return (
-    <View className="border-b border-[#E6E8EC] bg-white px-4 pb-3 pt-2">
-      <View className="flex-row-reverse items-center gap-3">
-        <View className="flex-1">
-          <Text className="text-right text-[22px] font-bold text-[#16245C]">
+    <View style={styles.headerContainer}>
+      <View style={styles.headerRow}>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>
             الطلبات
           </Text>
-          <Text className="mt-1 text-right text-sm leading-6 text-[#5E6A99]">
+          <Text style={styles.headerSubtitle}>
             محادثات أوقفها البوت لأنه يحتاج قرارك قبل الرد
           </Text>
         </View>
-        <View className="min-w-12 items-center justify-center rounded-[18px] border border-red-100 bg-red-50 px-3 py-2.5">
+        <View style={styles.headerCountBadge}>
           {fetching ? (
             <ActivityIndicator color={managerColors.danger} size="small" />
           ) : (
-            <Text className="text-lg font-bold text-red-700">{count}</Text>
+            <Text style={styles.headerCountValue}>{count}</Text>
           )}
-          <Text className="text-[10px] font-semibold text-red-700">طلب</Text>
+          <Text style={styles.headerCountLabel}>طلب</Text>
         </View>
       </View>
     </View>
@@ -150,33 +150,41 @@ function ApprovalCard({ approval }: { approval: PendingApproval }) {
 
   return (
     <View
-      className="mb-3 overflow-hidden rounded-[24px] border border-[#E7EBFB] bg-white"
-      style={softShadow}
+      style={styles.card}
     >
-      <View className="flex-row-reverse">
-        <View className={`w-1.5 ${accentBar}`} />
-        <View className="flex-1 p-4">
-          <View className="flex-row-reverse items-start gap-3">
-            <View className="h-12 w-12 items-center justify-center rounded-full bg-[#F4F7FF]">
-              <Text className="text-base font-bold text-[#273B9A]">
+      <View style={styles.cardRow}>
+        <View
+          style={[
+            styles.cardAccent,
+            accentBar === "bg-red-500"
+              ? styles.cardAccentDanger
+              : accentBar === "bg-amber-500"
+              ? styles.cardAccentWarn
+              : styles.cardAccentInfo,
+          ]}
+        />
+        <View style={styles.cardBody}>
+          <View style={styles.identityRow}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
                 {customerLabel.trim().charAt(0).toUpperCase()}
               </Text>
             </View>
-            <View className="min-w-0 flex-1">
-              <View className="flex-row-reverse items-center gap-2">
+            <View style={styles.identityContent}>
+              <View style={styles.identityHeaderRow}>
                 <Text
-                  className="min-w-0 flex-1 text-right text-[17px] font-bold text-[#16245C]"
+                  style={styles.customerName}
                   numberOfLines={1}
                 >
                   {customerLabel}
                 </Text>
-                <Text className="text-[11px] font-medium text-[#7A88B8]">
+                <Text style={styles.ageText}>
                   {ageLabel}
                 </Text>
               </View>
               {showPhone ? (
                 <Text
-                  className="mt-0.5 text-right text-xs text-[#7A88B8]"
+                  style={styles.phoneText}
                   selectable
                 >
                   {approval.customer_phone}
@@ -186,9 +194,16 @@ function ApprovalCard({ approval }: { approval: PendingApproval }) {
           </View>
 
           <View
-            className={`mt-3 rounded-[14px] border px-3 py-2.5 ${reasonClasses}`}
+            style={[
+              styles.reasonBox,
+              reasonClasses === "border-red-100 bg-red-50 text-red-800"
+                ? styles.reasonBoxDanger
+                : reasonClasses === "border-amber-100 bg-amber-50 text-amber-800"
+                ? styles.reasonBoxWarn
+                : styles.reasonBoxInfo,
+            ]}
           >
-            <View className="flex-row-reverse items-center gap-1.5">
+            <View style={styles.reasonHeaderRow}>
               <Ionicons
                 name="sparkles-outline"
                 size={14}
@@ -200,43 +215,41 @@ function ApprovalCard({ approval }: { approval: PendingApproval }) {
                     : "#312E81"
                 }
               />
-              <Text
-                className={`text-right text-[11px] font-bold ${
-                  reasonTone === "danger"
-                    ? "text-red-800"
-                    : reasonTone === "warn"
-                    ? "text-amber-800"
-                    : "text-indigo-900"
-                }`}
-              >
+              <Text style={[
+                styles.reasonHeaderText,
+                reasonTone === "danger"
+                  ? styles.reasonTextDanger
+                  : reasonTone === "warn"
+                  ? styles.reasonTextWarn
+                  : styles.reasonTextInfo,
+              ]}>
                 لماذا يحتاج البوت مساعدتك؟
               </Text>
             </View>
-            <Text
-              className={`mt-1 text-right text-sm font-semibold ${
-                reasonTone === "danger"
-                  ? "text-red-800"
-                  : reasonTone === "warn"
-                  ? "text-amber-800"
-                  : "text-indigo-900"
-              }`}
-            >
+            <Text style={[
+              styles.reasonLabel,
+              reasonTone === "danger"
+                ? styles.reasonTextDanger
+                : reasonTone === "warn"
+                ? styles.reasonTextWarn
+                : styles.reasonTextInfo,
+            ]}>
               {reasonLabel}
             </Text>
           </View>
 
           {approval.extracted_intent ? (
-            <View className="mt-2">
+            <View style={styles.intentWrap}>
               <ExtractedIntentCard intent={approval.extracted_intent} />
             </View>
           ) : (
-            <View className="mt-2 rounded-[18px] bg-[#F7F9FF] px-3 py-3">
-              <Text className="mb-1 text-right text-[11px] font-semibold text-[#7A88B8]">
+            <View style={styles.messageFallback}>
+              <Text style={styles.messageLabel}>
                 آخر رسالة من العميل
               </Text>
               <Text
                 numberOfLines={4}
-                className="text-right text-sm leading-6 text-[#16245C]"
+                style={styles.messageBody}
               >
                 {body}
               </Text>
@@ -247,13 +260,12 @@ function ApprovalCard({ approval }: { approval: PendingApproval }) {
             onPress={() =>
               router.push(`/(app)/inbox/${approval.conversation_id}`)
             }
-            className="mt-3 flex-row-reverse items-center justify-center gap-2 rounded-[18px] py-3"
-            style={{ backgroundColor: managerColors.brand }}
+            style={styles.openButton}
             accessibilityRole="button"
             accessibilityLabel={`فتح محادثة ${customerLabel}`}
           >
             <Ionicons name="chatbubbles-outline" size={16} color="#fff" />
-            <Text className="text-sm font-bold text-white">
+            <Text style={styles.openButtonText}>
               فتح المحادثة واتخاذ القرار
             </Text>
           </Pressable>
@@ -262,3 +274,196 @@ function ApprovalCard({ approval }: { approval: PendingApproval }) {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: "#F6F7F9",
+  },
+  headerContainer: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#E6E8EC",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  headerRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 12,
+  },
+  headerContent: {
+    flex: 1,
+  },
+  headerTitle: {
+    textAlign: "right",
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#16245C",
+  },
+  headerSubtitle: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 14,
+    lineHeight: 24,
+    color: "#5E6A99",
+  },
+  headerCountBadge: {
+    minWidth: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    backgroundColor: "#FEF2F2",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  headerCountValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#B91C1C",
+  },
+  headerCountLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#B91C1C",
+  },
+  card: {
+    marginBottom: 12,
+    overflow: "hidden",
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#E7EBFB",
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#273B9A",
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  cardRow: {
+    flexDirection: "row-reverse",
+  },
+  cardAccent: {
+    width: 6,
+  },
+  cardAccentDanger: { backgroundColor: "#EF4444" },
+  cardAccentWarn: { backgroundColor: "#F59E0B" },
+  cardAccentInfo: { backgroundColor: "#6366F1" },
+  cardBody: {
+    flex: 1,
+    padding: 16,
+  },
+  identityRow: {
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    columnGap: 12,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F4F7FF",
+  },
+  avatarText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#273B9A",
+  },
+  identityContent: {
+    flex: 1,
+    minWidth: 0,
+  },
+  identityHeaderRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 8,
+  },
+  customerName: {
+    flex: 1,
+    textAlign: "right",
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#16245C",
+  },
+  ageText: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: "#7A88B8",
+  },
+  phoneText: {
+    marginTop: 2,
+    textAlign: "right",
+    fontSize: 12,
+    color: "#7A88B8",
+  },
+  reasonBox: {
+    marginTop: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  reasonBoxDanger: { borderColor: "#FECACA", backgroundColor: "#FEF2F2" },
+  reasonBoxWarn: { borderColor: "#FDE68A", backgroundColor: "#FFFBEB" },
+  reasonBoxInfo: { borderColor: "#C7D2FE", backgroundColor: "#EEF2FF" },
+  reasonHeaderRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 6,
+  },
+  reasonHeaderText: {
+    textAlign: "right",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  reasonTextDanger: { color: "#991B1B" },
+  reasonTextWarn: { color: "#92400E" },
+  reasonTextInfo: { color: "#312E81" },
+  reasonLabel: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  intentWrap: { marginTop: 8 },
+  messageFallback: {
+    marginTop: 8,
+    borderRadius: 18,
+    backgroundColor: "#F7F9FF",
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  messageLabel: {
+    marginBottom: 4,
+    textAlign: "right",
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#7A88B8",
+  },
+  messageBody: {
+    textAlign: "right",
+    fontSize: 14,
+    lineHeight: 24,
+    color: "#16245C",
+  },
+  openButton: {
+    marginTop: 12,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "center",
+    columnGap: 8,
+    borderRadius: 18,
+    backgroundColor: managerColors.brand,
+    paddingVertical: 12,
+  },
+  openButtonText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+});

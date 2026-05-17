@@ -20,7 +20,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_APP_BASE_URL": "https://nehgzbot.com"
+        "EXPO_PUBLIC_APP_BASE_URL": "https://www.nehgzbot.com"
       }
     },
     "production": {
@@ -30,7 +30,7 @@
         "image": "latest"
       },
       "env": {
-        "EXPO_PUBLIC_APP_BASE_URL": "https://nehgzbot.com"
+        "EXPO_PUBLIC_APP_BASE_URL": "https://www.nehgzbot.com"
       }
     }
   },

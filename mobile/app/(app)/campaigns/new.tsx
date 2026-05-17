@@ -1,12 +1,7 @@
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
-  Pressable,
-  Text,
-  View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,6 +17,7 @@ import {
 import { qk } from "../../../lib/query-keys";
 import { useSessionStore } from "../../../lib/session-store";
 import { managerColors } from "../../../components/manager-ui";
+import { ActivityIndicator, Pressable, SafeAreaView, Text, View } from "../../../components/tw";
 
 type Tab = "curated" | "mine";
 

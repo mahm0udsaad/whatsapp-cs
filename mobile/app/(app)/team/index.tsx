@@ -9,6 +9,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View,
@@ -49,9 +50,7 @@ import {
   CardSkeleton,
   ListSkeleton,
   ManagerCard,
-  ManagerMetric,
   managerColors,
-  softShadow,
 } from "../../../components/manager-ui";
 
 type Segment = "people" | "schedule" | "performance";
@@ -106,8 +105,8 @@ export default function TeamScreen() {
 
   if (!restaurantId) {
     return (
-      <View className="flex-1" style={{ backgroundColor: managerColors.bg }}>
-        <View className="flex-row-reverse gap-2 px-3 pt-3 pb-2">
+      <View style={styles.screen}>
+        <View style={styles.segmentRow}>
           <CardSkeleton rows={1} className="flex-1" />
           <CardSkeleton rows={1} className="flex-1" />
         </View>
@@ -117,9 +116,8 @@ export default function TeamScreen() {
   }
 
   return (
-    <View className="flex-1" style={{ backgroundColor: managerColors.bg }}>
-      {/* Segmented control */}
-      <View className="flex-row-reverse gap-2 px-3 pt-3 pb-2">
+    <View style={styles.screen}>
+      <View style={styles.segmentRow}>
         <SegButton
           label="الفريق"
           active={segment === "people"}
@@ -160,22 +158,21 @@ export default function TeamScreen() {
         onRequestClose={() => setSelectedMember(null)}
       >
         <Pressable
-          className="flex-1 justify-end bg-black/40"
+          style={styles.modalBackdrop}
           onPress={() => setSelectedMember(null)}
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            className="rounded-t-[28px] p-4 pb-8"
-            style={{ backgroundColor: managerColors.surface }}
+            style={styles.sheet}
           >
-            <Text className="text-right text-lg font-bold text-[#16245C]">
+            <Text style={styles.sheetTitle}>
               {selectedMember?.full_name ?? "موظف"}
             </Text>
-            <Text className="mt-1 text-right text-xs text-[#7A88B8]">
+            <Text style={styles.sheetSubtitle}>
               {selectedMember?.role === "admin" ? "مدير" : "موظف"} ·{" "}
               {selectedMember?.is_available ? "متاح" : "غير متاح"}
             </Text>
-            <View className="mt-4">
+            <View style={styles.sheetActions}>
               {selectedMember?.is_available ? (
                 <Pressable
                   onPress={() =>
@@ -184,25 +181,25 @@ export default function TeamScreen() {
                       : null
                   }
                   disabled={forceOfflineMutation.isPending}
-                  className="flex-row-reverse items-center justify-between rounded-[18px] border border-red-200 bg-red-50 p-3"
+                  style={styles.sheetDangerAction}
                 >
-                  <Text className="text-right text-sm font-semibold text-red-900">
+                  <Text style={styles.sheetDangerActionText}>
                     إيقاف الاستلام الآن
                   </Text>
                   <Ionicons name="moon-outline" size={20} color="#991B1B" />
                 </Pressable>
               ) : (
-                <View className="rounded-[18px] border border-[#E7EBFB] bg-[#F8FAFF] p-3">
-                  <Text className="text-right text-sm text-[#5E6A99]">
+                <View style={styles.sheetInfoBox}>
+                  <Text style={styles.sheetInfoText}>
                     الموظف غير متاح حالياً
                   </Text>
                 </View>
               )}
               <Pressable
                 onPress={() => setSelectedMember(null)}
-                className="mt-3 items-center rounded-[18px] border border-[#E7EBFB] py-3"
+                style={styles.sheetCloseButton}
               >
-                <Text className="text-sm text-[#5E6A99]">إغلاق</Text>
+                <Text style={styles.sheetCloseButtonText}>إغلاق</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -224,20 +221,123 @@ function SegButton({
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-1 items-center rounded-full border py-2 ${
-        active ? "border-[#D6DDF8] bg-[#EDF2FF]" : "border-[#E2E7FA] bg-[#F8FAFF]"
-      }`}
+      style={[
+        styles.segmentButton,
+        active ? styles.segmentButtonActive : styles.segmentButtonIdle,
+      ]}
     >
-      <Text
-        className={`text-sm font-semibold ${
-          active ? "text-[#16245C]" : "text-[#5E6A99]"
-        }`}
-      >
+      <Text style={[styles.segmentButtonText, active ? styles.segmentButtonTextActive : styles.segmentButtonTextIdle]}>
         {label}
       </Text>
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: managerColors.bg,
+  },
+  segmentRow: {
+    flexDirection: "row-reverse",
+    columnGap: 8,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  segmentButton: {
+    flex: 1,
+    alignItems: "center",
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingVertical: 8,
+  },
+  segmentButtonActive: {
+    borderColor: "#D6DDF8",
+    backgroundColor: "#EDF2FF",
+  },
+  segmentButtonIdle: {
+    borderColor: "#E2E7FA",
+    backgroundColor: "#F8FAFF",
+  },
+  segmentButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  segmentButtonTextActive: {
+    color: "#16245C",
+  },
+  segmentButtonTextIdle: {
+    color: "#5E6A99",
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  sheet: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    backgroundColor: managerColors.surface,
+    padding: 16,
+    paddingBottom: 32,
+  },
+  sheetTitle: {
+    textAlign: "right",
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#16245C",
+  },
+  sheetSubtitle: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 12,
+    color: "#7A88B8",
+  },
+  sheetActions: {
+    marginTop: 16,
+  },
+  sheetDangerAction: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    backgroundColor: "#FEF2F2",
+    padding: 12,
+  },
+  sheetDangerActionText: {
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#7F1D1D",
+  },
+  sheetInfoBox: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#E7EBFB",
+    backgroundColor: "#F8FAFF",
+    padding: 12,
+  },
+  sheetInfoText: {
+    textAlign: "right",
+    fontSize: 14,
+    color: "#5E6A99",
+  },
+  sheetCloseButton: {
+    marginTop: 12,
+    alignItems: "center",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#E7EBFB",
+    paddingVertical: 12,
+  },
+  sheetCloseButtonText: {
+    fontSize: 14,
+    color: "#5E6A99",
+  },
+});
 
 function PeopleSegment({
   query,
@@ -280,8 +380,8 @@ function PeopleSegment({
 
   if (query.isLoading) {
     return (
-      <View className="flex-1">
-        <View className="px-4 pt-3">
+      <View style={teamStyles.loadingShell}>
+        <View style={teamStyles.loadingHeader}>
           <CardSkeleton rows={4} />
         </View>
         <ListSkeleton count={5} showAvatar />
@@ -310,88 +410,822 @@ function PeopleSegment({
       }
       ListHeaderComponent={
         rows.length > 0 ? (
-          <ManagerCard className="mb-3">
-            <Text className="text-right text-sm font-bold text-[#16245C]">
-              حالة الفريق الآن
-            </Text>
-            <View className="mt-3 flex-row-reverse gap-2">
-              <ManagerMetric
-                label="متاح"
-                value={summary.available}
-                tone="success"
-                compact
-              />
-              <ManagerMetric
-                label="في المناوبة"
-                value={summary.onShift}
-                tone="info"
-                compact
-              />
+          <View style={teamStyles.headerStack}>
+            <View style={teamStyles.summaryCard}>
+              <View style={teamStyles.summaryHero}>
+                <View style={teamStyles.summaryHeroCopy}>
+                  <Text style={teamStyles.summaryEyebrow}>لوحة الفريق</Text>
+                  <Text style={teamStyles.summaryTitle}>
+                    حالة الفريق الآن
+                  </Text>
+                  <Text style={teamStyles.summaryDescription}>
+                    متابعة سريعة للتوفر والتنبيهات قبل الدخول في تفاصيل كل عضو.
+                  </Text>
+                </View>
+                <View style={teamStyles.summaryHeroBadge}>
+                  <Ionicons name="people" size={18} color="#FFFFFF" />
+                  <Text style={teamStyles.summaryHeroBadgeValue}>
+                    {rows.length}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={teamStyles.metricGrid}>
+                <TeamPulseMetric
+                  label="متاح الآن"
+                  value={summary.available}
+                  tone="blue"
+                  icon="flash"
+                />
+                <TeamPulseMetric
+                  label="في المناوبة"
+                  value={summary.onShift}
+                  tone="gold"
+                  icon="time"
+                />
+                <TeamPulseMetric
+                  label="ضغط مرتفع"
+                  value={summary.overloaded}
+                  tone={summary.overloaded > 0 ? "rose" : "slate"}
+                  icon="warning"
+                />
+                <TeamPulseMetric
+                  label="تنبيهات ناقصة"
+                  value={summary.missingPush}
+                  tone={summary.missingPush > 0 ? "rose" : "slate"}
+                  icon="notifications-off"
+                />
+              </View>
             </View>
-            <View className="mt-2 flex-row-reverse gap-2">
-              <ManagerMetric
-                label="ضغط عال"
-                value={summary.overloaded}
-                tone={summary.overloaded > 0 ? "warning" : "neutral"}
-                compact
-              />
-              <ManagerMetric
-                label="تنبيهات ناقصة"
-                value={summary.missingPush}
-                tone={summary.missingPush > 0 ? "danger" : "neutral"}
-                compact
-              />
+
+            <View style={teamStyles.sectionHeadingRow}>
+              <Text style={teamStyles.sectionHeading}>
+                أعضاء الفريق
+              </Text>
+              <Text style={teamStyles.sectionCaption}>
+                {rows.length} عضو
+              </Text>
             </View>
-          </ManagerCard>
+          </View>
         ) : null
       }
       renderItem={({ item }) => (
         <Pressable
           onPress={() => onSelectMember(item)}
-          className="mb-2 flex-row-reverse items-center gap-3 rounded-[22px] border border-[#E7EBFB] bg-white p-3.5"
-          style={softShadow}
+          style={teamStyles.memberRow}
         >
-          <View className="relative">
-            <View className="h-12 w-12 items-center justify-center rounded-full bg-[#F4F7FF]">
-              <Text className="font-bold text-[#273B9A]">
-                {initialsOf(item.full_name)}
+          <Ionicons name="chevron-back" size={18} color="#A0ABC8" />
+          <View style={teamStyles.memberLeading}>
+            {!item.has_push_device ? (
+              <View style={teamStyles.memberAlertPill}>
+                <Ionicons
+                  name="notifications-off-outline"
+                  size={14}
+                  color="#B45309"
+                />
+              </View>
+            ) : null}
+            <View style={teamStyles.memberContent}>
+              <View style={teamStyles.memberTopRow}>
+                <Text style={teamStyles.memberName}>
+                  {item.full_name ?? "—"}
+                </Text>
+                <View
+                  style={[
+                    teamStyles.availabilityPill,
+                    item.is_available
+                      ? teamStyles.availabilityPillLive
+                      : teamStyles.availabilityPillIdle,
+                  ]}
+                >
+                  <View
+                    style={[
+                      teamStyles.availabilityDot,
+                      item.is_available
+                        ? teamStyles.availabilityDotLive
+                        : teamStyles.availabilityDotIdle,
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      teamStyles.availabilityText,
+                      item.is_available
+                        ? teamStyles.availabilityTextLive
+                        : teamStyles.availabilityTextIdle,
+                    ]}
+                  >
+                    {item.is_available ? "متاح" : "غير متاح"}
+                  </Text>
+                </View>
+              </View>
+              <Text style={teamStyles.memberMeta}>
+                {item.role === "admin" ? "مدير" : "موظف"}
+                {item.on_shift_now ? " · في المناوبة" : " · خارج المناوبة"}
               </Text>
+              <View style={teamStyles.memberStatsRow}>
+                <View style={teamStyles.memberStatChip}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={14} color="#273B9A" />
+                  <Text style={teamStyles.memberStatText}>
+                    {item.active_conversations} محادثة
+                  </Text>
+                </View>
+                <View style={teamStyles.memberStatChip}>
+                  <Ionicons
+                    name={item.has_push_device ? "phone-portrait-outline" : "warning-outline"}
+                    size={14}
+                    color={item.has_push_device ? "#5E6A99" : "#B45309"}
+                  />
+                  <Text
+                    style={[
+                      teamStyles.memberStatText,
+                      !item.has_push_device && teamStyles.memberStatTextWarning,
+                    ]}
+                  >
+                    {item.has_push_device ? "التنبيهات مفعلة" : "تنبيهات ناقصة"}
+                  </Text>
+                </View>
+              </View>
             </View>
-            <View
-              className={`absolute -bottom-0.5 -left-0.5 h-3 w-3 rounded-full border-2 border-white ${
-                item.is_available && item.on_shift_now
-                  ? "bg-[#22C55E]"
-                  : item.is_available
-                  ? "bg-[#86EFAC]"
-                  : "bg-[#CBD5E1]"
-              }`}
-            />
+            <View style={teamStyles.avatarWrap}>
+              <View style={teamStyles.avatar}>
+                <Text style={teamStyles.avatarText}>
+                  {initialsOf(item.full_name)}
+                </Text>
+              </View>
+              <View
+                style={[
+                  teamStyles.statusDot,
+                  item.is_available && item.on_shift_now
+                    ? teamStyles.statusDotLive
+                    : item.is_available
+                    ? teamStyles.statusDotAvailable
+                    : teamStyles.statusDotOffline,
+                ]}
+              />
+            </View>
           </View>
-          <View className="flex-1">
-            <Text className="text-right text-base font-semibold text-[#16245C]">
-              {item.full_name ?? "—"}
-            </Text>
-            <Text className="mt-0.5 text-right text-xs leading-5 text-[#7A88B8]">
-              {item.role === "admin" ? "مدير" : "موظف"}
-              {item.on_shift_now ? " · في المناوبة" : ""}
-              {item.active_conversations > 0
-                ? ` · ${item.active_conversations} محادثة`
-                : ""}
-            </Text>
-          </View>
-          {!item.has_push_device ? (
-            <Ionicons
-              name="notifications-off-outline"
-              size={18}
-              color="#9CA3AF"
-            />
-          ) : null}
-          <Ionicons name="chevron-back" size={18} color="#9CA3AF" />
         </Pressable>
       )}
     />
   );
 }
+
+function TeamPulseMetric({
+  label,
+  value,
+  icon,
+  tone,
+}: {
+  label: string;
+  value: number;
+  icon: keyof typeof Ionicons.glyphMap;
+  tone: "blue" | "gold" | "rose" | "slate";
+}) {
+  const toneStyle =
+    tone === "blue"
+      ? {
+          card: teamStyles.metricCardBlue,
+          iconWrap: teamStyles.metricIconWrapBlue,
+          value: teamStyles.metricValueBlue,
+        }
+      : tone === "gold"
+      ? {
+          card: teamStyles.metricCardGold,
+          iconWrap: teamStyles.metricIconWrapGold,
+          value: teamStyles.metricValueGold,
+        }
+      : tone === "rose"
+      ? {
+          card: teamStyles.metricCardRose,
+          iconWrap: teamStyles.metricIconWrapRose,
+          value: teamStyles.metricValueRose,
+        }
+      : {
+          card: teamStyles.metricCardSlate,
+          iconWrap: teamStyles.metricIconWrapSlate,
+          value: teamStyles.metricValueSlate,
+        };
+
+  return (
+    <View style={[teamStyles.metricCard, toneStyle.card]}>
+      <View style={teamStyles.metricHeader}>
+        <View style={[teamStyles.metricIconWrap, toneStyle.iconWrap]}>
+          <Ionicons
+            name={icon}
+            size={15}
+            color={tone === "gold" ? "#A16207" : tone === "rose" ? "#BE123C" : tone === "slate" ? "#64748B" : "#273B9A"}
+          />
+        </View>
+        <Text style={[teamStyles.metricValue, toneStyle.value]}>{value}</Text>
+      </View>
+      <Text style={teamStyles.metricLabel}>{label}</Text>
+    </View>
+  );
+}
+
+const teamStyles = StyleSheet.create({
+  loadingShell: {
+    flex: 1,
+  },
+  loadingHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  headerStack: {
+    marginBottom: 12,
+    rowGap: 12,
+  },
+  summaryCard: {
+    overflow: "hidden",
+    borderRadius: 30,
+    backgroundColor: "#10288F",
+    padding: 18,
+    shadowColor: "#273B9A",
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
+  },
+  summaryHero: {
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    columnGap: 12,
+  },
+  summaryHeroCopy: {
+    flex: 1,
+  },
+  summaryEyebrow: {
+    textAlign: "right",
+    fontSize: 12,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.68)",
+  },
+  summaryTitle: {
+    marginTop: 8,
+    textAlign: "right",
+    fontSize: 21,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  summaryDescription: {
+    marginTop: 6,
+    textAlign: "right",
+    fontSize: 13,
+    lineHeight: 22,
+    color: "rgba(255,255,255,0.78)",
+  },
+  summaryHeroBadge: {
+    minWidth: 62,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    rowGap: 4,
+  },
+  summaryHeroBadgeValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  metricGrid: {
+    marginTop: 18,
+    flexDirection: "row-reverse",
+    flexWrap: "wrap",
+    columnGap: 10,
+    rowGap: 10,
+  },
+  metricCard: {
+    minWidth: "47%",
+    flex: 1,
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  metricCardBlue: {
+    backgroundColor: "#F5F7FF",
+  },
+  metricCardGold: {
+    backgroundColor: "#FFF7D6",
+  },
+  metricCardRose: {
+    backgroundColor: "#FFF1F2",
+  },
+  metricCardSlate: {
+    backgroundColor: "#F8FAFC",
+  },
+  metricHeader: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  metricIconWrap: {
+    width: 30,
+    height: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 999,
+  },
+  metricIconWrapBlue: {
+    backgroundColor: "#E3EAFF",
+  },
+  metricIconWrapGold: {
+    backgroundColor: "#FDE68A",
+  },
+  metricIconWrapRose: {
+    backgroundColor: "#FFE4E6",
+  },
+  metricIconWrapSlate: {
+    backgroundColor: "#E2E8F0",
+  },
+  metricValue: {
+    fontSize: 26,
+    fontWeight: "700",
+  },
+  metricValueBlue: {
+    color: "#16245C",
+  },
+  metricValueGold: {
+    color: "#8A5E00",
+  },
+  metricValueRose: {
+    color: "#9F1239",
+  },
+  metricValueSlate: {
+    color: "#475569",
+  },
+  metricLabel: {
+    marginTop: 10,
+    textAlign: "right",
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#5E6A99",
+  },
+  sectionHeadingRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 2,
+  },
+  sectionHeading: {
+    textAlign: "right",
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#16245C",
+  },
+  sectionCaption: {
+    fontSize: 12,
+    color: "#7A88B8",
+  },
+  summaryRow: {
+    marginTop: 12,
+    flexDirection: "row-reverse",
+    columnGap: 8,
+  },
+  summaryRowSecond: {
+    marginTop: 8,
+    flexDirection: "row-reverse",
+    columnGap: 8,
+  },
+  memberRow: {
+    marginBottom: 8,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 12,
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: "#E7EBFB",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    shadowColor: "#273B9A",
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  memberLeading: {
+    flex: 1,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 12,
+  },
+  avatarWrap: {
+    position: "relative",
+  },
+  avatar: {
+    width: 58,
+    height: 58,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 999,
+    backgroundColor: "#F4F7FF",
+  },
+  avatarText: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#273B9A",
+  },
+  statusDot: {
+    position: "absolute",
+    left: -2,
+    bottom: -2,
+    width: 12,
+    height: 12,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+  statusDotLive: {
+    backgroundColor: "#22C55E",
+  },
+  statusDotAvailable: {
+    backgroundColor: "#86EFAC",
+  },
+  statusDotOffline: {
+    backgroundColor: "#CBD5E1",
+  },
+  memberContent: {
+    flex: 1,
+  },
+  memberTopRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    columnGap: 10,
+  },
+  memberName: {
+    textAlign: "right",
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#16245C",
+  },
+  memberMeta: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 12,
+    lineHeight: 20,
+    color: "#7A88B8",
+  },
+  availabilityPill: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    columnGap: 6,
+  },
+  availabilityPillLive: {
+    backgroundColor: "#E8FFF1",
+  },
+  availabilityPillIdle: {
+    backgroundColor: "#F1F5F9",
+  },
+  availabilityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+  },
+  availabilityDotLive: {
+    backgroundColor: "#22C55E",
+  },
+  availabilityDotIdle: {
+    backgroundColor: "#94A3B8",
+  },
+  availabilityText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  availabilityTextLive: {
+    color: "#15803D",
+  },
+  availabilityTextIdle: {
+    color: "#64748B",
+  },
+  memberStatsRow: {
+    marginTop: 10,
+    flexDirection: "row-reverse",
+    flexWrap: "wrap",
+    columnGap: 8,
+    rowGap: 8,
+  },
+  memberStatChip: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    borderRadius: 999,
+    backgroundColor: "#F8FAFF",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    columnGap: 6,
+  },
+  memberStatText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#5E6A99",
+  },
+  memberStatTextWarning: {
+    color: "#B45309",
+  },
+  memberAlertPill: {
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 999,
+    backgroundColor: "#FFF7ED",
+  },
+  performanceRow: {
+    marginBottom: 8,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#E7EBFB",
+    backgroundColor: "#FFFFFF",
+    padding: 14,
+    shadowColor: "#273B9A",
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+});
+
+const scheduleStyles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  weekHeader: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingTop: 4,
+    paddingBottom: 10,
+  },
+  weekNavButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 999,
+    backgroundColor: "#F8FAFF",
+  },
+  weekHeaderText: {
+    textAlign: "center",
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#16245C",
+  },
+  dayChipsRow: {
+    flexDirection: "row-reverse",
+    columnGap: 8,
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+  },
+  dayChip: {
+    flex: 1,
+    alignItems: "center",
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingVertical: 10,
+  },
+  dayChipActive: {
+    borderColor: "#D6DDF8",
+    backgroundColor: "#EDF2FF",
+  },
+  dayChipIdle: {
+    borderColor: "#E7EBFB",
+    backgroundColor: "#FFFFFF",
+  },
+  dayChipWeekday: {
+    fontSize: 11,
+    color: "#7A88B8",
+  },
+  dayChipDate: {
+    marginTop: 2,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  dayChipDateActive: {
+    color: "#16245C",
+  },
+  dayChipDateIdle: {
+    color: "#445179",
+  },
+  loadingShell: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  loadingListWrap: {
+    marginTop: 12,
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 64,
+  },
+  emptyStateText: {
+    color: "#7A88B8",
+  },
+  shiftCard: {
+    marginBottom: 10,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#E7EBFB",
+    backgroundColor: "#FFFFFF",
+    padding: 14,
+    shadowColor: "#273B9A",
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 3,
+  },
+  shiftName: {
+    textAlign: "right",
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#16245C",
+  },
+  shiftTime: {
+    marginTop: 6,
+    textAlign: "right",
+    fontSize: 13,
+    color: "#5E6A99",
+  },
+  shiftNote: {
+    marginTop: 6,
+    textAlign: "right",
+    fontSize: 12,
+    lineHeight: 20,
+    color: "#7A88B8",
+  },
+  webButton: {
+    marginTop: 12,
+    alignItems: "center",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#E7EBFB",
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 12,
+  },
+  webButtonText: {
+    fontSize: 14,
+    color: "#5E6A99",
+  },
+});
+
+const performanceStyles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  periodRow: {
+    flexDirection: "row-reverse",
+    columnGap: 6,
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+    height: 40,
+  },
+  periodButton: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  periodButtonActive: {
+    borderColor: "#D6DDF8",
+    backgroundColor: "#EDF2FF",
+  },
+  periodButtonIdle: {
+    borderColor: "#E2E7FA",
+    backgroundColor: "#F8FAFF",
+  },
+  periodButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  periodButtonTextActive: {
+    color: "#16245C",
+  },
+  periodButtonTextIdle: {
+    color: "#5E6A99",
+  },
+  loadingShell: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  loadingListWrap: {
+    marginTop: 12,
+  },
+  totalsCard: {
+    marginBottom: 12,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#E7EBFB",
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+  },
+  totalsHeader: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  totalsTitle: {
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#16245C",
+  },
+  totalsEmptyHint: {
+    fontSize: 11,
+    color: "#7A88B8",
+  },
+  totalsGrid: {
+    marginTop: 12,
+    flexDirection: "row-reverse",
+    columnGap: 8,
+  },
+  totalsTile: {
+    flex: 1,
+    alignItems: "center",
+    borderRadius: 14,
+    paddingVertical: 12,
+  },
+  totalsTileValue: {
+    marginTop: 4,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  totalsTileLabel: {
+    fontSize: 11,
+    color: "#5E6A99",
+  },
+  rowHeader: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  rowName: {
+    textAlign: "right",
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#16245C",
+  },
+  rowMeta: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 8,
+  },
+  rowAvailabilityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: "#22C55E",
+  },
+  rowRole: {
+    fontSize: 12,
+    color: "#7A88B8",
+  },
+  rowStats: {
+    marginTop: 12,
+    flexDirection: "row-reverse",
+    flexWrap: "wrap",
+    columnGap: 8,
+    rowGap: 8,
+  },
+  statPill: {
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  statPillNeutral: {
+    borderColor: "#E7EBFB",
+    backgroundColor: "#F8FAFF",
+  },
+  statPillWarn: {
+    borderColor: "#FCD34D",
+    backgroundColor: "#FFFBEB",
+  },
+  statPillValue: {
+    textAlign: "right",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  statPillValueNeutral: {
+    color: "#16245C",
+  },
+  statPillValueWarn: {
+    color: "#92400E",
+  },
+  statPillLabel: {
+    textAlign: "right",
+    fontSize: 10,
+    color: "#7A88B8",
+  },
+});
 
 function ScheduleSegment({
   query,
@@ -428,37 +1262,41 @@ function ScheduleSegment({
   }
 
   return (
-    <View className="flex-1">
+    <View style={scheduleStyles.screen}>
       {/* Week header */}
-      <View className="flex-row-reverse items-center justify-between px-3 pt-1 pb-2">
-        <Pressable onPress={() => navigateWeek(7)} className="p-2">
+      <View style={scheduleStyles.weekHeader}>
+        <Pressable onPress={() => navigateWeek(7)} style={scheduleStyles.weekNavButton}>
           <Ionicons name="chevron-forward" size={22} color="#5E6A99" />
         </Pressable>
-        <Text className="text-sm font-semibold text-[#16245C]">
+        <Text style={scheduleStyles.weekHeaderText}>
           {format(weekStartDate, "d MMM")} - {format(addDays(weekStartDate, 6), "d MMM")}
         </Text>
-        <Pressable onPress={() => navigateWeek(-7)} className="p-2">
+        <Pressable onPress={() => navigateWeek(-7)} style={scheduleStyles.weekNavButton}>
           <Ionicons name="chevron-back" size={22} color="#5E6A99" />
         </Pressable>
       </View>
 
       {/* Day chips */}
-      <View className="flex-row-reverse gap-2 px-3 pb-2">
+      <View style={scheduleStyles.dayChipsRow}>
         {days.map((d, idx) => (
           <Pressable
             key={d.toISOString()}
             onPress={() => setSelectedDay(idx)}
-            className={`flex-1 items-center rounded-[18px] border py-2 ${
+            style={[
+              scheduleStyles.dayChip,
               idx === selectedDay
-                ? "border-[#D6DDF8] bg-[#EDF2FF]"
-                : "border-[#E7EBFB] bg-white"
-            }`}
+                ? scheduleStyles.dayChipActive
+                : scheduleStyles.dayChipIdle,
+            ]}
           >
-            <Text className="text-[11px] text-[#7A88B8]">{format(d, "EEE")}</Text>
+            <Text style={scheduleStyles.dayChipWeekday}>{format(d, "EEE")}</Text>
             <Text
-              className={`mt-0.5 text-sm font-bold ${
-                idx === selectedDay ? "text-[#16245C]" : "text-[#445179]"
-              }`}
+              style={[
+                scheduleStyles.dayChipDate,
+                idx === selectedDay
+                  ? scheduleStyles.dayChipDateActive
+                  : scheduleStyles.dayChipDateIdle,
+              ]}
             >
               {format(d, "d")}
             </Text>
@@ -467,9 +1305,9 @@ function ScheduleSegment({
       </View>
 
       {query.isLoading ? (
-        <View className="flex-1 px-4 pt-3">
+        <View style={scheduleStyles.loadingShell}>
           <CardSkeleton rows={1} />
-          <View className="mt-3">
+          <View style={scheduleStyles.loadingListWrap}>
             <ListSkeleton count={4} />
           </View>
         </View>
@@ -488,24 +1326,24 @@ function ScheduleSegment({
             query.isError ? (
               <ErrorState onRetry={() => query.refetch()} />
             ) : (
-              <View className="items-center py-16">
-                <Text className="text-[#7A88B8]">
+              <View style={scheduleStyles.emptyState}>
+                <Text style={scheduleStyles.emptyStateText}>
                   لا توجد مناوبات في هذا اليوم
                 </Text>
               </View>
             )
           }
           renderItem={({ item }) => (
-            <View className="mb-2 rounded-[18px] border border-[#E7EBFB] bg-white p-3">
-              <Text className="text-right text-base font-semibold text-[#16245C]">
+            <View style={scheduleStyles.shiftCard}>
+              <Text style={scheduleStyles.shiftName}>
                 {item.team_member_name ?? "—"}
               </Text>
-              <Text className="mt-1 text-right text-sm text-[#5E6A99]">
+              <Text style={scheduleStyles.shiftTime}>
                 {format(new Date(item.starts_at), "HH:mm")} —{" "}
                 {format(new Date(item.ends_at), "HH:mm")}
               </Text>
               {item.note ? (
-                <Text className="mt-1 text-right text-xs text-[#7A88B8]">
+                <Text style={scheduleStyles.shiftNote}>
                   {item.note}
                 </Text>
               ) : null}
@@ -521,9 +1359,9 @@ function ScheduleSegment({
                   const base = process.env.EXPO_PUBLIC_APP_BASE_URL ?? "";
                   if (base) Linking.openURL(`${base}/dashboard/shifts`);
                 }}
-                className="mt-3 items-center rounded-[18px] border border-[#E7EBFB] bg-white py-3"
+                style={scheduleStyles.webButton}
               >
-                <Text className="text-sm text-[#5E6A99]">تعديل من الويب</Text>
+                <Text style={scheduleStyles.webButtonText}>تعديل من الويب</Text>
               </Pressable>
             ) : null
           }
@@ -623,11 +1461,10 @@ function PerformanceSegment({ restaurantId }: { restaurantId: string }) {
     totals.messages > 0 || totals.conversations > 0 || totals.breaches > 0;
 
   return (
-    <View className="flex-1">
+    <View style={performanceStyles.screen}>
       {/* Period selector — compact row, fixed height, no huge ovals. */}
       <View
-        className="flex-row-reverse gap-1.5 px-3 pb-2"
-        style={{ height: 36 }}
+        style={performanceStyles.periodRow}
       >
         {periodKeys.map((k) => {
           const r = rangeFor(k);
@@ -636,16 +1473,20 @@ function PerformanceSegment({ restaurantId }: { restaurantId: string }) {
             <Pressable
               key={k}
               onPress={() => setPeriodKey(k)}
-              className={`flex-1 items-center justify-center rounded-full border ${
+              style={[
+                performanceStyles.periodButton,
                 active
-                  ? "border-[#D6DDF8] bg-[#EDF2FF]"
-                  : "border-[#E2E7FA] bg-[#F8FAFF]"
-              }`}
+                  ? performanceStyles.periodButtonActive
+                  : performanceStyles.periodButtonIdle,
+              ]}
             >
               <Text
-                className={`text-[12px] font-semibold ${
-                  active ? "text-[#16245C]" : "text-[#5E6A99]"
-                }`}
+                style={[
+                  performanceStyles.periodButtonText,
+                  active
+                    ? performanceStyles.periodButtonTextActive
+                    : performanceStyles.periodButtonTextIdle,
+                ]}
                 numberOfLines={1}
               >
                 {r.label}
@@ -656,9 +1497,9 @@ function PerformanceSegment({ restaurantId }: { restaurantId: string }) {
       </View>
 
       {perfQuery.isLoading ? (
-        <View className="px-4 pt-3">
+        <View style={performanceStyles.loadingShell}>
           <CardSkeleton rows={3} />
-          <View className="mt-3">
+          <View style={performanceStyles.loadingListWrap}>
             <ListSkeleton count={4} showAvatar />
           </View>
         </View>
@@ -750,30 +1591,28 @@ function TotalsHeader({
     },
   ];
   return (
-    <View className="mb-3 rounded-[22px] border border-[#E7EBFB] bg-white p-4">
-      <View className="flex-row-reverse items-center justify-between">
-        <Text className="text-right text-sm font-bold text-[#16245C]">
+    <View style={performanceStyles.totalsCard}>
+      <View style={performanceStyles.totalsHeader}>
+        <Text style={performanceStyles.totalsTitle}>
           إجمالي {label}
         </Text>
         {isEmpty ? (
-          <Text className="text-[11px] text-[#7A88B8]">لا يوجد نشاط بعد</Text>
+          <Text style={performanceStyles.totalsEmptyHint}>لا يوجد نشاط بعد</Text>
         ) : null}
       </View>
-      <View className="mt-3 flex-row-reverse gap-2">
+      <View style={performanceStyles.totalsGrid}>
         {tiles.map((t) => (
           <View
             key={t.key}
-            className="flex-1 items-center rounded-[14px] py-3"
-            style={{ backgroundColor: t.bg }}
+            style={[performanceStyles.totalsTile, { backgroundColor: t.bg }]}
           >
             <Ionicons name={t.icon} size={16} color={t.color} />
             <Text
-              className="mt-1 text-lg font-bold"
-              style={{ color: t.color }}
+              style={[performanceStyles.totalsTileValue, { color: t.color }]}
             >
               {t.value}
             </Text>
-            <Text className="text-[11px] text-[#5E6A99]">{t.label}</Text>
+            <Text style={performanceStyles.totalsTileLabel}>{t.label}</Text>
           </View>
         ))}
       </View>
@@ -791,24 +1630,23 @@ function PerformanceRow({
   return (
     <Pressable
       onPress={onPress}
-      className="mb-2 rounded-[22px] border border-[#E7EBFB] bg-white p-3.5"
-      style={softShadow}
+      style={teamStyles.performanceRow}
     >
-      <View className="flex-row-reverse items-center justify-between">
-        <Text className="text-right text-base font-semibold text-[#16245C]">
+      <View style={performanceStyles.rowHeader}>
+        <Text style={performanceStyles.rowName}>
           {row.full_name ?? "—"}
         </Text>
-        <View className="flex-row-reverse items-center gap-2">
+        <View style={performanceStyles.rowMeta}>
           {row.is_available ? (
-            <View className="h-2 w-2 rounded-full bg-[#22C55E]" />
+            <View style={performanceStyles.rowAvailabilityDot} />
           ) : null}
-          <Text className="text-xs text-[#7A88B8]">
+          <Text style={performanceStyles.rowRole}>
             {row.role === "admin" ? "مدير" : "موظف"}
           </Text>
         </View>
       </View>
 
-      <View className="mt-3 flex-row-reverse flex-wrap gap-2">
+      <View style={performanceStyles.rowStats}>
         <StatPill label="رسائل" value={row.messages_sent.toString()} />
         <StatPill
           label="محادثات"
@@ -864,11 +1702,25 @@ function StatPill({
       : "border-[#E7EBFB] bg-[#F8FAFF]";
   const valueCls = tone === "warn" ? "text-amber-900" : "text-[#16245C]";
   return (
-    <View className={`rounded-[14px] border px-2.5 py-1.5 ${cls}`}>
-      <Text className={`text-right text-[11px] font-bold ${valueCls}`}>
+    <View
+      style={[
+        performanceStyles.statPill,
+        tone === "warn"
+          ? performanceStyles.statPillWarn
+          : performanceStyles.statPillNeutral,
+      ]}
+    >
+      <Text
+        style={[
+          performanceStyles.statPillValue,
+          tone === "warn"
+            ? performanceStyles.statPillValueWarn
+            : performanceStyles.statPillValueNeutral,
+        ]}
+      >
         {value}
       </Text>
-      <Text className="text-right text-[10px] text-[#7A88B8]">{label}</Text>
+      <Text style={performanceStyles.statPillLabel}>{label}</Text>
     </View>
   );
 }

@@ -43,6 +43,10 @@ export default function CampaignsLayout() {
         options={{ title: "تفاصيل الحملة" }}
       />
       <Stack.Screen
+        name="campaign/[id]"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="templates"
         options={{ title: "قوالب الرسائل" }}
       />

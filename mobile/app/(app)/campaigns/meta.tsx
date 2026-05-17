@@ -1,15 +1,11 @@
 import { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
-  Pressable,
+  Linking,
   RefreshControl,
-  ScrollView,
-  Switch,
-  Text,
-  View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { formatDistanceToNow } from "date-fns";
+import { ar } from "date-fns/locale";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -20,15 +16,27 @@ import {
   getMetaAdsStatus,
   listMetaAdAccounts,
   listMetaCampaigns,
+  listMetaRecentPosts,
   selectMetaAdAccount,
   updateMetaCampaignStatus,
   type MetaAdAccount,
   type MetaCampaign,
+  type RecentPost,
 } from "../../../lib/api";
 import { captureException, captureMessage } from "../../../lib/observability";
 import { qk } from "../../../lib/query-keys";
 import { useSessionStore } from "../../../lib/session-store";
 import { ManagerCard, managerColors, softShadow } from "../../../components/manager-ui";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  Switch,
+  Text,
+  View,
+} from "../../../components/tw";
 
 const APP_SCHEME = "whatsapp-cs-agent";
 const META_CALLBACK_URL = `${APP_SCHEME}://meta-ads/callback`;
@@ -83,6 +91,73 @@ function statusLabel(effectiveStatus: string) {
     default:
       return effectiveStatus;
   }
+}
+
+// Objective metadata — handles both ODAX (OUTCOME_*) and legacy objectives
+const OBJECTIVE_META: Record<string, { label: string; icon: keyof typeof Ionicons.glyphMap; color: string }> = {
+  OUTCOME_AWARENESS: { label: "وعي", icon: "eye", color: "#0EA5E9" },
+  OUTCOME_TRAFFIC: { label: "زيارات", icon: "navigate", color: "#22C55E" },
+  OUTCOME_ENGAGEMENT: { label: "تفاعل", icon: "heart", color: "#E1306C" },
+  OUTCOME_LEADS: { label: "عملاء", icon: "person-add", color: "#7C3AED" },
+  OUTCOME_SALES: { label: "مبيعات", icon: "cart", color: "#F59E0B" },
+  OUTCOME_APP_PROMOTION: { label: "تثبيت", icon: "phone-portrait", color: "#06B6D4" },
+  // Legacy objectives still in the wild
+  REACH: { label: "وعي", icon: "eye", color: "#0EA5E9" },
+  BRAND_AWARENESS: { label: "وعي", icon: "eye", color: "#0EA5E9" },
+  LINK_CLICKS: { label: "زيارات", icon: "navigate", color: "#22C55E" },
+  POST_ENGAGEMENT: { label: "تفاعل", icon: "heart", color: "#E1306C" },
+  PAGE_LIKES: { label: "تفاعل", icon: "heart", color: "#E1306C" },
+  LEAD_GENERATION: { label: "عملاء", icon: "person-add", color: "#7C3AED" },
+  CONVERSIONS: { label: "مبيعات", icon: "cart", color: "#F59E0B" },
+  APP_INSTALLS: { label: "تثبيت", icon: "phone-portrait", color: "#06B6D4" },
+  MESSAGES: { label: "رسائل", icon: "chatbubble", color: "#22D3EE" },
+  VIDEO_VIEWS: { label: "مشاهدات", icon: "play", color: "#A855F7" },
+};
+
+function objectiveMeta(objective: string) {
+  return (
+    OBJECTIVE_META[objective] ?? {
+      label: objective.replace(/^OUTCOME_/, "").toLowerCase(),
+      icon: "ellipse" as const,
+      color: managerColors.muted,
+    }
+  );
+}
+
+function relativeTimeAr(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  try {
+    return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: ar });
+  } catch {
+    return null;
+  }
+}
+
+// Extract the best available thumbnail from a campaign's first ad.
+// Returns both the URL and whether the creative is a video (so we can render
+// a play overlay).
+function extractCreativeMedia(campaign: MetaCampaign): {
+  url: string | null;
+  isVideo: boolean;
+} {
+  const creative = campaign.ads?.data?.[0]?.creative;
+  if (!creative) return { url: null, isVideo: false };
+
+  // Meta returns video ad thumbnails under object_story_spec.video_data.image_url
+  // (not link_data.picture). Detect that path and flag the creative as video.
+  const videoThumb = (creative.object_story_spec as { video_data?: { image_url?: string; video_id?: string } } | undefined)
+    ?.video_data?.image_url;
+  if (videoThumb) {
+    return { url: videoThumb, isVideo: true };
+  }
+
+  const url =
+    creative.thumbnail_url ||
+    creative.image_url ||
+    creative.object_story_spec?.link_data?.picture ||
+    creative.object_story_spec?.photo_data?.url ||
+    null;
+  return { url, isVideo: false };
 }
 
 // ---- sub-components --------------------------------------------------------
@@ -235,91 +310,314 @@ function CampaignCard({
   isToggling: boolean;
 }) {
   const insights = campaign.insights?.data?.[0];
+  const lifetimeInsights = campaign.lifetime_insights?.data?.[0];
   const isActive = campaign.status === "ACTIVE";
   const canToggle =
     campaign.effective_status !== "DELETED" &&
     campaign.effective_status !== "ARCHIVED";
   const budget = formatBudget(campaign.daily_budget, campaign.lifetime_budget);
+  const obj = objectiveMeta(campaign.objective);
+  const { url: thumbnail, isVideo: thumbnailIsVideo } = extractCreativeMedia(campaign);
+  const startedAgo = relativeTimeAr(campaign.start_time ?? campaign.created_time ?? null);
+  const endsIn = relativeTimeAr(campaign.stop_time ?? null);
 
   return (
-    <ManagerCard className="gap-3">
-      {/* Header row */}
-      <View className="flex-row items-start justify-between gap-2">
-        <View className="flex-1">
-          <Text
-            className="font-bold text-[15px] leading-5"
-            style={{ color: managerColors.ink }}
-            numberOfLines={2}
+    <Pressable
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      onPress={() => router.push(`/(app)/campaigns/campaign/${campaign.id}` as any)}
+    >
+      <ManagerCard className="gap-3">
+        {/* Top section: thumbnail + title block + switch */}
+        <View className="flex-row gap-3">
+          {/* Creative thumbnail or fallback */}
+          <View
+            className="w-[72px] h-[72px] rounded-[12px] overflow-hidden items-center justify-center"
+            style={{ backgroundColor: managerColors.surfaceTint }}
           >
-            {campaign.name}
-          </Text>
-          <View className="flex-row items-center gap-2 mt-1">
-            <View
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: statusColor(campaign.effective_status) }}
-            />
-            <Text className="text-[12px]" style={{ color: managerColors.muted }}>
-              {statusLabel(campaign.effective_status)}
-            </Text>
-            {budget ? (
+            {thumbnail ? (
               <>
-                <Text style={{ color: managerColors.border }}>·</Text>
-                <Text className="text-[12px]" style={{ color: managerColors.muted }}>
-                  {budget} / يوم
-                </Text>
+                <Image source={{ uri: thumbnail }} className="w-full h-full" resizeMode="cover" />
+                {thumbnailIsVideo ? <PlayBadge /> : null}
               </>
+            ) : (
+              <Ionicons name={obj.icon} size={28} color={obj.color} />
+            )}
+          </View>
+
+          {/* Title + meta */}
+          <View className="flex-1 gap-1">
+            {/* Objective badge */}
+            <View
+              className="self-start flex-row items-center gap-1 px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: `${obj.color}1A` }}
+            >
+              <Ionicons name={obj.icon} size={11} color={obj.color} />
+              <Text className="text-[10px] font-semibold" style={{ color: obj.color }}>
+                {obj.label}
+              </Text>
+            </View>
+
+            <Text
+              className="font-bold text-[15px] leading-5"
+              style={{ color: managerColors.ink }}
+              numberOfLines={2}
+            >
+              {campaign.name}
+            </Text>
+
+            <View className="flex-row items-center gap-1.5 flex-wrap">
+              <View
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: statusColor(campaign.effective_status) }}
+              />
+              <Text className="text-[11px]" style={{ color: managerColors.muted }}>
+                {statusLabel(campaign.effective_status)}
+              </Text>
+              {budget ? (
+                <>
+                  <Text style={{ color: managerColors.border }}>·</Text>
+                  <Text className="text-[11px]" style={{ color: managerColors.muted }}>
+                    {budget}/يوم
+                  </Text>
+                </>
+              ) : null}
+            </View>
+          </View>
+
+          {/* Toggle */}
+          <View className="justify-center">
+            {canToggle ? (
+              isToggling ? (
+                <ActivityIndicator size="small" color={managerColors.brand} />
+              ) : (
+                <Switch
+                  value={isActive}
+                  onValueChange={(next) =>
+                    onToggle(campaign.id, next ? "ACTIVE" : "PAUSED")
+                  }
+                  trackColor={{ false: managerColors.border, true: managerColors.brand }}
+                  thumbColor="#fff"
+                />
+              )
             ) : null}
           </View>
         </View>
 
-        {canToggle ? (
-          isToggling ? (
-            <ActivityIndicator size="small" color={managerColors.brand} />
-          ) : (
-            <Switch
-              value={isActive}
-              onValueChange={(next) =>
-                onToggle(campaign.id, next ? "ACTIVE" : "PAUSED")
-              }
-              trackColor={{
-                false: managerColors.border,
-                true: managerColors.brand,
-              }}
-              thumbColor="#fff"
-            />
-          )
-        ) : null}
-      </View>
+        {/* Date range row */}
+        {(startedAgo || endsIn) && (
+          <View className="flex-row items-center gap-2">
+            <Ionicons name="calendar-outline" size={12} color={managerColors.muted} />
+            <Text className="text-[11px] flex-1" style={{ color: managerColors.muted }}>
+              {startedAgo ? `بدأت ${startedAgo}` : ""}
+              {startedAgo && endsIn ? " · " : ""}
+              {endsIn ? `تنتهي ${endsIn}` : ""}
+            </Text>
+          </View>
+        )}
 
-      {/* Insights row */}
-      {insights ? (
-        <View
-          className="flex-row rounded-[12px] p-3 gap-0"
-          style={{ backgroundColor: managerColors.surfaceTint }}
-        >
-          <MetricCell label="الإنفاق" value={formatSpend(insights.spend)} />
-          <Divider />
-          <MetricCell
-            label="الوصول"
-            value={Number(insights.reach || 0).toLocaleString("ar")}
-          />
-          <Divider />
-          <MetricCell
-            label="النقرات"
-            value={Number(insights.clicks || 0).toLocaleString("ar")}
-          />
-          <Divider />
-          <MetricCell
-            label="CTR"
-            value={`${Number(insights.ctr || 0).toFixed(2)}%`}
-          />
+        {/* Insights row */}
+        {insights ? (
+          <View
+            className="flex-row rounded-[12px] p-3 gap-0"
+            style={{ backgroundColor: managerColors.surfaceTint }}
+          >
+            <MetricCell label="الإنفاق ٧ ايام" value={formatSpend(insights.spend)} />
+            <Divider />
+            <MetricCell
+              label="الوصول"
+              value={Number(insights.reach || 0).toLocaleString("ar")}
+            />
+            <Divider />
+            <MetricCell
+              label="النقرات"
+              value={Number(insights.clicks || 0).toLocaleString("ar")}
+            />
+            <Divider />
+            <MetricCell
+              label="CTR"
+              value={`${Number(insights.ctr || 0).toFixed(2)}%`}
+            />
+          </View>
+        ) : (
+          <Text className="text-[12px]" style={{ color: managerColors.muted }}>
+            لا توجد بيانات للأسبوع الماضي
+          </Text>
+        )}
+
+        {/* Lifetime spend footer */}
+        {lifetimeInsights && Number(lifetimeInsights.spend) > 0 ? (
+          <View className="flex-row items-center justify-between pt-1">
+            <Text className="text-[11px]" style={{ color: managerColors.muted }}>
+              الإنفاق الكلي
+            </Text>
+            <Text className="text-[12px] font-bold" style={{ color: managerColors.ink }}>
+              {formatSpend(lifetimeInsights.spend)}
+            </Text>
+          </View>
+        ) : null}
+      </ManagerCard>
+    </Pressable>
+  );
+}
+
+// Overlay icon for video / carousel thumbnails. Absolutely positioned so the
+// parent View just needs `overflow-hidden` + `relative` semantics (RN handles
+// absolute children correctly without an explicit `position: relative`).
+function PlayBadge() {
+  return (
+    <View
+      className="absolute inset-0 items-center justify-center"
+      pointerEvents="none"
+    >
+      <View
+        className="rounded-full p-1.5"
+        style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
+      >
+        <Ionicons name="play" size={14} color="#fff" />
+      </View>
+    </View>
+  );
+}
+
+function CarouselBadge() {
+  return (
+    <View
+      className="absolute top-1 right-1"
+      pointerEvents="none"
+    >
+      <View
+        className="rounded-full p-1"
+        style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
+      >
+        <Ionicons name="copy" size={10} color="#fff" />
+      </View>
+    </View>
+  );
+}
+
+function mediaKindLabel(kind: RecentPost["media_kind"]): string | null {
+  switch (kind) {
+    case "video":
+      return "فيديو";
+    case "carousel":
+      return "مجموعة صور";
+    case "text":
+      return "نص";
+    default:
+      return null;
+  }
+}
+
+function RecentPostCard({ post }: { post: RecentPost }) {
+  const isIg = post.platform === "instagram";
+  const platformColor = isIg ? "#E1306C" : "#1877F2";
+  const platformIcon: keyof typeof Ionicons.glyphMap = isIg ? "logo-instagram" : "logo-facebook";
+  const relative = relativeTimeAr(post.created_time) ?? "";
+  const isVideo = post.media_kind === "video";
+  const isCarousel = post.media_kind === "carousel";
+  const kindLabel = mediaKindLabel(post.media_kind);
+
+  return (
+    <Pressable
+      onPress={() => {
+        if (post.permalink) Linking.openURL(post.permalink);
+      }}
+    >
+      <ManagerCard className="gap-3">
+        <View className="flex-row gap-3">
+          {/* Image */}
+          <View
+            className="w-[64px] h-[64px] rounded-[10px] overflow-hidden items-center justify-center"
+            style={{ backgroundColor: managerColors.surfaceTint }}
+          >
+            {post.image_url ? (
+              <>
+                <Image source={{ uri: post.image_url }} className="w-full h-full" resizeMode="cover" />
+                {isVideo ? <PlayBadge /> : null}
+                {isCarousel ? <CarouselBadge /> : null}
+              </>
+            ) : (
+              <Ionicons
+                name={isVideo ? "videocam-outline" : "document-text-outline"}
+                size={24}
+                color={managerColors.muted}
+              />
+            )}
+          </View>
+
+          {/* Content */}
+          <View className="flex-1 gap-1">
+            {/* Platform + media-kind badges + time */}
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center gap-1.5">
+                <View
+                  className="self-start flex-row items-center gap-1 px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: `${platformColor}1A` }}
+                >
+                  <Ionicons name={platformIcon} size={11} color={platformColor} />
+                  <Text className="text-[10px] font-semibold" style={{ color: platformColor }}>
+                    {isIg ? "Instagram" : "Facebook"}
+                  </Text>
+                </View>
+                {kindLabel && post.media_kind !== "image" ? (
+                  <View
+                    className="flex-row items-center gap-1 px-2 py-0.5 rounded-full"
+                    style={{ backgroundColor: managerColors.surfaceTint }}
+                  >
+                    <Ionicons
+                      name={
+                        isVideo ? "play-circle" : isCarousel ? "copy" : "document-text-outline"
+                      }
+                      size={10}
+                      color={managerColors.muted}
+                    />
+                    <Text className="text-[10px] font-semibold" style={{ color: managerColors.muted }}>
+                      {kindLabel}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              <Text className="text-[10px]" style={{ color: managerColors.muted }}>
+                {relative}
+              </Text>
+            </View>
+
+            {/* Caption */}
+            <Text
+              className="text-[13px] leading-5"
+              style={{ color: managerColors.ink }}
+              numberOfLines={2}
+            >
+              {post.message?.trim() || "—"}
+            </Text>
+
+            {/* Engagement counters */}
+            <View className="flex-row items-center gap-3 mt-0.5">
+              <View className="flex-row items-center gap-1">
+                <Ionicons name="heart-outline" size={12} color={managerColors.muted} />
+                <Text className="text-[11px]" style={{ color: managerColors.muted }}>
+                  {Number(post.like_count).toLocaleString("ar")}
+                </Text>
+              </View>
+              <View className="flex-row items-center gap-1">
+                <Ionicons name="chatbubble-outline" size={12} color={managerColors.muted} />
+                <Text className="text-[11px]" style={{ color: managerColors.muted }}>
+                  {Number(post.comments_count).toLocaleString("ar")}
+                </Text>
+              </View>
+              {!isIg && post.shares_count > 0 ? (
+                <View className="flex-row items-center gap-1">
+                  <Ionicons name="arrow-redo-outline" size={12} color={managerColors.muted} />
+                  <Text className="text-[11px]" style={{ color: managerColors.muted }}>
+                    {Number(post.shares_count).toLocaleString("ar")}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
         </View>
-      ) : (
-        <Text className="text-[12px]" style={{ color: managerColors.muted }}>
-          لا توجد بيانات للأسبوع الماضي
-        </Text>
-      )}
-    </ManagerCard>
+      </ManagerCard>
+    </Pressable>
   );
 }
 
@@ -383,10 +681,36 @@ export default function AdsScreen() {
     refetchInterval: 60_000,
   });
 
+  // Recent posts query — fetched once a Facebook Page is selected
+  const recentPostsQuery = useQuery({
+    queryKey: qk.metaRecentPosts(restaurantId),
+    enabled: !!restaurantId && status?.pageSelected === true,
+    queryFn: listMetaRecentPosts,
+    staleTime: 60_000,
+  });
+
   // Connect mutation (opens in-app browser)
   const connectMutation = useMutation({
     mutationFn: async () => {
-      const { url } = await getMetaAdsAuthUrl();
+      let url: string;
+      try {
+        const response = await getMetaAdsAuthUrl();
+        url = response.url;
+      } catch (err) {
+        const e = err as Error & { status?: number; body?: unknown };
+        throw new Error(
+          JSON.stringify({
+            reason: "meta-auth-url-fetch-failed",
+            status: e.status ?? null,
+            message: e.message,
+            body:
+              typeof e.body === "string"
+                ? e.body.slice(0, 200)
+                : e.body ?? null,
+            apiBaseUrl: process.env.EXPO_PUBLIC_APP_BASE_URL ?? "(missing)",
+          })
+        );
+      }
       captureMessage("Meta auth session starting", "info", {
         authUrlHost: (() => {
           try {
@@ -432,16 +756,33 @@ export default function AdsScreen() {
       let debug = "";
       try {
         const parsed = JSON.parse(message) as {
+          reason?: string;
+          status?: number | null;
+          body?: unknown;
+          message?: string;
           resultType?: string;
           returnedUrl?: string | null;
           callbackUrl?: string;
           apiBaseUrl?: string;
         };
-        debug =
-          `\n\nresult.type: ${parsed.resultType ?? "(missing)"}` +
-          `\nreturnedUrl: ${parsed.returnedUrl ?? "(none)"}` +
-          `\ncallback: ${parsed.callbackUrl ?? "(missing)"}` +
-          `\nbaseUrl: ${parsed.apiBaseUrl ?? "(missing)"}`;
+        if (parsed.reason === "meta-auth-url-fetch-failed") {
+          debug =
+            `\n\nreason: ${parsed.reason}` +
+            `\nstatus: ${parsed.status ?? "(missing)"}` +
+            `\nmessage: ${parsed.message ?? "(missing)"}` +
+            `\nbody: ${
+              typeof parsed.body === "string"
+                ? parsed.body
+                : JSON.stringify(parsed.body ?? null)
+            }` +
+            `\nbaseUrl: ${parsed.apiBaseUrl ?? "(missing)"}`;
+        } else {
+          debug =
+            `\n\nresult.type: ${parsed.resultType ?? "(missing)"}` +
+            `\nreturnedUrl: ${parsed.returnedUrl ?? "(none)"}` +
+            `\ncallback: ${parsed.callbackUrl ?? "(missing)"}` +
+            `\nbaseUrl: ${parsed.apiBaseUrl ?? "(missing)"}`;
+        }
       } catch {
         debug = `\n\n${message}`;
       }
@@ -694,6 +1035,45 @@ export default function AdsScreen() {
               ))}
             </>
           )}
+
+          {/* Recent posts section */}
+          {status?.pageSelected ? (
+            <View className="mt-6 gap-3">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-[15px] font-bold" style={{ color: managerColors.ink }}>
+                  آخر المنشورات
+                </Text>
+                {recentPostsQuery.data?.length ? (
+                  <Text className="text-[11px]" style={{ color: managerColors.muted }}>
+                    {recentPostsQuery.data.length} منشور
+                  </Text>
+                ) : null}
+              </View>
+
+              {recentPostsQuery.isPending ? (
+                <View className="items-center py-6">
+                  <ActivityIndicator size="small" color={managerColors.brand} />
+                </View>
+              ) : recentPostsQuery.isError ? (
+                <ManagerCard>
+                  <Text className="text-center text-[12px]" style={{ color: managerColors.muted }}>
+                    تعذّر تحميل المنشورات.
+                  </Text>
+                </ManagerCard>
+              ) : !recentPostsQuery.data?.length ? (
+                <ManagerCard className="items-center gap-2 py-6">
+                  <Ionicons name="newspaper-outline" size={32} color={managerColors.muted} />
+                  <Text className="text-[13px] text-center" style={{ color: managerColors.muted }}>
+                    لا توجد منشورات بعد. أنشئ منشورًا جديدًا من زر "منشور" في الأعلى.
+                  </Text>
+                </ManagerCard>
+              ) : (
+                recentPostsQuery.data.map((post) => (
+                  <RecentPostCard key={`${post.platform}-${post.id}`} post={post} />
+                ))
+              )}
+            </View>
+          ) : null}
         </ScrollView>
       )}
     </SafeAreaView>

@@ -1,14 +1,8 @@
 import { useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
-  Image,
-  Pressable,
   RefreshControl,
-  Text,
-  View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,6 +13,14 @@ import {
 import { qk } from "../../../lib/query-keys";
 import { useSessionStore } from "../../../lib/session-store";
 import { ManagerCard, managerColors } from "../../../components/manager-ui";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  SafeAreaView,
+  Text,
+  View,
+} from "../../../components/tw";
 
 type Tab = "draft" | "submitted" | "approved" | "rejected";
 

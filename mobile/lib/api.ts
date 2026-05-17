@@ -122,6 +122,39 @@ export async function apiFetch(
   throw err;
 }
 
+export function getApiErrorMessage(
+  error: unknown,
+  fallback = "حاول مرة أخرى."
+): string {
+  if (!(error instanceof Error)) return fallback;
+
+  const apiError = error as Error & {
+    status?: number;
+    body?: unknown;
+  };
+
+  if (apiError.status === 413) {
+    return "حجم الصورة كبير جدًا. اختر صورة أصغر أو أزل الصورة المرجعية.";
+  }
+
+  if (apiError.message.includes("429")) {
+    return "تم تجاوز الحد المسموح حاليًا. حاول لاحقًا.";
+  }
+
+  if (typeof apiError.body === "object" && apiError.body) {
+    const body = apiError.body as {
+      error?: string;
+      message?: string;
+      detail?: string;
+    };
+    const bodyMessage = body.error ?? body.message ?? body.detail;
+    if (bodyMessage) return bodyMessage;
+  }
+
+  const cleaned = apiError.message.replace(/^\[\d+\]\s*/, "").trim();
+  return cleaned || fallback;
+}
+
 /**
  * Defensive array coercion for React Query results. If the backend ever
  * returns a non-array shape (should now be impossible thanks to the apiFetch
@@ -945,6 +978,26 @@ export interface MetaInsights {
   ctr: string;
 }
 
+export interface MetaCreative {
+  thumbnail_url?: string;
+  image_url?: string;
+  /**
+   * Backend-resolved MP4 source for video creatives. Populated only on the
+   * single-campaign detail endpoint via a secondary Graph API hop —
+   * the list endpoint leaves this undefined to keep the response fast.
+   */
+  video_url?: string;
+  object_story_spec?: {
+    link_data?: { picture?: string; message?: string; name?: string };
+    photo_data?: { caption?: string; url?: string };
+    video_data?: { video_id?: string; image_url?: string };
+  };
+}
+
+export interface MetaAd {
+  creative?: MetaCreative;
+}
+
 export interface MetaCampaign {
   id: string;
   name: string;
@@ -955,7 +1008,10 @@ export interface MetaCampaign {
   lifetime_budget: string | null;
   start_time: string | null;
   stop_time: string | null;
+  created_time?: string | null;
   insights?: { data: MetaInsights[] };
+  lifetime_insights?: { data: { spend: string; impressions: string; reach: string }[] };
+  ads?: { data: MetaAd[] };
 }
 
 export async function getMetaAdsStatus(): Promise<MetaAdsStatus> {
@@ -1086,6 +1142,61 @@ export async function publishMetaPost(opts: {
     body: JSON.stringify(opts),
     timeoutMs: 60_000,
   });
+}
+
+export interface RecentPost {
+  id: string;
+  platform: "facebook" | "instagram";
+  media_kind: "image" | "video" | "carousel" | "text";
+  message: string | null;
+  image_url: string | null; // still image; thumbnail when media_kind is "video"
+  permalink: string | null;
+  created_time: string;
+  like_count: number;
+  comments_count: number;
+  shares_count: number;
+}
+
+export async function listMetaRecentPosts(): Promise<RecentPost[]> {
+  return apiFetch(`/api/mobile/meta-ads/posts/recent`);
+}
+
+export interface MetaInsightsFull {
+  spend: string;
+  impressions: string;
+  reach: string;
+  clicks: string;
+  ctr: string;
+  cpc?: string;
+  cpm?: string;
+}
+
+export interface MetaDailyInsight {
+  date_start: string;
+  spend: string;
+  impressions: string;
+  reach: string;
+  clicks: string;
+}
+
+export interface MetaCampaignDetail extends MetaCampaign {
+  buying_type?: string;
+  lifetime_insights?: { data: MetaInsightsFull[] };
+  daily_insights?: { data: MetaDailyInsight[] };
+  last7_insights?: { data: MetaInsightsFull[] };
+  ads?: {
+    data: (MetaAd & {
+      id: string;
+      name?: string;
+      effective_status?: string;
+    })[];
+  };
+}
+
+export async function getMetaCampaignDetail(
+  campaignId: string
+): Promise<MetaCampaignDetail> {
+  return apiFetch(`/api/mobile/meta-ads/campaigns/${campaignId}`);
 }
 
 // ---- AI features ----------------------------------------------------------

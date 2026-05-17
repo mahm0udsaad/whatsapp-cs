@@ -1,4 +1,4 @@
-import { FlatList, Text, View } from "react-native";
+import { FlatList, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -39,7 +39,7 @@ export default function ShiftsScreen() {
 
   if (query.isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["bottom"]}>
+      <SafeAreaView style={styles.screen} edges={["bottom"]}>
         <ListSkeleton count={5} />
       </SafeAreaView>
     );
@@ -48,28 +48,28 @@ export default function ShiftsScreen() {
   const items = asArray<Shift>(query.data);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["bottom"]}>
+    <SafeAreaView style={styles.screen} edges={["bottom"]}>
       <FlatList
         data={items}
         keyExtractor={(s) => s.id}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: 16 }}
         ListEmptyComponent={
-          <View className="items-center py-20">
-            <Text className="text-[#7A88B8]">لا توجد مناوبات مجدولة</Text>
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>لا توجد مناوبات مجدولة</Text>
           </View>
         }
         renderItem={({ item }) => (
-          <View className="mb-2 rounded-[22px] border border-[#E7EBFB] bg-white p-4">
-            <Text className="text-right text-base font-semibold text-[#16245C]">
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>
               {format(new Date(item.starts_at), "EEEE d MMM")}
             </Text>
-            <Text className="mt-1 text-right text-sm text-[#5E6A99]">
+            <Text style={styles.cardTime}>
               {format(new Date(item.starts_at), "HH:mm")} —{" "}
               {format(new Date(item.ends_at), "HH:mm")}
             </Text>
             {item.note && (
-              <Text className="mt-1 text-right text-xs text-[#7A88B8]">
+              <Text style={styles.cardNote}>
                 {item.note}
               </Text>
             )}
@@ -79,3 +79,43 @@ export default function ShiftsScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: "#F6F7F9",
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 80,
+  },
+  emptyText: {
+    color: "#7A88B8",
+  },
+  card: {
+    marginBottom: 8,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#E7EBFB",
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+  },
+  cardTitle: {
+    textAlign: "right",
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#16245C",
+  },
+  cardTime: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 14,
+    color: "#5E6A99",
+  },
+  cardNote: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 12,
+    color: "#7A88B8",
+  },
+});

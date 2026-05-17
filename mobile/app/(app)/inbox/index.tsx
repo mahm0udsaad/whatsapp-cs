@@ -7,6 +7,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View,
@@ -34,8 +35,6 @@ import { qk } from "../../../lib/query-keys";
 import {
   ListSkeleton,
   managerColors,
-  premiumShadow,
-  softShadow,
 } from "../../../components/manager-ui";
 
 type Filter = "all" | "unassigned" | "mine" | "bot" | "expired" | "archived";
@@ -518,51 +517,42 @@ export default function InboxScreen() {
   const header = useMemo(
     () => (
       <View
-        className="border-b"
-        style={{ borderColor: inboxTheme.border, backgroundColor: inboxTheme.surface }}
+        style={[
+          styles.headerContainer,
+          {
+            borderColor: inboxTheme.border,
+            backgroundColor: inboxTheme.surface,
+          },
+        ]}
       >
-        <View className="px-4 pb-3 pt-3">
+        <View style={styles.headerInner}>
           <View
-            className="overflow-hidden rounded-[28px] border p-5"
             style={[
-              premiumShadow,
+              styles.heroCard,
               {
                 backgroundColor: inboxTheme.heroBg,
                 borderColor: inboxTheme.heroBorder,
               },
             ]}
           >
-            <View
-              className="absolute -right-8 -top-10 h-32 w-32 rounded-full"
-              style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
-            />
-            <View
-              className="absolute -bottom-8 left-4 h-24 w-24 rounded-full"
-              style={{ backgroundColor: "rgba(255,201,40,0.22)" }}
-            />
-            <View className="flex-row-reverse items-start justify-between gap-4">
-              <View className="flex-1">
+            <View style={styles.heroOrbPrimary} />
+            <View style={styles.heroOrbSecondary} />
+            <View style={styles.heroRow}>
+              <View style={styles.heroContent}>
                 <Text
-                  className="text-right text-xs font-semibold"
-                  style={{ color: "rgba(255,255,255,0.82)" }}
+                  style={styles.heroEyebrow}
                 >
                   مركز المحادثات
                 </Text>
-                <View className="mt-2 flex-row-reverse items-end gap-2">
-                  <Text className="text-right text-4xl font-bold text-white">
+                <View style={styles.heroCountRow}>
+                  <Text style={styles.heroCountValue}>
                     {attentionCount}
                   </Text>
-                  <Text
-                    className="pb-1 text-right text-sm font-semibold"
-                    style={{ color: "rgba(255,255,255,0.88)" }}
-                  >
+                  <Text style={styles.heroCountLabel}>
                     تحتاج إجراء
                   </Text>
                 </View>
-                <Text
-                  className="mt-2 text-right text-sm leading-6"
-                  style={{ color: "rgba(255,255,255,0.82)" }}
-                >
+                <Text style={styles.heroDescription}>
                   {attentionCount > 0
                     ? "محادثات تحتاج تدخل قبل باقي القائمة."
                     : "لا توجد محادثات عاجلة الآن."}
@@ -570,13 +560,12 @@ export default function InboxScreen() {
               </View>
               <Pressable
                 onPress={() => setFilter(leadFilter)}
-                className="min-h-12 items-center justify-center rounded-[20px] border px-4 py-3"
-                style={{ borderColor: "#FFD34D", backgroundColor: "#FFC928" }}
+                style={styles.heroAction}
               >
-                <Text className="text-xs font-semibold text-[#273B9A]">
+                <Text style={styles.heroActionTopText}>
                   ابدأ من
                 </Text>
-                <Text className="mt-1 text-sm font-bold text-[#273B9A]">
+                <Text style={styles.heroActionBottomText}>
                   {leadFilter === "unassigned"
                     ? "غير مستلمة"
                     : leadFilter === "expired"
@@ -587,7 +576,7 @@ export default function InboxScreen() {
             </View>
           </View>
         </View>
-        <View className="flex-row-reverse gap-2 px-4 pb-3">
+        <View style={styles.metricsRow}>
           <MetricCard label="غير مستلمة" value={stats.unassigned} tone="urgent" />
           <MetricCard label="محادثاتي" value={stats.mine} tone="success" />
           <MetricCard label="البوت" value={stats.bot} tone="bot" />
@@ -619,17 +608,12 @@ export default function InboxScreen() {
               <Pressable
                 key={f.key}
                 onPress={() => setFilter(f.key)}
-                className={`min-h-10 rounded-full border px-3.5 py-2 ${
-                  active
-                    ? "border-[#273B9A] bg-[#273B9A]"
-                    : "border-[#E2E7FA] bg-[#F8FAFF]"
-                }`}
+                style={[
+                  styles.filterChip,
+                  active ? styles.filterChipActive : styles.filterChipIdle,
+                ]}
               >
-                <Text
-                  className={`text-xs font-semibold ${
-                    active ? "text-white" : "text-[#344054]"
-                  }`}
-                >
+                <Text style={[styles.filterChipText, active ? styles.filterChipTextActive : styles.filterChipTextIdle]}>
                   {f.label} {count}
                 </Text>
               </Pressable>
@@ -654,22 +638,17 @@ export default function InboxScreen() {
               <Pressable
                 key={r.key}
                 onPress={() => setDateRange(r.key)}
-                className={`min-h-10 flex-row-reverse items-center gap-1.5 rounded-full border px-3.5 py-2 ${
-                  active
-                    ? "border-[#D6DDF8] bg-[#EDF2FF]"
-                    : "border-[#E2E7FA] bg-[#F8FAFF]"
-                }`}
+                style={[
+                  styles.dateChip,
+                  active ? styles.dateChipActive : styles.dateChipIdle,
+                ]}
               >
                 <Ionicons
                   name="calendar-outline"
                   size={12}
                   color={active ? managerColors.brand : managerColors.muted}
                 />
-                <Text
-                  className={`text-xs font-semibold ${
-                    active ? "text-[#16245C]" : "text-[#5E6A99]"
-                  }`}
-                >
+                <Text style={[styles.dateChipText, active ? styles.dateChipTextActive : styles.dateChipTextIdle]}>
                   {r.label}
                 </Text>
               </Pressable>
@@ -678,17 +657,15 @@ export default function InboxScreen() {
         </ScrollView>
 
         {/* Search */}
-        <View className="px-4 pb-3">
-          <View
-            className="min-h-12 flex-row-reverse items-center gap-2 rounded-[18px] border border-[#E2E7FA] bg-[#F8FAFF] px-3"
-          >
+        <View style={styles.searchOuter}>
+          <View style={styles.searchBox}>
             <Ionicons name="search" size={16} color={managerColors.muted} />
             <TextInput
               value={search}
               onChangeText={setSearch}
               placeholder="بحث بالاسم أو الرقم أو نص الرسالة..."
               placeholderTextColor="#98A2B3"
-              className="flex-1 py-2.5 text-right text-sm text-[#16245C]"
+              style={styles.searchInput}
               returnKeyType="search"
             />
             {search.length > 0 ? (
@@ -708,7 +685,7 @@ export default function InboxScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["top"]}>
+    <SafeAreaView style={styles.screen} edges={["top"]}>
       {header}
       {query.isLoading ? (
         <ListSkeleton count={6} />
@@ -727,15 +704,15 @@ export default function InboxScreen() {
             />
           }
           ListEmptyComponent={
-            <View className="items-center px-8 py-20">
-              <Text className="text-center text-base font-semibold text-gray-700">
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>
                 {query.isError
                   ? "تعذّر تحميل المحادثات"
                   : search.length > 0 || dateRange !== "any"
                   ? "لا توجد نتائج لهذا البحث"
                   : "لا توجد محادثات هنا"}
               </Text>
-              <Text className="mt-2 text-center text-sm text-gray-500">
+              <Text style={styles.emptySubtitle}>
                 {query.isError
                   ? "تحقق من الاتصال ثم اسحب للتحديث."
                   : search.length > 0 || dateRange !== "any"
@@ -746,11 +723,11 @@ export default function InboxScreen() {
           }
           ListFooterComponent={
             canLoadMore ? (
-              <View className="items-center py-4">
+              <View style={styles.footerState}>
                 {query.isFetching ? (
                   <ActivityIndicator color={managerColors.brand} />
                 ) : (
-                  <Text className="text-xs font-semibold text-[#667085]">
+                  <Text style={styles.footerText}>
                     اسحبي لأسفل لتحميل المزيد
                   </Text>
                 )}
@@ -762,59 +739,54 @@ export default function InboxScreen() {
               onPress={() => openConversation(item.id)}
               onLongPress={() => setReassignTarget(item)}
               delayLongPress={400}
-              className={`relative mx-3 my-1.5 overflow-hidden rounded-[24px] border bg-white p-4 ${
+              style={[
+                styles.conversationCard,
                 item.is_expired
-                  ? "border-amber-200"
+                  ? styles.conversationCardExpired
                   : item.handler_mode === "unassigned"
-                  ? "border-red-200"
+                  ? styles.conversationCardUnassigned
                   : item.unread_count > 0
-                  ? "border-[#D6DDF8]"
-                  : "border-[#E8ECFA]"
-              }`}
-              style={
-                item.handler_mode === "unassigned" ||
-                item.is_expired ||
-                item.unread_count > 0
-                  ? softShadow
-                  : softShadow
-              }
+                  ? styles.conversationCardUnread
+                  : styles.conversationCardDefault,
+              ]}
             >
               <View
-                className={`absolute bottom-0 right-0 top-0 w-1.5 ${
+                style={[
+                  styles.conversationAccent,
                   item.handler_mode === "unassigned"
-                    ? "bg-red-500"
+                    ? styles.conversationAccentUnassigned
                     : item.is_expired
-                    ? "bg-amber-500"
+                    ? styles.conversationAccentExpired
                     : item.handler_mode === "bot"
-                    ? "bg-indigo-500"
+                    ? styles.conversationAccentBot
                     : item.is_mine
-                    ? "bg-[#00A884]"
-                    : "bg-[#D0D5DD]"
-                }`}
+                    ? styles.conversationAccentMine
+                    : styles.conversationAccentDefault,
+                ]}
               />
-              <View className="mb-2 flex-row-reverse items-start justify-between gap-3">
-                <View className="flex-1">
+              <View style={styles.conversationTopRow}>
+                <View style={styles.conversationIdentity}>
                   <Text
-                    className="text-right text-base font-bold text-[#16245C]"
+                    style={styles.conversationName}
                     numberOfLines={1}
                   >
                     {item.customer_name || item.customer_phone}
                   </Text>
-                  <Text className="mt-1 text-right text-xs text-[#667085]">
+                  <Text style={styles.conversationPhone}>
                     {item.customer_phone}
                   </Text>
                 </View>
-                <View className="items-start gap-2">
-                  <View className="flex-row-reverse items-center gap-2">
-                    <Text className="text-xs text-[#7A88B8]" numberOfLines={1}>
+                <View style={styles.conversationMeta}>
+                  <View style={styles.conversationTimeRow}>
+                    <Text style={styles.conversationTime} numberOfLines={1}>
                       {formatDistanceToNow(new Date(item.last_message_at), {
                         addSuffix: true,
                         locale: ar,
                       })}
                     </Text>
                     {item.unread_count > 0 ? (
-                      <View className="min-w-5 items-center justify-center rounded-full bg-[#273B9A] px-1.5 py-0.5">
-                        <Text className="text-[11px] font-bold text-white">
+                      <View style={styles.unreadBadge}>
+                        <Text style={styles.unreadBadgeText}>
                           {item.unread_count > 99 ? "99+" : item.unread_count}
                         </Text>
                       </View>
@@ -827,10 +799,10 @@ export default function InboxScreen() {
                         setReassignTarget(item);
                       }}
                       hitSlop={8}
-                      className="min-h-8 flex-row-reverse items-center gap-1 rounded-full bg-[#F4F7FF] px-2.5 py-1"
+                      style={styles.transferButton}
                     >
                       <Ionicons name="swap-horizontal" size={14} color={managerColors.muted} />
-                      <Text className="text-xs font-semibold text-[#344054]">
+                      <Text style={styles.transferButtonText}>
                         نقل
                       </Text>
                     </Pressable>
@@ -840,33 +812,34 @@ export default function InboxScreen() {
               {!!item.preview && (
                 <Text
                   numberOfLines={2}
-                  className="text-right text-sm leading-6 text-[#445179]"
+                  style={styles.previewText}
                 >
                   {item.preview_role === "agent" && (
-                    <Text className="font-semibold text-[#273B9A]">
+                    <Text style={styles.previewPrefixAgent}>
                       {item.handler_mode === "bot" ? "البوت: " : "أنت: "}
                     </Text>
                   )}
                   {item.preview_role === "system" && (
-                    <Text className="font-semibold text-[#667085]">
+                    <Text style={styles.previewPrefixSystem}>
                       النظام:{" "}
                     </Text>
                   )}
                   {item.preview}
                 </Text>
               )}
-              <View className="mt-3 flex-row-reverse flex-wrap items-center gap-2">
+              <View style={styles.conversationBadgeRow}>
                 <ModeBadge
                   mode={item.handler_mode}
                   assigneeName={item.assignee_name}
                 />
                 {!!getWindowLabel(item.last_inbound_at) && (
                   <Text
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    style={[
+                      styles.windowBadge,
                       item.is_expired
-                        ? "bg-amber-50 text-amber-900"
-                        : "bg-[#EDF2FF] text-[#1A2A78]"
-                    }`}
+                        ? styles.windowBadgeExpired
+                        : styles.windowBadgeActive,
+                    ]}
                   >
                     {getWindowLabel(item.last_inbound_at)}
                   </Text>
@@ -879,7 +852,7 @@ export default function InboxScreen() {
                   return (
                     <Text
                       key={lid}
-                      className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${cls.bg} ${cls.fg} ${cls.border}`}
+                      style={styles.labelChipFallback}
                       numberOfLines={1}
                     >
                       {lbl.name}
@@ -887,12 +860,12 @@ export default function InboxScreen() {
                   );
                 })}
                 {item.label_ids.length > 3 ? (
-                  <Text className="text-[11px] font-semibold text-[#667085]">
+                  <Text style={styles.moreLabelsText}>
                     +{item.label_ids.length - 3}
                   </Text>
                 ) : null}
                 {item.archived_at ? (
-                  <Text className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
+                  <Text style={styles.archivedBadge}>
                     مؤرشفة
                   </Text>
                 ) : null}
@@ -1052,19 +1025,19 @@ function MetricCard({
       : "bg-amber-50 border-amber-100";
   const textClass =
     tone === "urgent"
-      ? "text-rose-800"
+      ? styles.metricValueUrgent
       : tone === "success"
-      ? "text-[#052E26]"
+      ? styles.metricValueSuccess
       : tone === "bot"
-      ? "text-indigo-800"
-      : "text-amber-800";
+      ? styles.metricValueBot
+      : styles.metricValueWarning;
   return (
-    <View className={`flex-1 rounded-[18px] border px-3 py-2.5 ${toneClass}`}>
-      <Text className={`text-right text-lg font-bold ${textClass}`}>
+    <View style={[styles.metricCard, toneClass === "bg-rose-50 border-rose-100" ? styles.metricCardUrgent : toneClass === "bg-[#E9FBF3] border-emerald-100" ? styles.metricCardSuccess : toneClass === "bg-indigo-50 border-indigo-100" ? styles.metricCardBot : styles.metricCardWarning]}>
+      <Text style={[styles.metricValue, textClass]}>
         {value}
       </Text>
       <Text
-        className="mt-0.5 text-right text-[11px] font-medium text-[#667085]"
+        style={styles.metricLabel}
         numberOfLines={1}
         adjustsFontSizeToFit
       >
@@ -1103,8 +1076,28 @@ function ModeBadge({
         : "مع موظف"
       : "موكلة للبوت";
   return (
-    <View className={`rounded-full px-2.5 py-1 ${bg}`}>
-      <Text className={`text-xs font-semibold ${fg}`}>{label}</Text>
+    <View
+      style={[
+        styles.modeBadge,
+        bg === "bg-red-50"
+          ? styles.modeBadgeUnassigned
+          : bg === "bg-[#E9FBF3]"
+          ? styles.modeBadgeHuman
+          : styles.modeBadgeBot,
+      ]}
+    >
+      <Text
+        style={[
+          styles.modeBadgeText,
+          fg === "text-red-800"
+            ? styles.modeBadgeTextUnassigned
+            : fg === "text-[#052E26]"
+            ? styles.modeBadgeTextHuman
+            : styles.modeBadgeTextBot,
+        ]}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
@@ -1183,9 +1176,9 @@ function ArchiveToggleButton({
     <Pressable
       disabled={mutation.isPending}
       onPress={() => mutation.mutate()}
-      className="flex-row-reverse items-center justify-between rounded-lg border border-stone-200 bg-stone-50 p-3"
+      style={styles.archiveButton}
     >
-      <Text className="text-right text-sm font-semibold text-stone-800">
+      <Text style={styles.archiveButtonText}>
         {isArchived ? "إلغاء الأرشفة" : "أرشفة المحادثة"}
       </Text>
       <Ionicons
@@ -1196,3 +1189,477 @@ function ArchiveToggleButton({
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: "#F6F7F9",
+  },
+  headerContainer: {
+    borderBottomWidth: 1,
+  },
+  headerInner: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+  },
+  heroCard: {
+    overflow: "hidden",
+    borderWidth: 1,
+    borderRadius: 28,
+    padding: 20,
+  },
+  heroOrbPrimary: {
+    position: "absolute",
+    right: -32,
+    top: -40,
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  heroOrbSecondary: {
+    position: "absolute",
+    left: 16,
+    bottom: -32,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "rgba(255,201,40,0.22)",
+  },
+  heroRow: {
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    columnGap: 16,
+  },
+  heroContent: {
+    flex: 1,
+  },
+  heroEyebrow: {
+    textAlign: "right",
+    fontSize: 12,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.82)",
+  },
+  heroCountRow: {
+    flexDirection: "row-reverse",
+    alignItems: "flex-end",
+    columnGap: 8,
+    marginTop: 8,
+  },
+  heroCountValue: {
+    textAlign: "right",
+    fontSize: 36,
+    lineHeight: 40,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  heroCountLabel: {
+    paddingBottom: 4,
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.88)",
+  },
+  heroDescription: {
+    marginTop: 8,
+    textAlign: "right",
+    fontSize: 14,
+    lineHeight: 22,
+    color: "rgba(255,255,255,0.82)",
+  },
+  heroAction: {
+    minHeight: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#FFD34D",
+    backgroundColor: "#FFC928",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  heroActionTopText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#273B9A",
+  },
+  heroActionBottomText: {
+    marginTop: 4,
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#273B9A",
+  },
+  metricsRow: {
+    flexDirection: "row-reverse",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    columnGap: 8,
+  },
+  filterChip: {
+    minHeight: 40,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    justifyContent: "center",
+  },
+  filterChipActive: {
+    borderColor: "#273B9A",
+    backgroundColor: "#273B9A",
+  },
+  filterChipIdle: {
+    borderColor: "#E2E7FA",
+    backgroundColor: "#F8FAFF",
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  filterChipTextActive: {
+    color: "#FFFFFF",
+  },
+  filterChipTextIdle: {
+    color: "#344054",
+  },
+  dateChip: {
+    minHeight: 40,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    columnGap: 6,
+  },
+  dateChipActive: {
+    borderColor: "#D6DDF8",
+    backgroundColor: "#EDF2FF",
+  },
+  dateChipIdle: {
+    borderColor: "#E2E7FA",
+    backgroundColor: "#F8FAFF",
+  },
+  dateChipText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  dateChipTextActive: {
+    color: "#16245C",
+  },
+  dateChipTextIdle: {
+    color: "#5E6A99",
+  },
+  searchOuter: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  searchBox: {
+    minHeight: 48,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#E2E7FA",
+    backgroundColor: "#F8FAFF",
+    paddingHorizontal: 12,
+    columnGap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 10,
+    textAlign: "right",
+    fontSize: 14,
+    color: "#16245C",
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingHorizontal: 32,
+    paddingVertical: 80,
+  },
+  emptyTitle: {
+    textAlign: "center",
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#374151",
+  },
+  emptySubtitle: {
+    marginTop: 8,
+    textAlign: "center",
+    fontSize: 14,
+    color: "#6B7280",
+  },
+  footerState: {
+    alignItems: "center",
+    paddingVertical: 16,
+  },
+  footerText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#667085",
+  },
+  conversationCard: {
+    position: "relative",
+    marginHorizontal: 12,
+    marginVertical: 6,
+    overflow: "hidden",
+    borderRadius: 24,
+    borderWidth: 1,
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+  },
+  conversationCardDefault: {
+    borderColor: "#E8ECFA",
+  },
+  conversationCardUnread: {
+    borderColor: "#D6DDF8",
+  },
+  conversationCardUnassigned: {
+    borderColor: "#FECACA",
+  },
+  conversationCardExpired: {
+    borderColor: "#FDE68A",
+  },
+  conversationAccent: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: 6,
+  },
+  conversationAccentDefault: {
+    backgroundColor: "#D0D5DD",
+  },
+  conversationAccentUnread: {
+    backgroundColor: "#273B9A",
+  },
+  conversationAccentUnassigned: {
+    backgroundColor: "#EF4444",
+  },
+  conversationAccentExpired: {
+    backgroundColor: "#F59E0B",
+  },
+  conversationAccentBot: {
+    backgroundColor: "#6366F1",
+  },
+  conversationAccentMine: {
+    backgroundColor: "#00A884",
+  },
+  conversationTopRow: {
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    columnGap: 12,
+    marginBottom: 8,
+  },
+  conversationIdentity: {
+    flex: 1,
+  },
+  conversationName: {
+    textAlign: "right",
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#16245C",
+  },
+  conversationPhone: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 12,
+    color: "#667085",
+  },
+  conversationMeta: {
+    alignItems: "flex-start",
+    rowGap: 8,
+  },
+  conversationTimeRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 8,
+  },
+  conversationTime: {
+    fontSize: 12,
+    color: "#7A88B8",
+  },
+  unreadBadge: {
+    minWidth: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 999,
+    backgroundColor: "#273B9A",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  unreadBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  transferButton: {
+    minHeight: 32,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    borderRadius: 999,
+    backgroundColor: "#F4F7FF",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    columnGap: 4,
+  },
+  transferButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#344054",
+  },
+  previewText: {
+    textAlign: "right",
+    fontSize: 14,
+    lineHeight: 24,
+    color: "#445179",
+  },
+  previewPrefixAgent: {
+    fontWeight: "600",
+    color: "#273B9A",
+  },
+  previewPrefixSystem: {
+    fontWeight: "600",
+    color: "#667085",
+  },
+  conversationBadgeRow: {
+    marginTop: 12,
+    flexDirection: "row-reverse",
+    flexWrap: "wrap",
+    alignItems: "center",
+    columnGap: 8,
+    rowGap: 8,
+  },
+  windowBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  windowBadgeActive: {
+    backgroundColor: "#EDF2FF",
+    color: "#1A2A78",
+  },
+  windowBadgeExpired: {
+    backgroundColor: "#FFFBEB",
+    color: "#78350F",
+  },
+  labelChipFallback: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#D6DDF8",
+    backgroundColor: "#F8FAFF",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#344054",
+  },
+  moreLabelsText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#667085",
+  },
+  archivedBadge: {
+    borderRadius: 999,
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#475569",
+  },
+  metricCard: {
+    flex: 1,
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  metricCardUrgent: {
+    backgroundColor: "#FFF1F2",
+    borderColor: "#FFE4E6",
+  },
+  metricCardSuccess: {
+    backgroundColor: "#E9FBF3",
+    borderColor: "#D1FAE5",
+  },
+  metricCardBot: {
+    backgroundColor: "#EEF2FF",
+    borderColor: "#E0E7FF",
+  },
+  metricCardWarning: {
+    backgroundColor: "#FFFBEB",
+    borderColor: "#FDE68A",
+  },
+  metricValue: {
+    textAlign: "right",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  metricValueUrgent: {
+    color: "#9F1239",
+  },
+  metricValueSuccess: {
+    color: "#052E26",
+  },
+  metricValueBot: {
+    color: "#3730A3",
+  },
+  metricValueWarning: {
+    color: "#92400E",
+  },
+  metricLabel: {
+    marginTop: 2,
+    textAlign: "right",
+    fontSize: 11,
+    fontWeight: "500",
+    color: "#667085",
+  },
+  modeBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  modeBadgeUnassigned: {
+    backgroundColor: "#FEF2F2",
+  },
+  modeBadgeHuman: {
+    backgroundColor: "#E9FBF3",
+  },
+  modeBadgeBot: {
+    backgroundColor: "#EEF2FF",
+  },
+  modeBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  modeBadgeTextUnassigned: {
+    color: "#991B1B",
+  },
+  modeBadgeTextHuman: {
+    color: "#052E26",
+  },
+  modeBadgeTextBot: {
+    color: "#312E81",
+  },
+  archiveButton: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#D6D3D1",
+    backgroundColor: "#FAFAF9",
+    padding: 12,
+  },
+  archiveButtonText: {
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#44403C",
+  },
+});
