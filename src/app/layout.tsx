@@ -32,20 +32,11 @@ export const metadata: Metadata = {
     siteName: "نِحجز",
     title: "نِحجز | مساعد ذكي للواتساب",
     description: "مساعد واتساب يبدو كأنه جزء من فريقك. يرد على عملائك تلقائياً بلهجتك ومن قاعدة معرفتك.",
-    images: [
-      {
-        url: "/screenshots/02-ai-chat.png",
-        width: 1200,
-        height: 630,
-        alt: "واجهة محادثات نِحجز",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "نِحجز | مساعد ذكي للواتساب",
     description: "مساعد واتساب يبدو كأنه جزء من فريقك.",
-    images: ["/screenshots/02-ai-chat.png"],
   },
 };
 
