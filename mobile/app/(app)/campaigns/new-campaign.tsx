@@ -42,7 +42,7 @@ const OBJECTIVES: ObjectiveDef[] = [
   { key: "OUTCOME_AWARENESS", title: "الوعي بالعلامة", desc: "زيادة عدد من يرى منشورك", icon: "eye", color: "#0EA5E9" },
   { key: "OUTCOME_TRAFFIC", title: "زيارات", desc: "جذب زيارات لموقعك أو واتساب", icon: "navigate", color: "#22C55E" },
   { key: "OUTCOME_ENGAGEMENT", title: "تفاعل", desc: "إعجابات وتعليقات ورسائل", icon: "heart", color: "#E1306C" },
-  { key: "OUTCOME_LEADS", title: "عملاء محتملون", desc: "نماذج تواصل مباشرة", icon: "person-add", color: "#7C3AED" },
+  { key: "OUTCOME_LEADS", title: "عملاء محتملون", desc: "جذب عملاء عبر زيارة موقعك", icon: "person-add", color: "#7C3AED" },
   { key: "OUTCOME_SALES", title: "مبيعات", desc: "تحويلات على موقعك", icon: "cart", color: "#F59E0B" },
   { key: "OUTCOME_APP_PROMOTION", title: "تنزيلات التطبيق", desc: "زيادة تثبيتات التطبيق", icon: "phone-portrait", color: "#06B6D4" },
 ];
@@ -199,8 +199,10 @@ export default function NewCampaignWizard() {
       );
     },
     onError: (e) => {
-      const msg = (e as Error).message;
-      Alert.alert("فشل إنشاء الحملة", msg.slice(0, 300));
+      Alert.alert(
+        "فشل إنشاء الحملة",
+        getApiErrorMessage(e, "تعذّر إنشاء الحملة. حاول مرة أخرى.")
+      );
     },
   });
 

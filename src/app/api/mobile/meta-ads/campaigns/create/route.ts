@@ -3,17 +3,18 @@
  *
  * Creates a full Meta ad campaign in one call:
  *   1. Campaign      (objective)
- *   2. Ad Set        (audience, budget, schedule)
+ *   2. Ad Set        (audience, budget, schedule, optimization + promoted_object)
  *   3. Ad Creative   (image + caption + optional link)
  *   4. Ad            (combines AdSet + Creative)
  *
- * Always creates as PAUSED so the user can review in Meta Ads Manager before
- * spending money. Caller can then activate via PATCH /campaigns/[id].
+ * If any step fails the resources created so far are rolled back (deleted) so
+ * the ad account is never left with orphaned PAUSED campaigns. Meta's own
+ * user-facing error message (`error_user_msg`) is surfaced to the caller.
  *
  * Body:
  *   name:             string                — campaign display name
- *   objective:        MetaObjective         — see OBJECTIVE_DEFAULTS below
- *   daily_budget_sar: number                — SAR, will be ×100 to halalas
+ *   objective:        MetaObjective         — see buildAdSetConfig below
+ *   daily_budget_sar: number                — minor units ×100 (ad-account currency)
  *   start_time:       string (ISO)
  *   end_time?:        string (ISO)          — optional, evergreen if omitted
  *   countries:        string[]              — ISO codes, default ["SA"]
@@ -22,7 +23,7 @@
  *   caption:          string                — ad copy
  *   image_base64:     string                — required
  *   image_type:       string                — e.g. "image/jpeg"
- *   link_url?:        string                — optional click destination
+ *   link_url?:        string                — required for Sales/Leads objectives
  *   launch_now?:      boolean               — if true, status=ACTIVE; else PAUSED
  */
 
@@ -30,21 +31,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveCurrentRestaurantForAdmin } from "@/lib/mobile-auth";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 
-const META_GRAPH_VERSION = "v21.0";
+const META_GRAPH_VERSION = "v23.0";
 const STORAGE_BUCKET = "whatsapp-media";
-
-// Map Meta ODAX objective → optimization_goal → billing_event
-const OBJECTIVE_DEFAULTS: Record<
-  string,
-  { optimization_goal: string; billing_event: string }
-> = {
-  OUTCOME_AWARENESS: { optimization_goal: "REACH", billing_event: "IMPRESSIONS" },
-  OUTCOME_TRAFFIC: { optimization_goal: "LINK_CLICKS", billing_event: "IMPRESSIONS" },
-  OUTCOME_ENGAGEMENT: { optimization_goal: "POST_ENGAGEMENT", billing_event: "IMPRESSIONS" },
-  OUTCOME_LEADS: { optimization_goal: "LEAD_GENERATION", billing_event: "IMPRESSIONS" },
-  OUTCOME_SALES: { optimization_goal: "OFFSITE_CONVERSIONS", billing_event: "IMPRESSIONS" },
-  OUTCOME_APP_PROMOTION: { optimization_goal: "APP_INSTALLS", billing_event: "IMPRESSIONS" },
-};
 
 interface CreateBody {
   name?: string;
@@ -60,6 +48,48 @@ interface CreateBody {
   image_type?: string;
   link_url?: string;
   launch_now?: boolean;
+}
+
+interface MetaConn {
+  user_access_token: string;
+  ad_account_id: string;
+  page_id: string | null;
+  instagram_account_id: string | null;
+}
+
+interface AdSetConfig {
+  optimization_goal: string;
+  billing_event: string;
+  promoted_object?: Record<string, unknown>;
+}
+
+/** A clean, user-facing error to return without creating anything. */
+interface ConfigError {
+  error: string;
+  status: number;
+}
+
+function isConfigError(v: AdSetConfig | ConfigError): v is ConfigError {
+  return "error" in v;
+}
+
+/**
+ * Pull the most user-friendly message out of a Graph API error payload.
+ * Meta provides `error_user_msg` (often localized) specifically for surfacing
+ * to end users; fall back to the developer message only when it's absent.
+ */
+function graphErrorMessage(data: Record<string, unknown>): string {
+  const e = (data?.error ?? {}) as {
+    message?: string;
+    error_user_title?: string;
+    error_user_msg?: string;
+  };
+  return (
+    e.error_user_msg ||
+    e.error_user_title ||
+    e.message ||
+    "تعذّر إكمال العملية مع Meta. حاول مرة أخرى."
+  );
 }
 
 async function uploadImageToStorage(
@@ -103,6 +133,113 @@ async function graphPost(
   return { ok: res.ok, data, status: res.status };
 }
 
+/** Best-effort delete of a Graph node — used to roll back partial failures. */
+async function graphDelete(id: string, token: string): Promise<void> {
+  try {
+    await fetch(
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/${id}?` +
+        new URLSearchParams({ access_token: token }).toString(),
+      { method: "DELETE" }
+    );
+  } catch {
+    // Cleanup is best-effort; a failed delete must not mask the original error.
+  }
+}
+
+/** Return the first Meta Pixel on the ad account, or null if none exist. */
+async function fetchFirstPixelId(
+  adAccountId: string,
+  token: string
+): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/${adAccountId}/adspixels?` +
+        new URLSearchParams({ fields: "id", access_token: token }).toString()
+    );
+    const j = (await res.json()) as { data?: { id: string }[] };
+    return j.data?.[0]?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve the ad-set optimization config for a given objective.
+ *
+ * Three objectives need a `promoted_object` or extra setup that a restaurant
+ * may not have. Rather than letting the Graph API reject the ad set with a
+ * cryptic error, we validate up front and return a clean, actionable message
+ * BEFORE any campaign is created.
+ */
+async function buildAdSetConfig(
+  objective: string,
+  body: CreateBody,
+  conn: MetaConn
+): Promise<AdSetConfig | ConfigError> {
+  switch (objective) {
+    case "OUTCOME_AWARENESS":
+      return { optimization_goal: "REACH", billing_event: "IMPRESSIONS" };
+
+    case "OUTCOME_TRAFFIC":
+      return { optimization_goal: "LINK_CLICKS", billing_event: "IMPRESSIONS" };
+
+    case "OUTCOME_ENGAGEMENT":
+      return { optimization_goal: "POST_ENGAGEMENT", billing_event: "IMPRESSIONS" };
+
+    case "OUTCOME_LEADS": {
+      // Website-lead funnel: optimize for landing-page views on the supplied
+      // link. (On-Facebook instant forms would need a lead form built first.)
+      if (!body.link_url?.trim()) {
+        return {
+          error:
+            "حملة العملاء المحتملين تتطلب إضافة رابط لموقعك في خطوة المحتوى.",
+          status: 400,
+        };
+      }
+      return {
+        optimization_goal: "LANDING_PAGE_VIEWS",
+        billing_event: "IMPRESSIONS",
+      };
+    }
+
+    case "OUTCOME_SALES": {
+      if (!body.link_url?.trim()) {
+        return {
+          error: "حملة المبيعات تتطلب إضافة رابط متجرك في خطوة المحتوى.",
+          status: 400,
+        };
+      }
+      const pixelId = await fetchFirstPixelId(
+        conn.ad_account_id,
+        conn.user_access_token
+      );
+      if (!pixelId) {
+        return {
+          error:
+            "حملة المبيعات تتطلب إعداد Meta Pixel على حسابك الإعلاني لتتبّع التحويلات. " +
+            "أنشئ Pixel من Meta Events Manager ثم حاول مجددًا.",
+          status: 400,
+        };
+      }
+      return {
+        optimization_goal: "OFFSITE_CONVERSIONS",
+        billing_event: "IMPRESSIONS",
+        promoted_object: { pixel_id: pixelId, custom_event_type: "PURCHASE" },
+      };
+    }
+
+    case "OUTCOME_APP_PROMOTION":
+      return {
+        error:
+          "حملات تنزيل التطبيق غير متاحة حاليًا — تتطلب ربط تطبيق جوّال بحساب Meta.",
+        status: 400,
+      };
+
+    default:
+      return { error: "هدف الحملة غير مدعوم.", status: 400 };
+  }
+}
+
 export async function POST(request: NextRequest) {
   const ctx = await resolveCurrentRestaurantForAdmin();
   if (ctx instanceof NextResponse) return ctx;
@@ -112,10 +249,10 @@ export async function POST(request: NextRequest) {
   try {
     body = (await request.json()) as CreateBody;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ error: "صيغة الطلب غير صحيحة." }, { status: 400 });
   }
 
-  // Validate
+  // Validate required fields
   const required: (keyof CreateBody)[] = [
     "name",
     "objective",
@@ -126,29 +263,49 @@ export async function POST(request: NextRequest) {
   ];
   for (const k of required) {
     if (!body[k]) {
-      return NextResponse.json({ error: `${k} is required` }, { status: 400 });
+      return NextResponse.json(
+        { error: `الحقل المطلوب مفقود: ${k}` },
+        { status: 400 }
+      );
     }
-  }
-
-  const objCfg = OBJECTIVE_DEFAULTS[body.objective!];
-  if (!objCfg) {
-    return NextResponse.json({ error: "Invalid objective" }, { status: 400 });
   }
 
   // Load Meta connection
   const { data: conn } = await adminSupabaseClient
     .from("meta_ads_connections")
-    .select("user_access_token, ad_account_id, page_id, page_access_token, instagram_account_id")
+    .select(
+      "user_access_token, ad_account_id, page_id, page_access_token, instagram_account_id"
+    )
     .eq("restaurant_id", restaurantId)
     .maybeSingle();
 
   if (!conn?.ad_account_id) {
-    return NextResponse.json({ error: "No ad account selected" }, { status: 404 });
+    return NextResponse.json(
+      { error: "لم يتم اختيار حساب إعلاني. اربط حساب Meta أولاً." },
+      { status: 404 }
+    );
   }
   if (!conn.page_id) {
     return NextResponse.json(
-      { error: "Connect a Facebook Page first (required for the ad creative)" },
+      { error: "اختر صفحة Facebook أولاً — مطلوبة لإنشاء الإعلان." },
       { status: 404 }
+    );
+  }
+
+  const metaConn: MetaConn = {
+    user_access_token: conn.user_access_token,
+    ad_account_id: conn.ad_account_id,
+    page_id: conn.page_id,
+    instagram_account_id: conn.instagram_account_id,
+  };
+
+  // Resolve optimization config BEFORE creating anything — so an unsupported
+  // objective never leaves an orphaned campaign behind.
+  const adSetConfig = await buildAdSetConfig(body.objective!, body, metaConn);
+  if (isConfigError(adSetConfig)) {
+    return NextResponse.json(
+      { error: adSetConfig.error },
+      { status: adSetConfig.status }
     );
   }
 
@@ -164,9 +321,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
 
-  const token = conn.user_access_token;
+  const token = metaConn.user_access_token;
   const status = body.launch_now ? "ACTIVE" : "PAUSED";
-  const adAccountId = conn.ad_account_id; // already prefixed with "act_"
+  const adAccountId = metaConn.ad_account_id; // already prefixed with "act_"
+
+  // Track created Graph nodes so we can roll them back on a later failure.
+  // Campaign deletion cascades to its ad sets/ads; creatives are account-level
+  // and must be deleted on their own.
+  const createdForRollback: string[] = [];
+  async function rollback(): Promise<void> {
+    for (const id of [...createdForRollback].reverse()) {
+      await graphDelete(id, token);
+    }
+  }
 
   // === Step 1: Campaign ===
   const campaignRes = await graphPost(
@@ -181,19 +348,20 @@ export async function POST(request: NextRequest) {
   );
   if (!campaignRes.ok) {
     return NextResponse.json(
-      { error: "campaign step failed", details: campaignRes.data, step: "campaign" },
+      { error: graphErrorMessage(campaignRes.data), step: "campaign" },
       { status: 502 }
     );
   }
   const campaignId = campaignRes.data.id as string;
+  createdForRollback.push(campaignId);
 
   // === Step 2: Ad Set ===
   const adsetBody: Record<string, unknown> = {
     name: `${body.name} — Ad Set`,
     campaign_id: campaignId,
-    daily_budget: Math.round(body.daily_budget_sar! * 100), // SAR → halalas
-    billing_event: objCfg.billing_event,
-    optimization_goal: objCfg.optimization_goal,
+    daily_budget: Math.round(body.daily_budget_sar! * 100), // major → minor units
+    billing_event: adSetConfig.billing_event,
+    optimization_goal: adSetConfig.optimization_goal,
     bid_strategy: "LOWEST_COST_WITHOUT_CAP",
     targeting: {
       geo_locations: { countries: body.countries ?? ["SA"] },
@@ -205,11 +373,15 @@ export async function POST(request: NextRequest) {
     status: "PAUSED",
   };
   if (body.end_time) adsetBody.end_time = body.end_time;
+  if (adSetConfig.promoted_object) {
+    adsetBody.promoted_object = adSetConfig.promoted_object;
+  }
 
   const adsetRes = await graphPost(`/${adAccountId}/adsets`, adsetBody, token);
   if (!adsetRes.ok) {
+    await rollback();
     return NextResponse.json(
-      { error: "adset step failed", details: adsetRes.data, step: "adset", campaign_id: campaignId },
+      { error: graphErrorMessage(adsetRes.data), step: "adset" },
       { status: 502 }
     );
   }
@@ -217,7 +389,7 @@ export async function POST(request: NextRequest) {
 
   // === Step 3: Ad Creative ===
   // If a link URL is provided → link ad; otherwise → photo ad
-  const objectStorySpec: Record<string, unknown> = { page_id: conn.page_id };
+  const objectStorySpec: Record<string, unknown> = { page_id: metaConn.page_id };
   if (body.link_url?.trim()) {
     objectStorySpec.link_data = {
       message: body.caption,
@@ -231,8 +403,8 @@ export async function POST(request: NextRequest) {
     };
   }
   // If Instagram is linked, allow IG placements
-  if (conn.instagram_account_id) {
-    objectStorySpec.instagram_actor_id = conn.instagram_account_id;
+  if (metaConn.instagram_account_id) {
+    objectStorySpec.instagram_actor_id = metaConn.instagram_account_id;
   }
 
   const creativeRes = await graphPost(
@@ -244,18 +416,14 @@ export async function POST(request: NextRequest) {
     token
   );
   if (!creativeRes.ok) {
+    await rollback();
     return NextResponse.json(
-      {
-        error: "creative step failed",
-        details: creativeRes.data,
-        step: "creative",
-        campaign_id: campaignId,
-        adset_id: adsetId,
-      },
+      { error: graphErrorMessage(creativeRes.data), step: "creative" },
       { status: 502 }
     );
   }
   const creativeId = creativeRes.data.id as string;
+  createdForRollback.push(creativeId);
 
   // === Step 4: Ad ===
   const adRes = await graphPost(
@@ -269,15 +437,9 @@ export async function POST(request: NextRequest) {
     token
   );
   if (!adRes.ok) {
+    await rollback();
     return NextResponse.json(
-      {
-        error: "ad step failed",
-        details: adRes.data,
-        step: "ad",
-        campaign_id: campaignId,
-        adset_id: adsetId,
-        creative_id: creativeId,
-      },
+      { error: graphErrorMessage(adRes.data), step: "ad" },
       { status: 502 }
     );
   }

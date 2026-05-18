@@ -54,28 +54,23 @@ async function publishToFacebook(
   caption: string,
   imageUrl?: string
 ): Promise<{ id: string }> {
-  if (imageUrl) {
-    const body = new URLSearchParams({
-      url: imageUrl,
-      caption,
-      access_token: pageToken,
-    });
-    const res = await fetch(
-      `https://graph.facebook.com/${META_GRAPH_VERSION}/${pageId}/photos`,
-      { method: "POST", body }
-    );
-    return res.json() as Promise<{ id: string }>;
-  }
-
-  const body = new URLSearchParams({
-    message: caption,
-    access_token: pageToken,
-  });
+  const endpoint = imageUrl ? "photos" : "feed";
+  const body = new URLSearchParams(
+    imageUrl
+      ? { url: imageUrl, caption, access_token: pageToken }
+      : { message: caption, access_token: pageToken }
+  );
   const res = await fetch(
-    `https://graph.facebook.com/${META_GRAPH_VERSION}/${pageId}/feed`,
+    `https://graph.facebook.com/${META_GRAPH_VERSION}/${pageId}/${endpoint}`,
     { method: "POST", body }
   );
-  return res.json() as Promise<{ id: string }>;
+  const data = (await res.json()) as
+    | { id?: string; post_id?: string; error?: { message: string } };
+  const id = data.id ?? data.post_id;
+  if (data.error || !id) {
+    throw new Error(data.error?.message ?? "Facebook post creation failed");
+  }
+  return { id };
 }
 
 async function publishToInstagram(

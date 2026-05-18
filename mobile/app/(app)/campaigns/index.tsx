@@ -120,7 +120,7 @@ export default function CampaignsHubScreen() {
               <Text
                 style={styles.heroStatLabel}
               >
-                قنوات نشطة
+                قنوات متاحة
               </Text>
             </View>
             <View style={styles.heroStatCard}>

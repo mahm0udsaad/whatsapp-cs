@@ -976,6 +976,7 @@ export interface MetaInsights {
   clicks: string;
   reach: string;
   ctr: string;
+  account_currency?: string;
 }
 
 export interface MetaCreative {
@@ -1010,7 +1011,14 @@ export interface MetaCampaign {
   stop_time: string | null;
   created_time?: string | null;
   insights?: { data: MetaInsights[] };
-  lifetime_insights?: { data: { spend: string; impressions: string; reach: string }[] };
+  lifetime_insights?: {
+    data: {
+      spend: string;
+      impressions: string;
+      reach: string;
+      account_currency?: string;
+    }[];
+  };
   ads?: { data: MetaAd[] };
 }
 
@@ -1169,6 +1177,7 @@ export interface MetaInsightsFull {
   ctr: string;
   cpc?: string;
   cpm?: string;
+  account_currency?: string;
 }
 
 export interface MetaDailyInsight {

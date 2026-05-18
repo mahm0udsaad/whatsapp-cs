@@ -24,6 +24,7 @@ import {
   type RecentPost,
 } from "../../../lib/api";
 import { captureException, captureMessage } from "../../../lib/observability";
+import { formatMoney } from "../../../lib/currency";
 import { qk } from "../../../lib/query-keys";
 import { useSessionStore } from "../../../lib/session-store";
 import { ManagerCard, managerColors, softShadow } from "../../../components/manager-ui";
@@ -50,16 +51,18 @@ const PLATFORM_THEME = {
 
 // ---- helpers ---------------------------------------------------------------
 
-function formatBudget(daily: string | null, lifetime: string | null) {
+function formatBudget(
+  daily: string | null,
+  lifetime: string | null,
+  currency: string | undefined
+) {
   const cents = Number(daily ?? lifetime ?? 0);
   if (!cents) return null;
-  return `${(cents / 100).toFixed(0)} د.إ`;
+  return formatMoney(cents / 100, currency, 0);
 }
 
-function formatSpend(spend: string | undefined) {
-  const n = Number(spend ?? 0);
-  if (!n) return "0 د.إ";
-  return `${n.toFixed(2)} د.إ`;
+function formatSpend(spend: string | undefined, currency: string | undefined) {
+  return formatMoney(spend, currency, 2);
 }
 
 function statusColor(effectiveStatus: string) {
@@ -315,7 +318,13 @@ function CampaignCard({
   const canToggle =
     campaign.effective_status !== "DELETED" &&
     campaign.effective_status !== "ARCHIVED";
-  const budget = formatBudget(campaign.daily_budget, campaign.lifetime_budget);
+  const currency =
+    insights?.account_currency ?? lifetimeInsights?.account_currency;
+  const budget = formatBudget(
+    campaign.daily_budget,
+    campaign.lifetime_budget,
+    currency
+  );
   const obj = objectiveMeta(campaign.objective);
   const { url: thumbnail, isVideo: thumbnailIsVideo } = extractCreativeMedia(campaign);
   const startedAgo = relativeTimeAr(campaign.start_time ?? campaign.created_time ?? null);
@@ -421,7 +430,7 @@ function CampaignCard({
             className="flex-row rounded-[12px] p-3 gap-0"
             style={{ backgroundColor: managerColors.surfaceTint }}
           >
-            <MetricCell label="الإنفاق ٧ ايام" value={formatSpend(insights.spend)} />
+            <MetricCell label="الإنفاق ٧ ايام" value={formatSpend(insights.spend, currency)} />
             <Divider />
             <MetricCell
               label="الوصول"
@@ -451,7 +460,7 @@ function CampaignCard({
               الإنفاق الكلي
             </Text>
             <Text className="text-[12px] font-bold" style={{ color: managerColors.ink }}>
-              {formatSpend(lifetimeInsights.spend)}
+              {formatSpend(lifetimeInsights.spend, currency)}
             </Text>
           </View>
         ) : null}

@@ -12,6 +12,7 @@ import {
   getMetaCampaignDetail,
   type MetaCampaignDetail,
 } from "../../../../lib/api";
+import { formatMoney } from "../../../../lib/currency";
 import { qk } from "../../../../lib/query-keys";
 import { useSessionStore } from "../../../../lib/session-store";
 import { ManagerCard, managerColors, softShadow } from "../../../../components/manager-ui";
@@ -58,10 +59,11 @@ function relativeAr(iso: string | null | undefined): string | null {
   }
 }
 
-function formatSpend(spend: string | number | undefined): string {
-  const n = Number(spend ?? 0);
-  if (!n) return "0 ر.س";
-  return `${n.toFixed(2)} ر.س`;
+function formatSpend(
+  spend: string | number | undefined,
+  currency: string | undefined
+): string {
+  return formatMoney(spend, currency, 2);
 }
 
 function statusColor(s: string) {
@@ -271,6 +273,7 @@ export default function CampaignDetailScreen() {
   const { thumbnailUrl, videoUrl, isVideo: heroIsVideo } = extractCreativeMedia(c);
   const lt = c.lifetime_insights?.data?.[0];
   const seven = c.last7_insights?.data?.[0];
+  const currency = lt?.account_currency ?? seven?.account_currency;
   const startedAgo = relativeAr(c.start_time ?? c.created_time ?? null);
   const endsIn = relativeAr(c.stop_time ?? null);
 
@@ -349,12 +352,12 @@ export default function CampaignDetailScreen() {
             الأداء الكلي
           </Text>
           <View className="flex-row flex-wrap">
-            <BigStat label="الإنفاق الكلي" value={formatSpend(lt?.spend)} />
+            <BigStat label="الإنفاق الكلي" value={formatSpend(lt?.spend, currency)} />
             <BigStat label="الوصول" value={Number(lt?.reach || 0).toLocaleString("ar")} />
             <BigStat label="الظهور" value={Number(lt?.impressions || 0).toLocaleString("ar")} />
             <BigStat label="النقرات" value={Number(lt?.clicks || 0).toLocaleString("ar")} />
             <BigStat label="CTR" value={`${Number(lt?.ctr || 0).toFixed(2)}%`} />
-            {lt?.cpc ? <BigStat label="CPC" value={formatSpend(lt.cpc)} /> : null}
+            {lt?.cpc ? <BigStat label="CPC" value={formatSpend(lt.cpc, currency)} /> : null}
           </View>
         </ManagerCard>
 
@@ -365,7 +368,7 @@ export default function CampaignDetailScreen() {
               آخر ٧ أيام
             </Text>
             <View className="flex-row flex-wrap">
-              <BigStat label="الإنفاق" value={formatSpend(seven.spend)} />
+              <BigStat label="الإنفاق" value={formatSpend(seven.spend, currency)} />
               <BigStat label="الوصول" value={Number(seven.reach || 0).toLocaleString("ar")} />
               <BigStat label="النقرات" value={Number(seven.clicks || 0).toLocaleString("ar")} />
               <BigStat label="CTR" value={`${Number(seven.ctr || 0).toFixed(2)}%`} />
