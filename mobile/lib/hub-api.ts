@@ -198,6 +198,7 @@ export interface HubBooking {
   customer_phone?: string | null;
   branch_name?: string | null;
   price?: number | null;
+  payment_amount?: number | null;
   currency?: string | null;
   payment_status?: string | null;
   notes?: string | null;
@@ -222,6 +223,7 @@ function normalizeBooking(raw: HubBookingRaw): HubBooking {
     customer_phone: raw.customer?.phone ?? null,
     branch_name: raw.branch?.name ?? null,
     price: raw.service?.price ?? raw.payment?.amount ?? null,
+    payment_amount: raw.payment?.amount ?? null,
     currency: "ر.س",
     payment_status: raw.payment?.status ?? null,
     notes: raw.notes ?? null,
@@ -245,6 +247,46 @@ export async function listHubBookings(opts: {
   );
   const items = Array.isArray(res) ? res : res?.items ?? [];
   return items.map(normalizeBooking);
+}
+
+interface HubBookingsPage {
+  items?: HubBookingRaw[];
+  page?: number;
+  per_page?: number;
+  total?: number;
+  count?: number;
+}
+
+/**
+ * Fetch every booking in a date range, following pagination. Used by the
+ * dashboard to aggregate daily volume / revenue series client-side.
+ */
+export async function listAllHubBookings(opts: {
+  from?: string;
+  to?: string;
+  status?: string;
+  branchId?: string;
+}): Promise<HubBooking[]> {
+  const all: HubBooking[] = [];
+  let page = 1;
+  // Hard cap so a misbehaving API can never spin forever.
+  for (let guard = 0; guard < 50; guard++) {
+    const res = await hubProxy<HubBookingsPage>(
+      `bookings${qs({
+        status: opts.status,
+        from: opts.from,
+        to: opts.to,
+        branch_id: opts.branchId,
+        page,
+      })}`
+    );
+    const items = res?.items ?? [];
+    all.push(...items.map(normalizeBooking));
+    const total = res?.total ?? all.length;
+    if (items.length === 0 || all.length >= total) break;
+    page += 1;
+  }
+  return all;
 }
 
 export async function getHubBooking(id: string): Promise<HubBooking> {
