@@ -35,7 +35,7 @@ export default function HubServicesScreen() {
   });
 
   const remove = useMutation({
-    mutationFn: (id: number) => deleteHubService(id),
+    mutationFn: (id: string | number) => deleteHubService(id),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["hub", "services"] }),
     onError: (e) => Alert.alert("تعذّر الحذف", getApiErrorMessage(e)),

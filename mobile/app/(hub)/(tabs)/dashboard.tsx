@@ -31,7 +31,8 @@ export default function HubDashboardScreen() {
   useHubRepairGuard(query.error);
 
   const s = query.data;
-  const currency = s?.currency ?? "ر.س";
+  const byStatus = s?.by_status ?? {};
+  const topServices = s?.top_services ?? [];
 
   return (
     <ScrollView
@@ -81,25 +82,33 @@ export default function HubDashboardScreen() {
           <View className="flex-row-reverse gap-3">
             <ManagerMetric
               label="إجمالي الحجوزات"
-              value={s?.bookings_total ?? 0}
+              value={s?.bookings_count ?? 0}
             />
             <ManagerMetric
               label="قيد الانتظار"
-              value={s?.bookings_pending ?? 0}
+              value={byStatus.pending ?? 0}
               tone="warning"
             />
           </View>
           <View className="flex-row-reverse gap-3">
             <ManagerMetric
               label="مؤكّدة"
-              value={s?.bookings_confirmed ?? 0}
+              value={byStatus.confirmed ?? 0}
               tone="success"
             />
             <ManagerMetric
+              label="مكتملة"
+              value={byStatus.completed ?? 0}
+              tone="info"
+            />
+          </View>
+          <View className="flex-row-reverse gap-3">
+            <ManagerMetric
               label="ملغاة"
-              value={s?.bookings_cancelled ?? 0}
+              value={byStatus.cancelled ?? 0}
               tone="danger"
             />
+            <View className="flex-1" />
           </View>
 
           <ManagerCard>
@@ -108,17 +117,37 @@ export default function HubDashboardScreen() {
               className="mt-2 text-right text-3xl font-bold"
               style={{ color: managerColors.ink }}
             >
-              {(s?.revenue ?? 0).toLocaleString("ar")} {currency}
+              {(s?.revenue ?? 0).toLocaleString("ar")} ر.س
             </Text>
-            {typeof s?.customers_total === "number" ? (
-              <Text
-                className="mt-1 text-right text-xs"
-                style={{ color: managerColors.muted }}
-              >
-                {s.customers_total} عميل
-              </Text>
-            ) : null}
           </ManagerCard>
+
+          {topServices.length > 0 ? (
+            <ManagerCard>
+              <SectionHeader title="الخدمات الأكثر حجزًا" />
+              <View className="mt-2 gap-2">
+                {topServices.map((svc) => (
+                  <View
+                    key={svc.service_id}
+                    className="flex-row-reverse items-center justify-between"
+                  >
+                    <Text
+                      className="flex-1 text-right text-sm"
+                      style={{ color: managerColors.ink }}
+                      numberOfLines={1}
+                    >
+                      {svc.name}
+                    </Text>
+                    <Text
+                      className="text-sm font-bold"
+                      style={{ color: managerColors.brand }}
+                    >
+                      {svc.count}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </ManagerCard>
+          ) : null}
         </>
       )}
     </ScrollView>

@@ -12,7 +12,6 @@ import {
   createHubStaff,
   deleteHubStaff,
   listHubStaff,
-  updateHubStaff,
   type HubStaff,
 } from "../../../lib/hub-api";
 import { getApiErrorMessage } from "../../../lib/api";
@@ -52,14 +51,8 @@ export default function HubStaffScreen() {
     onError: (e) => Alert.alert("تعذّر الإضافة", getApiErrorMessage(e)),
   });
 
-  const toggle = useMutation({
-    mutationFn: (m: HubStaff) => updateHubStaff(m.id, { status: !m.status }),
-    onSuccess: invalidate,
-    onError: (e) => Alert.alert("تعذّر التحديث", getApiErrorMessage(e)),
-  });
-
   const remove = useMutation({
-    mutationFn: (id: number) => deleteHubStaff(id),
+    mutationFn: (id: string | number) => deleteHubStaff(id),
     onSuccess: invalidate,
     onError: (e) => Alert.alert("تعذّر الحذف", getApiErrorMessage(e)),
   });
@@ -174,10 +167,9 @@ export default function HubStaffScreen() {
               >
                 {item.name ?? `موظف #${item.id}`}
               </Text>
-              <StatusPill
-                label={item.status === false ? "متوقف" : "نشط"}
-                tone={item.status === false ? "neutral" : "success"}
-              />
+              {item.is_owner ? (
+                <StatusPill label="المالك" tone="info" />
+              ) : null}
             </View>
             {item.phone ? (
               <Text
@@ -187,28 +179,23 @@ export default function HubStaffScreen() {
                 {item.phone}
               </Text>
             ) : null}
-            <View className="mt-3 flex-row-reverse gap-2">
-              <Pressable
-                onPress={() => toggle.mutate(item)}
-                disabled={toggle.isPending}
-                className="rounded-lg border px-3 py-1.5"
-                style={{ borderColor: managerColors.border }}
-              >
-                <Text className="text-xs font-semibold" style={{ color: managerColors.brand }}>
-                  {item.status === false ? "تفعيل" : "إيقاف"}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => confirmRemove(item)}
-                disabled={remove.isPending}
-                className="rounded-lg border px-3 py-1.5"
-                style={{ borderColor: managerColors.danger }}
-              >
-                <Text className="text-xs font-semibold" style={{ color: managerColors.danger }}>
-                  حذف
-                </Text>
-              </Pressable>
-            </View>
+            {!item.is_owner ? (
+              <View className="mt-3 flex-row-reverse">
+                <Pressable
+                  onPress={() => confirmRemove(item)}
+                  disabled={remove.isPending}
+                  className="rounded-lg border px-3 py-1.5"
+                  style={{ borderColor: managerColors.danger }}
+                >
+                  <Text
+                    className="text-xs font-semibold"
+                    style={{ color: managerColors.danger }}
+                  >
+                    حذف
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
           </View>
         )}
       />

@@ -119,16 +119,31 @@ export async function getHubMerchant(): Promise<HubMerchantProfile> {
 
 export type DashboardRange = "today" | "week" | "month";
 
+export interface HubStatusBreakdown {
+  confirmed?: number;
+  pending?: number;
+  cancelled?: number;
+  completed?: number;
+}
+
+export interface HubTopService {
+  service_id: string;
+  name: string;
+  count: number;
+}
+
+export interface HubBusiestStaff {
+  staff_id: string;
+  name: string;
+  count: number;
+}
+
 export interface HubDashboardSummary {
-  bookings_total?: number;
-  bookings_pending?: number;
-  bookings_confirmed?: number;
-  bookings_cancelled?: number;
-  bookings_completed?: number;
+  bookings_count?: number;
   revenue?: number;
-  currency?: string;
-  customers_total?: number;
-  [key: string]: unknown;
+  by_status?: HubStatusBreakdown;
+  top_services?: HubTopService[];
+  busiest_staff?: HubBusiestStaff[];
 }
 
 export async function getHubDashboardSummary(
@@ -148,22 +163,70 @@ export type BookingStatus =
   | "cancelled"
   | "completed";
 
+/** Raw booking shape as returned by the Hub API (nested objects). */
+interface HubBookingRaw {
+  id: string;
+  status?: string;
+  source?: string;
+  created_at?: string;
+  date?: string; // DD-MM-YYYY
+  from?: string;
+  to?: string;
+  duration_minutes?: number;
+  customer?: { name?: string; phone?: string; whatsapp_id?: string | null };
+  service?: { id?: string; name?: string; price?: number };
+  staff?: { id?: string; name?: string } | null;
+  branch?: { id?: string; name?: string };
+  payment?: { status?: string; method?: string; amount?: number };
+  notes?: string;
+}
+
+/** Flat, app-facing booking shape — what the screens consume. */
 export interface HubBooking {
   id: string;
   status?: BookingStatus | string;
+  source?: string;
   date?: string;
   time_from?: string;
   time_to?: string;
-  staff_id?: number | null;
+  duration_minutes?: number;
+  staff_id?: string | null;
   staff_name?: string | null;
-  service_id?: number | null;
+  service_id?: string | null;
   service_title?: string | null;
   customer_name?: string | null;
   customer_phone?: string | null;
+  branch_name?: string | null;
   price?: number | null;
   currency?: string | null;
+  payment_status?: string | null;
+  notes?: string | null;
   created_at?: string;
-  [key: string]: unknown;
+}
+
+function normalizeBooking(raw: HubBookingRaw): HubBooking {
+  const name = raw.customer?.name?.trim();
+  return {
+    id: raw.id,
+    status: raw.status,
+    source: raw.source,
+    date: raw.date,
+    time_from: raw.from,
+    time_to: raw.to,
+    duration_minutes: raw.duration_minutes,
+    staff_id: raw.staff?.id ?? null,
+    staff_name: raw.staff?.name ?? null,
+    service_id: raw.service?.id ?? null,
+    service_title: raw.service?.name ?? null,
+    customer_name: name && name.length > 0 ? name : null,
+    customer_phone: raw.customer?.phone ?? null,
+    branch_name: raw.branch?.name ?? null,
+    price: raw.service?.price ?? raw.payment?.amount ?? null,
+    currency: "ر.س",
+    payment_status: raw.payment?.status ?? null,
+    notes: raw.notes ?? null,
+    created_at: raw.created_at,
+  };
 }
 
 export async function listHubBookings(opts: {
@@ -172,7 +235,7 @@ export async function listHubBookings(opts: {
   to?: string;
   branchId?: string;
 }): Promise<HubBooking[]> {
-  const res = await hubProxy<HubBooking[] | { items?: HubBooking[] }>(
+  const res = await hubProxy<HubBookingRaw[] | { items?: HubBookingRaw[] }>(
     `bookings${qs({
       status: opts.status,
       from: opts.from,
@@ -180,11 +243,13 @@ export async function listHubBookings(opts: {
       branch_id: opts.branchId,
     })}`
   );
-  return Array.isArray(res) ? res : res?.items ?? [];
+  const items = Array.isArray(res) ? res : res?.items ?? [];
+  return items.map(normalizeBooking);
 }
 
 export async function getHubBooking(id: string): Promise<HubBooking> {
-  return hubProxy<HubBooking>(`bookings/${id}`);
+  const raw = await hubProxy<HubBookingRaw>(`bookings/${id}`);
+  return normalizeBooking(raw);
 }
 
 export async function rescheduleHubBooking(
@@ -193,10 +258,10 @@ export async function rescheduleHubBooking(
     date: string;
     time_from: string;
     time_to: string;
-    staff_id?: number;
+    staff_id?: string | number;
   }
-): Promise<HubBooking> {
-  return hubProxy<HubBooking>(`bookings/${id}`, {
+): Promise<void> {
+  await hubProxy(`bookings/${id}`, {
     method: "PATCH",
     body: JSON.stringify(input),
   });
@@ -205,15 +270,15 @@ export async function rescheduleHubBooking(
 export async function cancelHubBooking(
   id: string,
   reason: string
-): Promise<HubBooking> {
-  return hubProxy<HubBooking>(`bookings/${id}/cancel`, {
+): Promise<void> {
+  await hubProxy(`bookings/${id}/cancel`, {
     method: "POST",
     body: JSON.stringify({ reason }),
   });
 }
 
-export async function confirmHubBooking(id: string): Promise<HubBooking> {
-  return hubProxy<HubBooking>(`bookings/${id}/confirm`, { method: "POST" });
+export async function confirmHubBooking(id: string): Promise<void> {
+  await hubProxy(`bookings/${id}/confirm`, { method: "POST" });
 }
 
 // ---- Availability ---------------------------------------------------------
@@ -249,13 +314,11 @@ export async function getHubSlots(opts: {
 // ---- Staff ----------------------------------------------------------------
 
 export interface HubStaff {
-  id: number;
+  id: string | number;
   name?: string;
   phone?: string;
-  username?: string;
-  email?: string;
-  status?: boolean;
-  branch_ids?: string[];
+  is_owner?: boolean;
+  branches?: string[];
   [key: string]: unknown;
 }
 
@@ -280,7 +343,7 @@ export async function createHubStaff(input: {
 }
 
 export async function updateHubStaff(
-  id: number,
+  id: string | number,
   input: {
     name?: string;
     phone?: string;
@@ -294,7 +357,7 @@ export async function updateHubStaff(
   });
 }
 
-export async function deleteHubStaff(id: number): Promise<unknown> {
+export async function deleteHubStaff(id: string | number): Promise<unknown> {
   return hubProxy(`staff/${id}`, { method: "DELETE" });
 }
 
@@ -306,11 +369,13 @@ export interface HubLocalized {
 }
 
 export interface HubService {
-  id: number;
+  id: string | number;
   title?: HubLocalized | string;
   description?: HubLocalized | string;
   price?: number;
+  old_price?: number | null;
   duration_minutes?: number;
+  breaking_time_minutes?: number;
   has_staff?: boolean;
   is_global?: boolean;
   status?: boolean;
@@ -346,7 +411,7 @@ export async function createHubService(
 }
 
 export async function updateHubService(
-  id: number,
+  id: string | number,
   input: Record<string, unknown>
 ): Promise<HubService> {
   return hubProxy<HubService>(`services/${id}`, {
@@ -355,7 +420,9 @@ export async function updateHubService(
   });
 }
 
-export async function deleteHubService(id: number): Promise<unknown> {
+export async function deleteHubService(
+  id: string | number
+): Promise<unknown> {
   return hubProxy(`services/${id}`, { method: "DELETE" });
 }
 
