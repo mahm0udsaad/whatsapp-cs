@@ -1,0 +1,393 @@
+/**
+ * Nehgz Hub API client.
+ *
+ * Every call is proxied through the Next.js backend (`/api/mobile/hub/*`),
+ * which holds the per-merchant access token and base URL. The mobile app
+ * never talks to the Hub host directly.
+ *
+ * The Hub wraps responses in an envelope `{ success, message, code, data }`.
+ * `hubProxy` unwraps `data` automatically.
+ */
+
+import { apiFetch } from "./api";
+
+export interface HubMerchant {
+  id: string | null;
+  name: string | null;
+  phone: string | null;
+  timezone: string | null;
+  locale: string | null;
+}
+
+export interface HubStatus {
+  paired: boolean;
+  merchant?: HubMerchant;
+  pairedAt?: string;
+}
+
+/** Raised when the Hub reports the stored token is no longer valid. */
+export class HubRepairNeededError extends Error {
+  constructor() {
+    super("Nehgz Hub session expired");
+    this.name = "HubRepairNeededError";
+  }
+}
+
+export async function getHubStatus(): Promise<HubStatus> {
+  return apiFetch("/api/mobile/hub/status");
+}
+
+export async function pairHub(
+  email: string,
+  pairingCode: string
+): Promise<{ paired: true; merchant: HubMerchant }> {
+  return apiFetch("/api/mobile/hub/pair", {
+    method: "POST",
+    body: JSON.stringify({ email, pairing_code: pairingCode }),
+  });
+}
+
+export async function unpairHub(): Promise<{ ok: true }> {
+  return apiFetch("/api/mobile/hub/status", { method: "DELETE" });
+}
+
+interface HubEnvelope<T> {
+  success?: boolean;
+  message?: string;
+  code?: number;
+  data?: T;
+}
+
+function unwrap<T>(raw: unknown): T {
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "success" in raw &&
+    "data" in (raw as Record<string, unknown>)
+  ) {
+    return (raw as HubEnvelope<T>).data as T;
+  }
+  return raw as T;
+}
+
+/**
+ * Proxy a request to the Hub API. `path` is the part after `/api/v1/`,
+ * e.g. `bookings?status=pending` or `bookings/<id>/cancel`.
+ */
+export async function hubProxy<T = unknown>(
+  path: string,
+  init: RequestInit & { timeoutMs?: number } = {}
+): Promise<T> {
+  try {
+    const raw = await apiFetch(`/api/mobile/hub/proxy/${path}`, init);
+    return unwrap<T>(raw);
+  } catch (e) {
+    const err = e as { status?: number; body?: { code?: string } };
+    if (err?.status === 401 && err?.body?.code === "repair_needed") {
+      throw new HubRepairNeededError();
+    }
+    throw e;
+  }
+}
+
+function qs(params: Record<string, string | number | undefined | null>): string {
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== "") sp.set(k, String(v));
+  }
+  const s = sp.toString();
+  return s ? `?${s}` : "";
+}
+
+// ---- Merchant -------------------------------------------------------------
+
+export interface HubMerchantProfile {
+  id?: string | number;
+  name?: string;
+  phone?: string;
+  timezone?: string;
+  locale?: string;
+  branches?: { id: string; name?: string }[];
+  [key: string]: unknown;
+}
+
+export async function getHubMerchant(): Promise<HubMerchantProfile> {
+  return hubProxy<HubMerchantProfile>("merchant/me");
+}
+
+// ---- Dashboard ------------------------------------------------------------
+
+export type DashboardRange = "today" | "week" | "month";
+
+export interface HubDashboardSummary {
+  bookings_total?: number;
+  bookings_pending?: number;
+  bookings_confirmed?: number;
+  bookings_cancelled?: number;
+  bookings_completed?: number;
+  revenue?: number;
+  currency?: string;
+  customers_total?: number;
+  [key: string]: unknown;
+}
+
+export async function getHubDashboardSummary(
+  range: DashboardRange = "today",
+  branchId?: string
+): Promise<HubDashboardSummary> {
+  return hubProxy<HubDashboardSummary>(
+    `dashboard/summary${qs({ range, branch_id: branchId })}`
+  );
+}
+
+// ---- Bookings -------------------------------------------------------------
+
+export type BookingStatus =
+  | "pending"
+  | "confirmed"
+  | "cancelled"
+  | "completed";
+
+export interface HubBooking {
+  id: string;
+  status?: BookingStatus | string;
+  date?: string;
+  time_from?: string;
+  time_to?: string;
+  staff_id?: number | null;
+  staff_name?: string | null;
+  service_id?: number | null;
+  service_title?: string | null;
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  price?: number | null;
+  currency?: string | null;
+  created_at?: string;
+  [key: string]: unknown;
+}
+
+export async function listHubBookings(opts: {
+  status?: string;
+  from?: string;
+  to?: string;
+  branchId?: string;
+}): Promise<HubBooking[]> {
+  const res = await hubProxy<HubBooking[] | { items?: HubBooking[] }>(
+    `bookings${qs({
+      status: opts.status,
+      from: opts.from,
+      to: opts.to,
+      branch_id: opts.branchId,
+    })}`
+  );
+  return Array.isArray(res) ? res : res?.items ?? [];
+}
+
+export async function getHubBooking(id: string): Promise<HubBooking> {
+  return hubProxy<HubBooking>(`bookings/${id}`);
+}
+
+export async function rescheduleHubBooking(
+  id: string,
+  input: {
+    date: string;
+    time_from: string;
+    time_to: string;
+    staff_id?: number;
+  }
+): Promise<HubBooking> {
+  return hubProxy<HubBooking>(`bookings/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function cancelHubBooking(
+  id: string,
+  reason: string
+): Promise<HubBooking> {
+  return hubProxy<HubBooking>(`bookings/${id}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function confirmHubBooking(id: string): Promise<HubBooking> {
+  return hubProxy<HubBooking>(`bookings/${id}/confirm`, { method: "POST" });
+}
+
+// ---- Availability ---------------------------------------------------------
+
+export interface HubSlot {
+  date?: string;
+  from?: string;
+  to?: string;
+  staff_id?: number | null;
+  available?: boolean;
+  [key: string]: unknown;
+}
+
+export async function getHubSlots(opts: {
+  serviceId: number | string;
+  branchId?: string;
+  staffId?: number | string;
+  from?: string;
+  to?: string;
+}): Promise<HubSlot[]> {
+  const res = await hubProxy<HubSlot[] | { items?: HubSlot[] }>(
+    `availability${qs({
+      service_id: opts.serviceId,
+      branch_id: opts.branchId,
+      staff_id: opts.staffId,
+      from: opts.from,
+      to: opts.to,
+    })}`
+  );
+  return Array.isArray(res) ? res : res?.items ?? [];
+}
+
+// ---- Staff ----------------------------------------------------------------
+
+export interface HubStaff {
+  id: number;
+  name?: string;
+  phone?: string;
+  username?: string;
+  email?: string;
+  status?: boolean;
+  branch_ids?: string[];
+  [key: string]: unknown;
+}
+
+export async function listHubStaff(branchId?: string): Promise<HubStaff[]> {
+  const res = await hubProxy<HubStaff[] | { items?: HubStaff[] }>(
+    `staff${qs({ branch_id: branchId })}`
+  );
+  return Array.isArray(res) ? res : res?.items ?? [];
+}
+
+export async function createHubStaff(input: {
+  name: string;
+  phone: string;
+  username?: string;
+  email?: string;
+  branch_ids?: string[];
+}): Promise<HubStaff> {
+  return hubProxy<HubStaff>("staff", {
+    method: "POST",
+    body: JSON.stringify({ branch_ids: [], ...input }),
+  });
+}
+
+export async function updateHubStaff(
+  id: number,
+  input: {
+    name?: string;
+    phone?: string;
+    status?: boolean;
+    branch_ids?: string[];
+  }
+): Promise<HubStaff> {
+  return hubProxy<HubStaff>(`staff/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteHubStaff(id: number): Promise<unknown> {
+  return hubProxy(`staff/${id}`, { method: "DELETE" });
+}
+
+// ---- Services -------------------------------------------------------------
+
+export interface HubLocalized {
+  ar?: string;
+  en?: string;
+}
+
+export interface HubService {
+  id: number;
+  title?: HubLocalized | string;
+  description?: HubLocalized | string;
+  price?: number;
+  duration_minutes?: number;
+  has_staff?: boolean;
+  is_global?: boolean;
+  status?: boolean;
+  branch_id?: string;
+  order?: number;
+  [key: string]: unknown;
+}
+
+export async function listHubServices(opts: {
+  branchId?: string;
+  onlyActive?: boolean;
+  cursor?: string;
+  limit?: number;
+} = {}): Promise<HubService[]> {
+  const res = await hubProxy<HubService[] | { items?: HubService[] }>(
+    `services${qs({
+      branch_id: opts.branchId,
+      only_active: opts.onlyActive ? "1" : undefined,
+      cursor: opts.cursor,
+      limit: opts.limit ?? 50,
+    })}`
+  );
+  return Array.isArray(res) ? res : res?.items ?? [];
+}
+
+export async function createHubService(
+  input: Record<string, unknown>
+): Promise<HubService> {
+  return hubProxy<HubService>("services", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateHubService(
+  id: number,
+  input: Record<string, unknown>
+): Promise<HubService> {
+  return hubProxy<HubService>(`services/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteHubService(id: number): Promise<unknown> {
+  return hubProxy(`services/${id}`, { method: "DELETE" });
+}
+
+// ---- Customers ------------------------------------------------------------
+
+export interface HubCustomer {
+  phone?: string;
+  name?: string;
+  bookings_count?: number;
+  last_booking_at?: string;
+  [key: string]: unknown;
+}
+
+export async function getHubCustomer(phone: string): Promise<HubCustomer> {
+  return hubProxy<HubCustomer>(`customers/${encodeURIComponent(phone)}`);
+}
+
+// ---- Webhooks -------------------------------------------------------------
+
+export type HubWebhookEvent =
+  | "booking.created"
+  | "booking.updated"
+  | "booking.cancelled"
+  | "booking.completed"
+  | "payment.updated";
+
+export async function registerHubWebhook(
+  url: string,
+  events: HubWebhookEvent[]
+): Promise<{ webhook_secret?: string }> {
+  return hubProxy<{ webhook_secret?: string }>("webhooks", {
+    method: "PUT",
+    body: JSON.stringify({ url, events }),
+  });
+}

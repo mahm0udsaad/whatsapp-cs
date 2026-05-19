@@ -4,6 +4,9 @@ import type { TeamMemberRow } from "./supabase";
 
 const DEVICE_ID_KEY = "agent_console.device_id";
 const ACTIVE_TENANT_KEY = "agent_console.active_tenant";
+const ACTIVE_GATEWAY_KEY = "agent_console.active_gateway";
+
+export type Gateway = "bot" | "hub";
 
 async function generateDeviceId() {
   // Random 128-bit id persisted in SecureStore — we use it to upsert
@@ -31,12 +34,27 @@ export async function clearActiveTenant() {
   await SecureStore.deleteItemAsync(ACTIVE_TENANT_KEY);
 }
 
+export async function persistActiveGateway(gateway: Gateway) {
+  await SecureStore.setItemAsync(ACTIVE_GATEWAY_KEY, gateway);
+}
+export async function loadActiveGateway(): Promise<Gateway | null> {
+  const value = await SecureStore.getItemAsync(ACTIVE_GATEWAY_KEY);
+  return value === "bot" || value === "hub" ? value : null;
+}
+export async function clearActiveGateway() {
+  await SecureStore.deleteItemAsync(ACTIVE_GATEWAY_KEY);
+}
+
 type SessionState = {
   activeMember: TeamMemberRow | null;
   setActiveMember: (m: TeamMemberRow | null) => void;
+  activeGateway: Gateway | null;
+  setActiveGateway: (g: Gateway | null) => void;
 };
 
 export const useSessionStore = create<SessionState>((set) => ({
   activeMember: null,
   setActiveMember: (m) => set({ activeMember: m }),
+  activeGateway: null,
+  setActiveGateway: (g) => set({ activeGateway: g }),
 }));

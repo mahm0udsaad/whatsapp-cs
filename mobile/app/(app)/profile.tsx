@@ -17,6 +17,7 @@ import { deleteAccount, signOut } from "../../lib/auth";
 import { getAiStatus, setAvailability, toggleAi } from "../../lib/api";
 import { disablePushToken } from "../../lib/push";
 import {
+  clearActiveGateway,
   clearActiveTenant,
   getOrCreateDeviceId,
   useSessionStore,
@@ -102,6 +103,7 @@ export default function ProfileScreen() {
     setActiveMember(null);
     try {
       await clearActiveTenant();
+      await clearActiveGateway();
     } catch {
       // SecureStore errors are non-fatal for sign-out.
     }
@@ -303,6 +305,15 @@ export default function ProfileScreen() {
           style={styles.dashboardButton}
         >
           <Text style={styles.dashboardButtonText}>فتح لوحة التحكم</Text>
+        </Pressable>
+      ) : null}
+
+      {manager ? (
+        <Pressable
+          onPress={() => router.replace("/(gateway)/select")}
+          style={styles.dashboardButton}
+        >
+          <Text style={styles.dashboardButtonText}>تبديل الخدمة</Text>
         </Pressable>
       ) : null}
 

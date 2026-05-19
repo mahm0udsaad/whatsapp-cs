@@ -71,7 +71,7 @@ export default function LoginScreen() {
         teamMemberId: m.id,
       });
     }
-    router.replace("/(app)/inbox");
+    router.replace("/(gateway)/select");
   }
 
   if (memberships) {

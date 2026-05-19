@@ -4,6 +4,7 @@ import { Redirect } from "expo-router";
 import { supabase } from "../lib/supabase";
 import { loadTeamMemberships } from "../lib/auth";
 import {
+  loadActiveGateway,
   loadActiveTenant,
   persistActiveTenant,
   useSessionStore,
@@ -11,7 +12,12 @@ import {
 import { isManager } from "../lib/roles";
 import { captureException } from "../lib/observability";
 
-type Dest = "(auth)/login" | "(app)/inbox" | "(app)/overview";
+type Dest =
+  | "(auth)/login"
+  | "(gateway)/select"
+  | "(app)/inbox"
+  | "(app)/overview"
+  | "(hub)";
 
 // Matches splash backgroundColor in app.json — keeps the boot transition
 // flicker-free while we resolve the persisted Supabase session.
@@ -20,6 +26,7 @@ const SPLASH_BG = "#1e3a8a";
 export default function Index() {
   const [dest, setDest] = useState<Dest | null>(null);
   const setActiveMember = useSessionStore((s) => s.setActiveMember);
+  const setActiveGateway = useSessionStore((s) => s.setActiveGateway);
 
   useEffect(() => {
     (async () => {
@@ -39,14 +46,26 @@ export default function Index() {
         const match = memberships.find((m) => m.id === savedId) ?? memberships[0];
         setActiveMember(match);
         await persistActiveTenant(match.id);
-        // Managers land on Overview; agents on Inbox.
-        setDest(isManager(match) ? "(app)/overview" : "(app)/inbox");
+
+        const manager = isManager(match);
+        const gateway = await loadActiveGateway();
+        // Hub is manager-only; an agent with a stale "hub" choice falls back
+        // to the gateway picker.
+        if (gateway === "hub" && manager) {
+          setActiveGateway("hub");
+          setDest("(hub)");
+        } else if (gateway === "bot") {
+          setActiveGateway("bot");
+          setDest(manager ? "(app)/overview" : "(app)/inbox");
+        } else {
+          setDest("(gateway)/select");
+        }
       } catch (err) {
         captureException(err, { source: "session-bootstrap" });
         setDest("(auth)/login");
       }
     })();
-  }, [setActiveMember]);
+  }, [setActiveMember, setActiveGateway]);
 
   if (!dest) {
     return (

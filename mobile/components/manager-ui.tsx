@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { ReactNode } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "./tw";
 
 type Tone = "neutral" | "success" | "warning" | "danger" | "info" | "bot";
 
