@@ -12,7 +12,57 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveCurrentRestaurantForAdmin } from "@/lib/mobile-auth";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
-import { NEHGZ_CENTRAL_URL } from "@/lib/nehgz-hub";
+import { NEHGZ_CENTRAL_URL, hubHeaders } from "@/lib/nehgz-hub";
+
+const WEBHOOK_EVENTS = [
+  "booking.created",
+  "booking.updated",
+  "booking.cancelled",
+  "booking.completed",
+  "payment.updated",
+];
+
+function getOurWebhookUrl(): string | null {
+  const base =
+    process.env.NEHGZ_WEBHOOK_PUBLIC_URL ||
+    process.env.NEXT_PUBLIC_APP_BASE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL;
+  if (!base) return null;
+  return `${base.replace(/\/+$/, "")}/api/webhooks/nehgz`;
+}
+
+async function registerHubWebhook(
+  baseUrl: string,
+  accessToken: string
+): Promise<string | null> {
+  const webhookUrl = getOurWebhookUrl();
+  if (!webhookUrl) {
+    console.warn("[hub/pair] no public webhook URL configured — skipping auto-register");
+    return null;
+  }
+  try {
+    const res = await fetch(`${baseUrl}/api/v1/webhooks`, {
+      method: "PUT",
+      headers: hubHeaders(accessToken),
+      body: JSON.stringify({ url: webhookUrl, events: WEBHOOK_EVENTS }),
+    });
+    const json = (await res.json().catch(() => null)) as {
+      success?: boolean;
+      data?: { webhook_secret?: string };
+      message?: string;
+    } | null;
+    if (!res.ok || !json?.success || !json.data?.webhook_secret) {
+      console.warn(
+        `[hub/pair] webhook register failed status=${res.status} msg=${json?.message ?? "unknown"}`
+      );
+      return null;
+    }
+    return json.data.webhook_secret;
+  } catch (err) {
+    console.warn("[hub/pair] webhook register threw:", err);
+    return null;
+  }
+}
 
 interface PairBody {
   email?: string;
@@ -95,6 +145,11 @@ export async function POST(request: NextRequest) {
   // Drop any trailing slash so proxied paths join cleanly.
   const baseUrl = data.base_url.replace(/\/+$/, "");
 
+  // Auto-register our webhook receiver so booking events flow without a
+  // manual Postman step. Failure here is non-fatal — pairing still succeeds
+  // and the merchant can re-pair to retry.
+  const webhookSecret = await registerHubWebhook(baseUrl, data.access_token);
+
   const { error } = await adminSupabaseClient
     .from("nehgz_hub_connections")
     .upsert(
@@ -107,6 +162,7 @@ export async function POST(request: NextRequest) {
         merchant_phone: data.merchant?.phone ?? null,
         merchant_timezone: data.merchant?.timezone ?? null,
         merchant_locale: data.merchant?.locale ?? null,
+        webhook_secret: webhookSecret,
         paired_at: new Date().toISOString(),
       },
       { onConflict: "restaurant_id" }
@@ -118,6 +174,7 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     paired: true,
+    webhookRegistered: webhookSecret !== null,
     merchant: {
       id: data.merchant_id ?? null,
       name: data.merchant?.name ?? null,

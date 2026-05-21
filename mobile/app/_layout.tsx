@@ -81,13 +81,21 @@ function RootLayout() {
     const sub = Notifications.addNotificationResponseReceivedListener((resp) => {
       const data = resp.notification.request.content.data as {
         type?: string;
+        event?: string;
         conversationId?: string;
         orderId?: string;
+        bookingId?: string;
       };
       if (data?.type === "new_conversation" && data.conversationId) {
         router.push(`/inbox/${data.conversationId}`);
       } else if (data?.type === "assigned_message" && data.conversationId) {
         router.push(`/inbox/${data.conversationId}`);
+      } else if (data?.type === "nehgz_event") {
+        if (data.bookingId) {
+          router.push(`/(hub)/(tabs)/bookings/${data.bookingId}`);
+        } else {
+          router.push("/(hub)/(tabs)/bookings");
+        }
       } else if (data?.type === "sla_breach") {
         if (data.conversationId) {
           router.push(`/inbox/${data.conversationId}`);
