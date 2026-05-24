@@ -2,7 +2,7 @@
   "expo": {
     "name": "Nehgz Bot",
     "slug": "whatsapp-cs-agent",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "scheme": "whatsapp-cs-agent",
     "userInterfaceStyle": "automatic",
@@ -15,7 +15,7 @@
     "ios": {
       "bundleIdentifier": "com.nehgz.nehgzbot",
       "supportsTablet": false,
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"

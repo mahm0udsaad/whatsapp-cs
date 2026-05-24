@@ -13,6 +13,10 @@ export default function HubBookingsLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: "الحجوزات" }} />
+      <Stack.Screen
+        name="day/[date]"
+        options={{ title: "حجوزات اليوم", presentation: "modal" }}
+      />
       <Stack.Screen name="[id]" options={{ title: "تفاصيل الحجز" }} />
     </Stack>
   );

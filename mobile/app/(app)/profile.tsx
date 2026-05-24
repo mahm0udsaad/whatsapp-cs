@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { deleteAccount, signOut } from "../../lib/auth";
 import { getAiStatus, setAvailability, toggleAi } from "../../lib/api";
@@ -20,6 +21,7 @@ import {
   clearActiveGateway,
   clearActiveTenant,
   getOrCreateDeviceId,
+  persistActiveGateway,
   useSessionStore,
 } from "../../lib/session-store";
 import { isManager } from "../../lib/roles";
@@ -34,6 +36,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 export default function ProfileScreen() {
   const member = useSessionStore((s) => s.activeMember);
   const setActiveMember = useSessionStore((s) => s.setActiveMember);
+  const setActiveGateway = useSessionStore((s) => s.setActiveGateway);
   const [available, setAvailableLocal] = useState(member?.is_available ?? true);
   const [saving, setSaving] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -310,10 +313,23 @@ export default function ProfileScreen() {
 
       {manager ? (
         <Pressable
-          onPress={() => router.replace("/(gateway)/select")}
-          style={styles.dashboardButton}
+          onPress={async () => {
+            await persistActiveGateway("hub");
+            setActiveGateway("hub");
+            router.replace("/(hub)");
+          }}
+          style={styles.switchCard}
         >
-          <Text style={styles.dashboardButtonText}>تبديل الخدمة</Text>
+          <View style={styles.switchIcon}>
+            <Ionicons name="calendar" size={22} color="#FFFFFF" />
+          </View>
+          <View style={styles.switchBody}>
+            <Text style={styles.switchTitle}>التبديل إلى نِحجز هَب</Text>
+            <Text style={styles.switchSubtitle}>
+              الحجوزات والخدمات والمواعيد وفريق العمل
+            </Text>
+          </View>
+          <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
         </Pressable>
       ) : null}
 
@@ -426,6 +442,40 @@ const styles = StyleSheet.create({
     textAlign: "right",
     fontSize: 14,
     color: "#5E6A99",
+  },
+  switchCard: {
+    marginBottom: 12,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 12,
+    borderRadius: 24,
+    backgroundColor: "#011F91",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  switchIcon: {
+    height: 48,
+    width: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.16)",
+  },
+  switchBody: {
+    flex: 1,
+  },
+  switchTitle: {
+    textAlign: "right",
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  switchSubtitle: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 12,
+    lineHeight: 20,
+    color: "rgba(255,255,255,0.78)",
   },
   dashboardButton: {
     marginBottom: 12,

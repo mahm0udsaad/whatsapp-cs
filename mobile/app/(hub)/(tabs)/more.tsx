@@ -22,10 +22,12 @@ import {
   useSessionStore,
 } from "../../../lib/session-store";
 import { useHubRepairGuard } from "../../../hooks/use-hub";
+import { Ionicons } from "@expo/vector-icons";
 import {
   ManagerCard,
   SectionHeader,
   managerColors,
+  softShadow,
 } from "../../../components/manager-ui";
 
 export default function HubMoreScreen() {
@@ -56,10 +58,9 @@ export default function HubMoreScreen() {
   });
 
   async function switchGateway() {
-    setActiveGateway(null);
     await persistActiveGateway("bot");
     setActiveGateway("bot");
-    router.replace("/(gateway)/select");
+    router.replace("/(app)/overview");
   }
 
   function confirmUnpair() {
@@ -133,15 +134,36 @@ export default function HubMoreScreen() {
 
       <Pressable
         onPress={switchGateway}
-        className="flex-row-reverse items-center justify-between rounded-[20px] border bg-white p-4"
-        style={{ borderColor: managerColors.border }}
+        className="mt-1 flex-row-reverse items-center gap-3 rounded-[24px] border p-4"
+        style={[
+          {
+            borderColor: "#F4D774",
+            backgroundColor: "#FFF7D8",
+          },
+          softShadow,
+        ]}
       >
-        <Text className="text-sm font-semibold" style={{ color: managerColors.ink }}>
-          تبديل الخدمة
-        </Text>
-        <Text className="text-xs" style={{ color: managerColors.muted }}>
-          الانتقال إلى نِحجز بوت
-        </Text>
+        <View
+          className="h-12 w-12 items-center justify-center rounded-2xl"
+          style={{ backgroundColor: managerColors.bot }}
+        >
+          <Ionicons name="chatbubbles" size={22} color={managerColors.ink} />
+        </View>
+        <View className="flex-1">
+          <Text
+            className="text-right text-base font-bold"
+            style={{ color: managerColors.ink }}
+          >
+            التبديل إلى نِحجز بوت
+          </Text>
+          <Text
+            className="mt-1 text-right text-xs leading-5"
+            style={{ color: "#8A5E00" }}
+          >
+            محادثات واتساب والحملات التسويقية وإدارة الفريق
+          </Text>
+        </View>
+        <Ionicons name="chevron-back" size={22} color={managerColors.ink} />
       </Pressable>
 
       <Pressable

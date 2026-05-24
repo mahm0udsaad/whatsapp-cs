@@ -6,13 +6,13 @@ import {
   eachDayOfInterval,
   endOfMonth,
   format,
-  parse,
   startOfMonth,
   subMonths,
 } from "date-fns";
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, ScrollView, Text, View } from "../../../components/tw";
 import { listAllHubBookings, type HubBooking } from "../../../lib/hub-api";
+import { toHubDayKey } from "../../../lib/hub-bookings-calendar";
 import { useHubRepairGuard } from "../../../hooks/use-hub";
 import {
   CardSkeleton,
@@ -49,9 +49,7 @@ const RANGES: { key: "prev" | "current" | "next"; label: string }[] = [
 ];
 
 function bookingDayKey(b: HubBooking): string | null {
-  if (!b.date) return null;
-  const parsed = parse(b.date, "dd-MM-yyyy", new Date());
-  return Number.isNaN(parsed.getTime()) ? null : format(parsed, "yyyy-MM-dd");
+  return toHubDayKey(b.date);
 }
 
 export default function HubDashboardScreen() {

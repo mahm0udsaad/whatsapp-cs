@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveCurrentRestaurantForAdmin } from "@/lib/mobile-auth";
 import { getHubConnection, hubHeaders } from "@/lib/nehgz-hub";
+import { demoHubResponse, isDemoRestaurant } from "@/lib/hub-demo";
 
 // Only these top-level Hub resources may be proxied. Keeps the open-ended
 // catch-all from being pointed at arbitrary hosts/paths.
@@ -36,9 +37,6 @@ async function proxy(
   const auth = await resolveCurrentRestaurantForAdmin();
   if (auth instanceof NextResponse) return auth;
 
-  const conn = await getHubConnection(auth.restaurantId);
-  if (conn instanceof NextResponse) return conn;
-
   const { params } = await ctxPromise;
   const { path } = await params;
   const segments = path ?? [];
@@ -48,6 +46,16 @@ async function proxy(
       { status: 404 }
     );
   }
+
+  // Review-demo restaurants get seeded responses instead of being proxied to
+  // the real Hub host. Keeps the App Store reviewer from staring at empty
+  // screens or pairing dead-ends.
+  if (isDemoRestaurant(auth.restaurantId)) {
+    return demoHubResponse(segments, request.method, request.nextUrl.searchParams);
+  }
+
+  const conn = await getHubConnection(auth.restaurantId);
+  if (conn instanceof NextResponse) return conn;
 
   const search = request.nextUrl.search;
   const target = `${conn.base_url}/api/v1/${segments.join("/")}${search}`;

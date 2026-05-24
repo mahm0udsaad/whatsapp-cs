@@ -39,6 +39,7 @@ import {
 import { escalationReasonLabel } from "../../lib/escalation-labels";
 import { captureMessage } from "../../lib/observability";
 import { qk } from "../../lib/query-keys";
+import { isManager } from "../../lib/roles";
 import { useSessionStore } from "../../lib/session-store";
 import {
   DashboardSkeleton,
@@ -52,6 +53,7 @@ import { ExtractedIntentCard } from "../../components/extracted-intent-card";
 export default function OverviewScreen() {
   const member = useSessionStore((s) => s.activeMember);
   const restaurantId = member?.restaurant_id ?? "";
+  const canManageAi = isManager(member);
   const qc = useQueryClient();
   const todayRange = useMemo(
     () => ({
@@ -135,6 +137,14 @@ export default function OverviewScreen() {
       qc.invalidateQueries({ queryKey: qk.overviewSummary(restaurantId) });
     },
     onError: (e: unknown) => {
+      const err = e as Error & { status?: number };
+      if (err?.status === 403) {
+        Alert.alert(
+          "صلاحيات غير كافية",
+          "تحتاج صلاحيات مدير لتشغيل أو إيقاف المساعد. تواصل مع مالك المتجر."
+        );
+        return;
+      }
       const msg = e instanceof Error ? e.message : "تعذر التحديث";
       Alert.alert("خطأ", msg);
     },
@@ -382,15 +392,17 @@ export default function OverviewScreen() {
                 فتح المحادثات
               </Text>
             </Pressable>
-            <Pressable
-              onPress={() => confirmToggleAi(!(ai?.enabled ?? true))}
-              disabled={toggleMutation.isPending}
-              style={styles.heroSecondaryAction}
-            >
-              <Text style={styles.heroSecondaryActionText}>
-                {ai?.enabled ? "إيقاف البوت" : "تشغيل البوت"}
-              </Text>
-            </Pressable>
+            {canManageAi ? (
+              <Pressable
+                onPress={() => confirmToggleAi(!(ai?.enabled ?? true))}
+                disabled={toggleMutation.isPending}
+                style={styles.heroSecondaryAction}
+              >
+                <Text style={styles.heroSecondaryActionText}>
+                  {ai?.enabled ? "إيقاف البوت" : "تشغيل البوت"}
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
         </View>
 
