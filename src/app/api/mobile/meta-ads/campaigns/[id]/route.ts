@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveCurrentRestaurantForAdmin } from "@/lib/mobile-auth";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 
-const META_GRAPH_VERSION = "v21.0";
+const META_GRAPH_VERSION = "v23.0";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -167,5 +167,44 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: data.error.message }, { status: 502 });
   }
 
+  // Meta only delivers when campaign → ad set → ad are ALL active. Activating
+  // just the campaign leaves any paused children non-delivering, so cascade the
+  // ACTIVE status down to the ad sets and ads too. (Pausing the campaign already
+  // halts delivery at the top level, so no cascade is needed for PAUSED.)
+  if (body.status === "ACTIVE") {
+    await cascadeActivateChildren(id, conn.user_access_token);
+  }
+
   return NextResponse.json({ ok: true, status: body.status });
+}
+
+/**
+ * Set every ad set and ad under a campaign to ACTIVE. Best-effort: a child that
+ * can't be activated (e.g. disapproved ad) must not fail the whole toggle, since
+ * the campaign-level status was already updated successfully.
+ */
+async function cascadeActivateChildren(
+  campaignId: string,
+  token: string
+): Promise<void> {
+  for (const edge of ["adsets", "ads"]) {
+    try {
+      const listRes = await fetch(
+        `https://graph.facebook.com/${META_GRAPH_VERSION}/${campaignId}/${edge}?` +
+          new URLSearchParams({ fields: "id", limit: "100", access_token: token }).toString()
+      );
+      const list = (await listRes.json()) as { data?: { id: string }[] };
+      await Promise.all(
+        (list.data ?? []).map((node) =>
+          fetch(`https://graph.facebook.com/${META_GRAPH_VERSION}/${node.id}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({ status: "ACTIVE", access_token: token }),
+          }).catch(() => undefined)
+        )
+      );
+    } catch {
+      // Best-effort cascade — ignore failures for individual edges.
+    }
+  }
 }

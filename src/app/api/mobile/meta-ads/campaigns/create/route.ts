@@ -23,7 +23,8 @@
  *   caption:          string                — ad copy
  *   image_base64:     string                — required
  *   image_type:       string                — e.g. "image/jpeg"
- *   link_url?:        string                — required for Sales/Leads objectives
+ *   link_url?:        string                — required for Traffic/Leads/Sales objectives
+ *   platform?:        "facebook" | "instagram" — placement; both if omitted
  *   launch_now?:      boolean               — if true, status=ACTIVE; else PAUSED
  */
 
@@ -47,7 +48,15 @@ interface CreateBody {
   image_base64?: string;
   image_type?: string;
   link_url?: string;
+  platform?: string;
   launch_now?: boolean;
+}
+
+/** Map the requested placement to Meta's ad-set `publisher_platforms`. */
+function resolvePublisherPlatforms(platform?: string): string[] {
+  if (platform === "facebook") return ["facebook"];
+  if (platform === "instagram") return ["instagram"];
+  return ["facebook", "instagram"];
 }
 
 interface MetaConn {
@@ -181,6 +190,14 @@ async function buildAdSetConfig(
       return { optimization_goal: "REACH", billing_event: "IMPRESSIONS" };
 
     case "OUTCOME_TRAFFIC":
+      // LINK_CLICKS optimization needs a destination to click — a linkless
+      // photo ad can't drive traffic. Require the link up front.
+      if (!body.link_url?.trim()) {
+        return {
+          error: "حملة الزيارات تتطلب إضافة رابط (موقعك أو واتساب) في خطوة المحتوى.",
+          status: 400,
+        };
+      }
       return { optimization_goal: "LINK_CLICKS", billing_event: "IMPRESSIONS" };
 
     case "OUTCOME_ENGAGEMENT":
@@ -291,6 +308,17 @@ export async function POST(request: NextRequest) {
       { status: 404 }
     );
   }
+  // Instagram-only placement needs a linked IG business account, otherwise the
+  // ad set would target IG with no creative actor and never deliver.
+  if (body.platform === "instagram" && !conn.instagram_account_id) {
+    return NextResponse.json(
+      {
+        error:
+          "حملة Instagram تتطلب ربط حساب Instagram للأعمال بصفحة Facebook. اربطه ثم حاول مجددًا.",
+      },
+      { status: 400 }
+    );
+  }
 
   const metaConn: MetaConn = {
     user_access_token: conn.user_access_token,
@@ -336,12 +364,15 @@ export async function POST(request: NextRequest) {
   }
 
   // === Step 1: Campaign ===
+  // All three nodes (campaign → ad set → ad) must share the same status: Meta
+  // only delivers when every level is ACTIVE, so a "launch now" campaign with a
+  // paused campaign/ad set would silently never run.
   const campaignRes = await graphPost(
     `/${adAccountId}/campaigns`,
     {
       name: body.name,
       objective: body.objective,
-      status: "PAUSED", // campaign always paused; status flows through to ad
+      status,
       special_ad_categories: [],
     },
     token
@@ -367,10 +398,10 @@ export async function POST(request: NextRequest) {
       geo_locations: { countries: body.countries ?? ["SA"] },
       age_min: body.age_min ?? 18,
       age_max: body.age_max ?? 65,
-      publisher_platforms: ["facebook", "instagram"],
+      publisher_platforms: resolvePublisherPlatforms(body.platform),
     },
     start_time: body.start_time,
-    status: "PAUSED",
+    status,
   };
   if (body.end_time) adsetBody.end_time = body.end_time;
   if (adSetConfig.promoted_object) {

@@ -851,6 +851,34 @@ export default function AdsScreen() {
     );
   }
 
+  function handleCreateCampaign() {
+    // The create API requires a linked Facebook Page (used as the ad's actor).
+    // Send the user to the page picker first instead of letting the wizard fail
+    // at the final step.
+    if (!status?.pageSelected) {
+      Alert.alert(
+        "اختر صفحة Facebook أولاً",
+        "إنشاء الحملات يتطلب ربط صفحة Facebook. اخترها من شاشة المنشورات ثم عُد لإنشاء الحملة.",
+        [
+          { text: "إلغاء", style: "cancel" },
+          {
+            text: "اختيار صفحة",
+            onPress: () =>
+              router.push(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (`/(app)/campaigns/compose?platform=${platform}`) as any
+              ),
+          },
+        ]
+      );
+      return;
+    }
+    router.push(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (`/(app)/campaigns/new-campaign?platform=${platform}`) as any
+    );
+  }
+
   function handleToggle(id: string, next: "ACTIVE" | "PAUSED") {
     const label = next === "PAUSED" ? "إيقاف" : "تفعيل";
     Alert.alert(`${label} الحملة`, `هل تريد ${label} هذه الحملة؟`, [
@@ -992,12 +1020,7 @@ export default function AdsScreen() {
 
           {/* New campaign button */}
           <Pressable
-            onPress={() =>
-              router.push(
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (`/(app)/campaigns/new-campaign?platform=${platform}`) as any
-              )
-            }
+            onPress={handleCreateCampaign}
             className="flex-row items-center justify-center gap-2 rounded-[14px] py-3.5 mb-1"
             style={{ backgroundColor: theme.color }}
           >

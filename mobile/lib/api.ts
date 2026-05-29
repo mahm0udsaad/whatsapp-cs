@@ -706,6 +706,7 @@ export interface MarketingCustomersResponse {
 export type CampaignStatus =
   | "draft"
   | "scheduled"
+  | "queued"
   | "sending"
   | "completed"
   | "partially_completed"
@@ -1085,6 +1086,7 @@ export interface CreateCampaignInput {
   image_base64: string;
   image_type: string;
   link_url?: string;
+  platform?: "facebook" | "instagram";
   launch_now?: boolean;
 }
 

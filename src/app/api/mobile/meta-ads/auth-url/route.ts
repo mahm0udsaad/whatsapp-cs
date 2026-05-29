@@ -11,7 +11,7 @@
 import { NextResponse } from "next/server";
 import { resolveCurrentRestaurantForAdmin } from "@/lib/mobile-auth";
 
-const META_GRAPH_VERSION = "v21.0";
+const META_GRAPH_VERSION = "v23.0";
 
 export async function GET() {
   const ctx = await resolveCurrentRestaurantForAdmin();

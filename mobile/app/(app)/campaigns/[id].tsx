@@ -41,6 +41,7 @@ export default function CampaignDetailScreen() {
       const d = q.state.data as MarketingCampaignDetail | undefined;
       const s = d?.campaign.status;
       if (s === "sending") return 3_000;
+      if (s === "queued") return 5_000;
       if (s === "scheduled") return 15_000;
       return false;
     },
@@ -207,6 +208,16 @@ export default function CampaignDetailScreen() {
                   </Text>
                 </View>
               ) : null}
+
+              {campaign.status === "queued" ? (
+                <View className="mt-4 items-center">
+                  <Text className="text-xs text-gray-500">
+                    {campaign.scheduled_at
+                      ? "الحملة مجدولة وستُرسل تلقائياً في الموعد المحدد."
+                      : "الحملة في قائمة الإرسال وستبدأ خلال لحظات."}
+                  </Text>
+                </View>
+              ) : null}
             </ManagerCard>
 
             <Text className="mb-2 mt-4 text-right text-xs font-bold text-gray-500">
@@ -242,6 +253,7 @@ function StatusBadge({ status }: { status: CampaignStatus }) {
   const styles: Record<CampaignStatus, { label: string; cls: string }> = {
     draft: { label: "مسودة", cls: "bg-gray-100 text-gray-700" },
     scheduled: { label: "مجدولة", cls: "bg-indigo-50 text-indigo-900" },
+    queued: { label: "في قائمة الإرسال", cls: "bg-indigo-50 text-indigo-900" },
     sending: { label: "قيد الإرسال", cls: "bg-amber-50 text-amber-900" },
     completed: { label: "مكتملة", cls: "bg-emerald-50 text-emerald-900" },
     partially_completed: { label: "جزئية", cls: "bg-amber-50 text-amber-900" },

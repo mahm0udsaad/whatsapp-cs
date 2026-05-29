@@ -60,6 +60,14 @@ const COUNTRIES = [
 
 const STEPS = ["الهدف", "الجمهور", "الميزانية", "الإبداع", "مراجعة"] as const;
 
+// Objectives whose ad set optimizes against a destination URL — Meta rejects
+// these without a link, so the wizard requires one before submitting.
+const LINK_REQUIRED_OBJECTIVES: MetaObjective[] = [
+  "OUTCOME_TRAFFIC",
+  "OUTCOME_LEADS",
+  "OUTCOME_SALES",
+];
+
 // ---- Helpers ---------------------------------------------------------------
 
 function isoFromOffset(daysFromNow: number, hoursFromNow = 1): string {
@@ -187,6 +195,7 @@ export default function NewCampaignWizard() {
         image_base64: image!.base64,
         image_type: image!.mimeType,
         link_url: linkUrl.trim() || undefined,
+        platform,
         launch_now: launchNow,
       }),
     onSuccess: (res) => {
@@ -251,8 +260,13 @@ export default function NewCampaignWizard() {
         );
       case 2:
         return Number(dailyBudget) >= 10;
-      case 3:
-        return caption.trim().length > 0 && Boolean(image);
+      case 3: {
+        const linkOk =
+          !objective ||
+          !LINK_REQUIRED_OBJECTIVES.includes(objective) ||
+          linkUrl.trim().length > 0;
+        return caption.trim().length > 0 && Boolean(image) && linkOk;
+      }
       case 4:
         return !submitMutation.isPending;
       default:
@@ -585,7 +599,11 @@ export default function NewCampaignWizard() {
             </ManagerCard>
 
             <ManagerCard>
-              <Text className="text-[13px] font-semibold mb-2" style={{ color: managerColors.muted }}>رابط الإعلان (اختياري)</Text>
+              <Text className="text-[13px] font-semibold mb-2" style={{ color: managerColors.muted }}>
+                {objective && LINK_REQUIRED_OBJECTIVES.includes(objective)
+                  ? "رابط الإعلان (مطلوب)"
+                  : "رابط الإعلان (اختياري)"}
+              </Text>
               <TextInput
                 value={linkUrl}
                 onChangeText={setLinkUrl}
@@ -596,7 +614,9 @@ export default function NewCampaignWizard() {
                 style={{ color: managerColors.ink, fontSize: 14 }}
               />
               <Text className="text-[11px] mt-1" style={{ color: managerColors.muted }}>
-                إذا تركته فارغًا، سيكون منشورًا بصورة بدون زر.
+                {objective && LINK_REQUIRED_OBJECTIVES.includes(objective)
+                  ? "هذا الهدف يحتاج رابطًا (موقعك أو واتساب) ليتمكن الإعلان من توجيه الزيارات."
+                  : "إذا تركته فارغًا، سيكون منشورًا بصورة بدون زر."}
               </Text>
             </ManagerCard>
           </View>

@@ -16,7 +16,7 @@ import { NextResponse } from "next/server";
 import { resolveCurrentRestaurantForAdmin } from "@/lib/mobile-auth";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 
-const META_GRAPH_VERSION = "v21.0";
+const META_GRAPH_VERSION = "v23.0";
 
 interface FbPost {
   id: string;

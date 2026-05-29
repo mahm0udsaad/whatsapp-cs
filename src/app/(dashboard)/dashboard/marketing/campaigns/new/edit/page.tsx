@@ -174,10 +174,17 @@ export default function NewCampaignEditPage() {
         await fetch(`/api/marketing/templates/${templateId}/submit`, {
           method: "POST",
         }).catch(() => {});
+
+        // A fresh template is `submitted`, and the campaign API rejects any
+        // template that isn't `approved`. Stop here and land the user on the
+        // templates list where the pending state is visible — they can create
+        // the campaign in one click once WhatsApp approves it.
+        sessionStorage.removeItem(SELECTED_PHONES_STORAGE_KEY);
+        router.push("/dashboard/marketing/templates?submitted=1");
+        return;
       }
 
-      // Create the campaign (status will be `draft` because the template might
-      // still be pending approval — sending requires `approved`).
+      // Reuse path — template is already approved, so create the campaign.
       const campRes = await fetch("/api/marketing/campaigns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

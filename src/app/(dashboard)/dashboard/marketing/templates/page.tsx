@@ -44,7 +44,13 @@ const categoryColors: Record<string, string> = {
   AUTHENTICATION: "bg-orange-500/12 text-orange-700",
 };
 
-export default async function TemplatesPage() {
+export default async function TemplatesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ submitted?: string }>;
+}) {
+  const justSubmitted = (await searchParams).submitted === "1";
+
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
@@ -68,6 +74,16 @@ export default async function TemplatesPage() {
 
   return (
     <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-6">
+      {justSubmitted ? (
+        <div className="flex items-start gap-2 rounded-[20px] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <Clock size={18} className="mt-0.5 shrink-0" />
+          <p>
+            تم إرسال القالب لواتساب للاعتماد. ستصلك إشعار عند النتيجة، وبعد
+            الاعتماد يمكنك إنشاء الحملة بنقرة واحدة.
+          </p>
+        </div>
+      ) : null}
+
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

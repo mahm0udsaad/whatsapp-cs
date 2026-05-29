@@ -15,6 +15,7 @@ import {
   generateTemplateImage,
   listMarketingCustomers,
   listMarketingTemplates,
+  sendMarketingCampaign,
   setCampaignAudience,
   uploadTemplateImage,
 } from "../../../lib/api";
@@ -304,7 +305,14 @@ export default function CampaignNewEditScreen() {
       };
 
       const aud = await setCampaignAudience(campaign.id, selection);
-      return { campaign, aud };
+
+      // Commit the send: enqueue per-recipient jobs now. For a scheduled
+      // campaign the worker drains them at `scheduled_at`; for "now" it sends on
+      // the next worker tick. Without this the campaign would just sit unsent.
+      if (aud.total_recipients > 0) {
+        await sendMarketingCampaign(campaign.id);
+      }
+      return { campaign, aud, scheduledAt };
     },
     onSuccess: (result) => {
       delete (globalThis as unknown as Record<string, unknown>)[
@@ -312,21 +320,23 @@ export default function CampaignNewEditScreen() {
       ];
       qc.invalidateQueries({ queryKey: qk.marketingCampaigns(restaurantId) });
       if ("pendingTemplateId" in result) return;
-      const { campaign, aud } = result;
-      Alert.alert(
-        "تم إنشاء الحملة",
-        `عدد جهات الاتصال: ${aud.total_recipients}.`,
-        [
-          {
-            text: "فتح الحملة",
-            onPress: () =>
-              router.replace({
-                pathname: "/campaigns/[id]",
-                params: { id: campaign.id },
-              }),
-          },
-        ]
-      );
+      const { campaign, aud, scheduledAt } = result;
+      const title = scheduledAt ? "تم جدولة الحملة" : "بدأ إرسال الحملة";
+      const body = scheduledAt
+        ? `ستُرسل تلقائيًا في الموعد المحدد إلى ${aud.total_recipients} جهة اتصال.`
+        : aud.total_recipients > 0
+          ? `جارٍ الإرسال إلى ${aud.total_recipients} جهة اتصال.`
+          : "لا توجد جهات اتصال في هذا الجمهور.";
+      Alert.alert(title, body, [
+        {
+          text: "فتح الحملة",
+          onPress: () =>
+            router.replace({
+              pathname: "/campaigns/[id]",
+              params: { id: campaign.id },
+            }),
+        },
+      ]);
     },
     onError: (e: unknown) =>
       Alert.alert("خطأ", e instanceof Error ? e.message : "خطأ غير معروف"),
