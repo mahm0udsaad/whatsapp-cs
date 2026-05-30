@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { BrandLockup } from "@/components/brand/brand-lockup";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,40 +14,55 @@ import {
 } from "@/components/ui/card";
 
 /**
- * Sign-up flow is restricted to businesses only.
+ * Request-access / contact-sales flow (replaces self-serve sign-up).
  *
  * Compliance background:
- * - App Store Review Guideline 3.1.3(c) — Enterprise Services. Because Nehgz
- *   Bot is sold as a B2B service (the iOS app is a free client for an existing
- *   paid business workspace), the public sign-up flow must clearly gate
- *   eligibility to organizations/merchants only. Individual, consumer, and
- *   family use is not offered and is blocked at the form level here.
- * - Apple's review of submission d9e004fc cited 3.1.3(c) on 2026-05-11; this
- *   gate, the required Business Name field, and the matching Terms eligibility
- *   clause are the response.
+ * - App Store Review Guidelines 3.1.1 (In-App Purchase) and 3.1.3(c)
+ *   (Enterprise Services). Apple rejected submission d9e004fc twice because the
+ *   service — although sold B2B — could be self-purchased by an individual via
+ *   the open sign-up form. Apple's accepted resolution is to provide the
+ *   service only to organizations/businesses.
+ * - This page therefore creates NO account and NO credentials. It records a
+ *   sales lead (POST /api/leads). The Nehgz team verifies the business and
+ *   provisions the account manually after signing the commercial agreement —
+ *   exactly as described in Terms section 2.1. There is no payment, pricing, or
+ *   purchase anywhere in the iOS app; all commercial steps happen offline.
  */
-export default function SignupPage() {
-  const router = useRouter();
-  const supabase = createClient();
+const COUNTRIES = [
+  { value: "SA", label: "السعودية" },
+  { value: "AE", label: "الإمارات" },
+  { value: "KW", label: "الكويت" },
+  { value: "QA", label: "قطر" },
+  { value: "BH", label: "البحرين" },
+  { value: "OM", label: "عُمان" },
+  { value: "EG", label: "مصر" },
+  { value: "JO", label: "الأردن" },
+  { value: "OTHER", label: "أخرى" },
+];
+
+export default function RequestAccessPage() {
   const [accountType, setAccountType] = useState<"business" | "personal">(
     "business"
   );
   const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    confirmPassword: "",
     businessName: "",
+    contactEmail: "",
+    contactPhone: "",
     country: "SA",
     commercialRegistration: "",
+    message: "",
     acceptedBusinessTerms: false,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [submitted, setSubmitted] = useState(false);
 
   const isPersonal = accountType === "personal";
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
   ) => {
     const target = e.target as HTMLInputElement;
     const { name, value, type, checked } = target;
@@ -59,7 +72,7 @@ export default function SignupPage() {
     }));
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -71,49 +84,43 @@ export default function SignupPage() {
     }
 
     if (!formData.businessName.trim()) {
-      setError("يرجى إدخال اسم النشاط التجاري لإتمام التسجيل.");
+      setError("يرجى إدخال اسم النشاط التجاري.");
+      return;
+    }
+
+    if (!formData.contactEmail.trim() || !formData.contactEmail.includes("@")) {
+      setError("يرجى إدخال بريد إلكتروني صحيح للتواصل.");
       return;
     }
 
     if (!formData.acceptedBusinessTerms) {
       setError(
-        "يلزم الإقرار بأنك ممثّل مفوّض عن نشاط تجاري قبل إنشاء الحساب."
+        "يلزم الإقرار بأنك ممثّل مفوّض عن نشاط تجاري قبل إرسال الطلب."
       );
       return;
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      setError("كلمتا المرور غير متطابقتين");
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError("يجب أن تكون كلمة المرور 6 أحرف على الأقل");
-      return;
-    }
-
     setLoading(true);
-
     try {
-      const { error: signUpError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            account_type: "business",
-            business_name: formData.businessName.trim(),
-            business_country: formData.country,
-            commercial_registration:
-              formData.commercialRegistration.trim() || null,
-          },
-        },
+      const res = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessName: formData.businessName.trim(),
+          contactEmail: formData.contactEmail.trim(),
+          contactPhone: formData.contactPhone.trim() || undefined,
+          country: formData.country,
+          commercialRegistration:
+            formData.commercialRegistration.trim() || undefined,
+          message: formData.message.trim() || undefined,
+        }),
       });
-
-      if (signUpError) {
-        setError(signUpError.message);
-      } else {
-        router.push("/onboarding");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "تعذّر إرسال الطلب. حاول مرة أخرى.");
+        return;
       }
+      setSubmitted(true);
     } catch {
       setError("حدث خطأ غير متوقع");
     } finally {
@@ -121,51 +128,35 @@ export default function SignupPage() {
     }
   };
 
-  const handleGoogleSignup = async () => {
-    setError("");
-    if (isPersonal) {
-      setError(
-        "نِهجز بوت خدمة موجَّهة للأعمال (B2B) فقط — لا نوفّر حسابات شخصية أو عائلية."
-      );
-      return;
-    }
-    if (!formData.businessName.trim()) {
-      setError(
-        "يرجى إدخال اسم النشاط التجاري قبل المتابعة عبر جوجل."
-      );
-      return;
-    }
-    if (!formData.acceptedBusinessTerms) {
-      setError(
-        "يلزم الإقرار بأنك ممثّل مفوّض عن نشاط تجاري قبل المتابعة."
-      );
-      return;
-    }
-    setLoading(true);
-
-    try {
-      const { error: signInError } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            // Encode business intent in the OAuth flow so the callback can
-            // persist these values on first sign-in.
-            business_name: formData.businessName.trim(),
-            business_country: formData.country,
-          },
-        },
-      });
-
-      if (signInError) {
-        setError(signInError.message);
-      }
-    } catch {
-      setError("حدث خطأ غير متوقع");
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (submitted) {
+    return (
+      <Card className="border border-white/40 bg-white/88 shadow-[0_28px_80px_-40px_rgba(23,37,84,0.45)] backdrop-blur">
+        <CardHeader className="space-y-5 text-center">
+          <BrandLockup imageClassName="w-28" />
+          <div>
+            <CardTitle className="text-2xl text-[#172554]">
+              وصلنا طلبك ✅
+            </CardTitle>
+            <CardDescription className="mt-2 leading-relaxed">
+              شكراً لك. سيتواصل معك فريق المبيعات للتحقق من نشاطك التجاري
+              وتجهيز حسابك. لا يتم إنشاء أي حساب أو الدفع داخل التطبيق — كل
+              الخطوات التجارية تتم معنا مباشرة.
+            </CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent className="text-center">
+          <p className="mb-6 text-sm text-slate-600">
+            عندك حساب نشاط تجاري قائم؟
+          </p>
+          <Link href="/login">
+            <Button variant="outline" className="w-full" size="lg">
+              تسجيل دخول الموظفين
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="border border-white/40 bg-white/88 shadow-[0_28px_80px_-40px_rgba(23,37,84,0.45)] backdrop-blur">
@@ -176,7 +167,7 @@ export default function SignupPage() {
         />
         <div>
           <CardTitle className="text-2xl text-[#172554]">
-            تسجيل نشاط تجاري جديد
+            اطلب تفعيل نشاطك التجاري
           </CardTitle>
           <CardDescription className="mt-1">
             نِهجز بوت خدمة <strong>B2B</strong> للمتاجر والأنشطة التجارية فقط
@@ -197,15 +188,16 @@ export default function SignupPage() {
           <p>
             نِهجز بوت مخصص للمطاعم والكافيهات والصالونات والعيادات والمتاجر
             وغيرها من الأنشطة التجارية. لا نوفّر حسابات للأفراد أو للاستخدام
-            الشخصي أو العائلي. التسعير وجميع المدفوعات تتم عبر هذا الموقع
-            مباشرة وليس داخل تطبيق الجوّال.
+            الشخصي أو العائلي. لا يوجد تسجيل ذاتي ولا دفع داخل التطبيق — يتم
+            تجهيز الحساب يدوياً بعد التحقق من نشاطك التجاري وتوقيع الاتفاقية
+            التجارية.
           </p>
         </div>
 
         {/* Account-type gate. Selecting "personal" disables the form. */}
         <fieldset className="mb-6">
           <legend className="text-sm font-medium text-slate-700 mb-2">
-            من يقوم بالتسجيل؟
+            من يقوم بالطلب؟
           </legend>
           <div className="grid grid-cols-2 gap-3">
             <label
@@ -249,14 +241,14 @@ export default function SignupPage() {
               data-testid="personal-blocked-notice"
             >
               عذراً — نِهجز بوت خدمة موجّهة للأعمال التجارية فقط. لا يمكن
-              إنشاء حساب للاستخدام الشخصي أو العائلي. إذا كنت تمثّل نشاطاً
-              تجارياً، اختر &laquo;نشاط تجاري&raquo; أعلاه للمتابعة.
+              تجهيز حساب للاستخدام الشخصي أو العائلي. إذا كنت تمثّل نشاطاً
+              تجارياً، اختر «نشاط تجاري» أعلاه للمتابعة.
             </p>
           )}
         </fieldset>
 
         <form
-          onSubmit={handleSignup}
+          onSubmit={handleSubmit}
           className={`space-y-4 ${isPersonal ? "opacity-40 pointer-events-none select-none" : ""}`}
           aria-disabled={isPersonal}
         >
@@ -293,15 +285,11 @@ export default function SignupPage() {
                 disabled={loading || isPersonal}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <option value="SA">السعودية</option>
-                <option value="AE">الإمارات</option>
-                <option value="KW">الكويت</option>
-                <option value="QA">قطر</option>
-                <option value="BH">البحرين</option>
-                <option value="OM">عُمان</option>
-                <option value="EG">مصر</option>
-                <option value="JO">الأردن</option>
-                <option value="OTHER">أخرى</option>
+                {COUNTRIES.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -322,13 +310,13 @@ export default function SignupPage() {
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700">
-              البريد الإلكتروني للعمل
+              البريد الإلكتروني للعمل <span className="text-red-600">*</span>
             </label>
             <Input
               type="email"
-              name="email"
+              name="contactEmail"
               placeholder="you@restaurant.com"
-              value={formData.email}
+              value={formData.contactEmail}
               onChange={handleChange}
               disabled={loading || isPersonal}
               required={!isPersonal}
@@ -337,32 +325,30 @@ export default function SignupPage() {
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700">
-              كلمة المرور
+              رقم الجوال للتواصل (اختياري)
             </label>
             <Input
-              type="password"
-              name="password"
-              placeholder="••••••••"
-              value={formData.password}
+              type="tel"
+              name="contactPhone"
+              placeholder="05xxxxxxxx"
+              value={formData.contactPhone}
               onChange={handleChange}
               disabled={loading || isPersonal}
-              required={!isPersonal}
             />
-            <p className="text-xs text-slate-500">6 أحرف على الأقل</p>
           </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700">
-              تأكيد كلمة المرور
+              نبذة عن نشاطك (اختياري)
             </label>
-            <Input
-              type="password"
-              name="confirmPassword"
-              placeholder="••••••••"
-              value={formData.confirmPassword}
+            <textarea
+              name="message"
+              rows={3}
+              placeholder="نوع النشاط، عدد الفروع، ما الذي تريد تحقيقه..."
+              value={formData.message}
               onChange={handleChange}
               disabled={loading || isPersonal}
-              required={!isPersonal}
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
 
@@ -376,7 +362,7 @@ export default function SignupPage() {
               className="mt-1"
             />
             <span>
-              أُقرّ بأنني ممثّل مفوّض عن نشاط تجاري، وأن استخدامي للخدمة هو
+              أُقرّ بأنني ممثّل مفوّض عن نشاط تجاري، وأن طلبي للخدمة هو
               للأغراض التجارية فقط، وفقاً لـ{" "}
               <Link
                 href="/terms"
@@ -400,50 +386,24 @@ export default function SignupPage() {
             }
             size="lg"
           >
-            {loading ? "جارٍ إنشاء الحساب..." : "إنشاء حساب النشاط التجاري"}
+            {loading ? "جارٍ إرسال الطلب..." : "أرسل طلب التفعيل"}
           </Button>
+
+          <p className="text-center text-xs text-slate-500 leading-relaxed">
+            لا يتم إنشاء حساب أو الدفع في هذه الخطوة. سيتواصل معك فريقنا
+            لتجهيز الحساب بعد التحقق من نشاطك التجاري.
+          </p>
         </form>
 
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-slate-200" />
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="bg-white px-2 text-slate-500">أو سجّل باستخدام</span>
-          </div>
-        </div>
-
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full"
-          onClick={handleGoogleSignup}
-          disabled={
-            loading ||
-            isPersonal ||
-            !formData.acceptedBusinessTerms ||
-            !formData.businessName.trim()
-          }
-          size="lg"
-        >
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-          </svg>
-          جوجل
-        </Button>
-
-        <p className="mt-6 text-center text-sm text-slate-600">
-          لديك حساب بالفعل؟{" "}
+        <div className="mt-6 text-center text-sm text-slate-600">
+          عندك حساب نشاط تجاري قائم؟{" "}
           <Link
             href="/login"
-            className="font-medium text-[#1e3a8a] hover:text-[#172554]"
+            className="font-medium text-emerald-700 underline hover:text-emerald-800"
           >
             تسجيل الدخول
           </Link>
-        </p>
+        </div>
       </CardContent>
     </Card>
   );
