@@ -15,6 +15,9 @@ const publicMarketingRoutes = [
   "/terms",
   "/support",
   "/delete-account",
+  // Meta data-deletion status page — Facebook's reviewer and the data-deletion
+  // callback both link here, so it must be reachable without auth.
+  "/data-deletion",
 ];
 
 const publicRoutes = [...authEntryRoutes, ...publicMarketingRoutes];
@@ -24,6 +27,10 @@ const publicPrefixes = [
   "/api/auth/member-login",
   "/api/auth/member-logout",
   "/api/auth/meta-callback",
+  // Meta calls these unauthenticated with a signed_request; the handlers verify
+  // the signature themselves, so they must bypass the cookie-auth redirect.
+  "/api/auth/meta/deauthorize",
+  "/api/auth/meta/data-deletion",
   // Mobile API uses Bearer-token auth on every route, which the middleware's
   // cookie-only Supabase client cannot validate. The route handlers themselves
   // call `createServerSupabaseClient` (which does read Bearer) and reject
