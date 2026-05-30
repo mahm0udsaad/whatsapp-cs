@@ -1171,6 +1171,60 @@ export async function listMetaRecentPosts(): Promise<RecentPost[]> {
   return apiFetch(`/api/mobile/meta-ads/posts/recent`);
 }
 
+// ---- Video posting --------------------------------------------------------
+// Videos are too large to send as base64/JSON through the serverless backend,
+// so the phone uploads the file straight to storage via a signed URL, then the
+// publish endpoint hands Meta the resulting URL.
+
+interface VideoUploadUrl {
+  storage_path: string;
+  signed_url: string;
+  token: string;
+}
+
+export async function getMetaVideoUploadUrl(
+  ext: string
+): Promise<VideoUploadUrl> {
+  return apiFetch(`/api/mobile/meta-ads/posts/video/upload-url`, {
+    method: "POST",
+    body: JSON.stringify({ ext }),
+  });
+}
+
+/**
+ * Stream a local video file straight to the Supabase signed upload URL.
+ * Uses expo-file-system's legacy `uploadAsync` so the file is sent from disk
+ * without being loaded into memory as base64.
+ */
+export async function uploadVideoToSignedUrl(
+  signedUrl: string,
+  fileUri: string,
+  mimeType: string
+): Promise<void> {
+  const FileSystem = await import("expo-file-system/legacy");
+  const res = await FileSystem.uploadAsync(signedUrl, fileUri, {
+    httpMethod: "PUT",
+    uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+    headers: { "content-type": mimeType, "x-upsert": "true" },
+  });
+  if (res.status < 200 || res.status >= 300) {
+    throw new Error(`فشل رفع الفيديو (${res.status}).`);
+  }
+}
+
+export async function publishMetaVideoPost(opts: {
+  storage_path: string;
+  caption: string;
+  publish_to: ("facebook" | "instagram")[];
+}): Promise<PublishPostResult> {
+  return apiFetch(`/api/mobile/meta-ads/posts/video`, {
+    method: "POST",
+    body: JSON.stringify(opts),
+    // IG Reels processing is polled server-side; allow a long fuse.
+    timeoutMs: 200_000,
+  });
+}
+
 export interface MetaInsightsFull {
   spend: string;
   impressions: string;

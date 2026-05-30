@@ -16,6 +16,9 @@ import {
   listMetaPages,
   selectMetaPage,
   publishMetaPost,
+  getMetaVideoUploadUrl,
+  uploadVideoToSignedUrl,
+  publishMetaVideoPost,
   type MetaPage,
 } from "../../../lib/api";
 import { qk } from "../../../lib/query-keys";
@@ -131,6 +134,13 @@ function PagePickerScreen({
 
 // ---- composer --------------------------------------------------------------
 
+interface PickedVideo {
+  uri: string;
+  mimeType: string;
+  fileSize?: number;
+  durationMs?: number;
+}
+
 interface PickedImage {
   uri: string;
   base64: string;
@@ -153,6 +163,7 @@ function ComposerScreen({
 }) {
   const [caption, setCaption] = useState("");
   const [image, setImage] = useState<PickedImage | null>(null);
+  const [video, setVideo] = useState<PickedVideo | null>(null);
   const [toInstagram, setToInstagram] = useState(
     defaultPlatform === "instagram" && Boolean(instagramUsername)
   );
@@ -256,16 +267,25 @@ function ComposerScreen({
   }
 
   const publishMutation = useMutation({
-    mutationFn: () =>
-      publishMetaPost({
+    mutationFn: async () => {
+      const publish_to = [
+        ...(toFacebook ? (["facebook"] as const) : []),
+        ...(toInstagram ? (["instagram"] as const) : []),
+      ];
+      if (video) {
+        // Upload the file straight to storage, then publish by URL.
+        const ext = (video.mimeType.split("/")[1] || "mp4").toLowerCase();
+        const { storage_path, signed_url } = await getMetaVideoUploadUrl(ext);
+        await uploadVideoToSignedUrl(signed_url, video.uri, video.mimeType);
+        return publishMetaVideoPost({ storage_path, caption, publish_to });
+      }
+      return publishMetaPost({
         caption,
-        publish_to: [
-          ...(toFacebook ? (["facebook"] as const) : []),
-          ...(toInstagram ? (["instagram"] as const) : []),
-        ],
+        publish_to,
         image_base64: image?.base64,
         image_type: image?.mimeType,
-      }),
+      });
+    },
     onSuccess: (res) => {
       const platforms = res.published
         .map((p) => (p === "facebook" ? "Facebook" : "Instagram"))
@@ -296,6 +316,7 @@ function ComposerScreen({
     });
     if (result.canceled || !result.assets[0].base64) return;
     const asset = result.assets[0];
+    setVideo(null); // one media per post
     setImage({
       uri: asset.uri,
       base64: asset.base64!,
@@ -304,10 +325,39 @@ function ComposerScreen({
     });
   }
 
+  async function pickVideo() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("لا يوجد إذن", "يحتاج التطبيق إذن الوصول إلى الوسائط.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["videos"],
+      quality: 1,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    // Instagram only treats 5–90s vertical clips as Reels; warn but allow.
+    if (asset.duration && asset.duration > 90_000 && toInstagram) {
+      Alert.alert(
+        "الفيديو طويل لـ Instagram",
+        "Instagram ينشر المقاطع الأطول من ٩٠ ثانية كفيديو عادي وليس Reel. يُفضّل مقطع أقصر وعمودي (9:16)."
+      );
+    }
+    setImage(null); // one media per post
+    setVideo({
+      uri: asset.uri,
+      mimeType: asset.mimeType ?? "video/mp4",
+      fileSize: asset.fileSize,
+      durationMs: asset.duration ?? undefined,
+    });
+  }
+
   const canPublish =
     caption.trim().length > 0 &&
     (toFacebook || toInstagram) &&
-    (!toInstagram || Boolean(image));
+    // Instagram always needs media; a video satisfies that for both platforms.
+    (!toInstagram || Boolean(image) || Boolean(video));
 
   return (
     <ScrollView contentContainerClassName="p-4 gap-4 pb-10" keyboardShouldPersistTaps="handled">
@@ -325,12 +375,37 @@ function ComposerScreen({
         ) : null}
       </View>
 
-      {/* Image picker — hero element */}
+      {/* Media picker — hero element */}
       <ManagerCard>
         <Text className="text-[13px] font-semibold mb-2" style={{ color: managerColors.muted }}>
-          الصورة {toInstagram ? "" : "(اختياري)"}
+          الوسائط {toInstagram ? "" : "(اختياري)"}
         </Text>
-        {image ? (
+        {video ? (
+          <View className="gap-2">
+            <View
+              className="w-full rounded-[12px] items-center justify-center gap-2"
+              style={{ aspectRatio: 9 / 16, maxHeight: 320, backgroundColor: "#000" }}
+            >
+              <Ionicons name="videocam" size={48} color="#fff" />
+              <Text className="text-white text-[14px] font-semibold">فيديو جاهز للنشر</Text>
+              {video.durationMs ? (
+                <Text className="text-white/70 text-[12px]">
+                  {Math.round(video.durationMs / 1000)} ثانية
+                </Text>
+              ) : null}
+            </View>
+            <View className="flex-row items-center justify-between">
+              <Pressable onPress={pickVideo} className="flex-row items-center gap-2">
+                <Ionicons name="swap-horizontal" size={18} color={managerColors.brand} />
+                <Text className="text-[13px]" style={{ color: managerColors.brand }}>تغيير الفيديو</Text>
+              </Pressable>
+              <Pressable onPress={() => setVideo(null)} className="flex-row items-center gap-2">
+                <Ionicons name="close-circle-outline" size={18} color={managerColors.danger} />
+                <Text className="text-[13px]" style={{ color: managerColors.danger }}>إزالة</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : image ? (
           <View className="gap-2">
             <Image
               source={{ uri: image.uri }}
@@ -359,6 +434,16 @@ function ComposerScreen({
               <Ionicons name="image" size={48} color="#E1306C" />
               <Text className="text-[15px] font-semibold" style={{ color: "#E1306C" }}>اختر صورة للمنشور</Text>
               <Text className="text-[12px]" style={{ color: managerColors.muted }}>مربعة (1:1) للنتيجة الأفضل</Text>
+            </Pressable>
+            <Pressable
+              onPress={pickVideo}
+              className="flex-row items-center justify-center gap-2 rounded-[12px] py-3 border"
+              style={{ borderColor: managerColors.border }}
+            >
+              <Ionicons name="videocam-outline" size={18} color={managerColors.ink} />
+              <Text className="font-semibold text-[14px]" style={{ color: managerColors.ink }}>
+                اختر فيديو (Reel على Instagram)
+              </Text>
             </Pressable>
             <Pressable
               onPress={() => setShowImageAi(true)}
@@ -422,7 +507,8 @@ function ComposerScreen({
               value={toInstagram}
               onValueChange={(v) => {
                 setToInstagram(v);
-                if (v && !image) Alert.alert("تنبيه", "Instagram يتطلب صورة لنشر المنشور.");
+                if (v && !image && !video)
+                  Alert.alert("تنبيه", "Instagram يتطلب صورة أو فيديو لنشر المنشور.");
               }}
               trackColor={{ false: managerColors.border, true: "#E1306C" }}
               thumbColor="#fff"
@@ -467,15 +553,28 @@ function ComposerScreen({
         style={{ backgroundColor: canPublish ? "#E1306C" : managerColors.border }}
       >
         {publishMutation.isPending ? (
-          <ActivityIndicator color="#fff" />
+          <View className="flex-row items-center gap-2">
+            <ActivityIndicator color="#fff" />
+            {video ? (
+              <Text className="text-white font-semibold text-[13px]">
+                جارٍ رفع الفيديو ومعالجته…
+              </Text>
+            ) : null}
+          </View>
         ) : (
           <Text className="text-white font-bold text-[16px]">نشر الآن</Text>
         )}
       </Pressable>
 
-      {!canPublish && toInstagram && !image && (
+      {video ? (
+        <Text className="text-center text-[12px]" style={{ color: managerColors.muted }}>
+          قد يستغرق نشر الفيديو على Instagram دقيقة أو دقيقتين أثناء معالجته.
+        </Text>
+      ) : null}
+
+      {!canPublish && toInstagram && !image && !video && (
         <Text className="text-center text-[12px]" style={{ color: managerColors.warning }}>
-          أضف صورة لتتمكن من النشر على Instagram
+          أضف صورة أو فيديو لتتمكن من النشر على Instagram
         </Text>
       )}
 
