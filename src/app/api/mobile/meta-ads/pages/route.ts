@@ -10,6 +10,90 @@ import { adminSupabaseClient } from "@/lib/supabase/admin";
 
 const META_GRAPH_VERSION = "v23.0";
 
+const PAGE_FIELDS =
+  "id,name,category,fan_count,access_token,instagram_business_account{id,username}";
+
+interface GraphPage {
+  id: string;
+  name?: string;
+  category?: string;
+  fan_count?: number;
+  access_token?: string;
+  instagram_business_account?: { id: string; username: string };
+}
+
+function graphGet<T>(path: string, query: Record<string, string>): Promise<T> {
+  const qs = new URLSearchParams(query).toString();
+  return fetch(`https://graph.facebook.com/${META_GRAPH_VERSION}${path}?${qs}`).then(
+    (r) => r.json() as Promise<T>
+  );
+}
+
+/**
+ * Collect every Page the user can manage, from both:
+ *   - /me/accounts                     — classic Pages with a direct role
+ *   - /{business}/owned_pages + client_pages — New Pages Experience / Business
+ *     Portfolio pages, which never show up under /me/accounts
+ * Business lookups require the `business_management` scope; if the stored token
+ * predates that scope the call errors and we silently fall back to the classic
+ * list. Pages without a page access token can't be posted to, so they're dropped
+ * after a best-effort token backfill.
+ */
+async function collectManageablePages(userToken: string): Promise<GraphPage[]> {
+  const byId = new Map<string, GraphPage>();
+  const add = (p: GraphPage) => {
+    if (p?.id && !byId.has(p.id)) byId.set(p.id, p);
+  };
+
+  const classic = await graphGet<{ data?: GraphPage[]; error?: unknown }>(
+    "/me/accounts",
+    { fields: PAGE_FIELDS, limit: "100", access_token: userToken }
+  );
+  for (const p of classic.data ?? []) add(p);
+
+  // Business-portfolio pages (best-effort — needs business_management).
+  try {
+    const biz = await graphGet<{ data?: { id: string }[] }>("/me/businesses", {
+      fields: "id",
+      limit: "50",
+      access_token: userToken,
+    });
+    for (const b of biz.data ?? []) {
+      for (const edge of ["owned_pages", "client_pages"]) {
+        const bp = await graphGet<{ data?: GraphPage[] }>(`/${b.id}/${edge}`, {
+          fields: PAGE_FIELDS,
+          limit: "100",
+          access_token: userToken,
+        });
+        for (const p of bp.data ?? []) add(p);
+      }
+    }
+  } catch {
+    // Business lookup is optional; classic pages still returned.
+  }
+
+  // Business pages often omit access_token — fetch each missing one directly.
+  await Promise.all(
+    [...byId.values()]
+      .filter((p) => !p.access_token)
+      .map(async (p) => {
+        const single = await graphGet<GraphPage>(`/${p.id}`, {
+          fields: `access_token,name,category,instagram_business_account{id,username}`,
+          access_token: userToken,
+        });
+        if (single.access_token) {
+          p.access_token = single.access_token;
+          if (!p.instagram_business_account && single.instagram_business_account) {
+            p.instagram_business_account = single.instagram_business_account;
+          }
+        }
+      })
+  );
+
+  // Only Pages we can actually post to (need a page access token).
+  return [...byId.values()].filter((p) => p.access_token);
+}
+
 export async function GET() {
   const ctx = await resolveCurrentRestaurantForAdmin();
   if (ctx instanceof NextResponse) return ctx;
@@ -25,25 +109,12 @@ export async function GET() {
     return NextResponse.json({ error: "Not connected to Meta" }, { status: 404 });
   }
 
-  const params = new URLSearchParams({
-    fields: "id,name,category,fan_count,access_token,instagram_business_account{id,username}",
-    access_token: conn.user_access_token,
-    limit: "50",
-  });
-
-  const res = await fetch(
-    `https://graph.facebook.com/${META_GRAPH_VERSION}/me/accounts?${params.toString()}`
-  );
-  const data = (await res.json()) as {
-    data?: unknown[];
-    error?: { message: string };
-  };
-
-  if (data.error) {
-    return NextResponse.json({ error: data.error.message }, { status: 502 });
+  try {
+    const pages = await collectManageablePages(conn.user_access_token);
+    return NextResponse.json(pages);
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 502 });
   }
-
-  return NextResponse.json(data.data ?? []);
 }
 
 interface SelectPageBody {

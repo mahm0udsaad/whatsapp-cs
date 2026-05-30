@@ -44,6 +44,9 @@ export async function GET() {
       "pages_read_engagement",
       "instagram_basic",
       "instagram_content_publish",
+      // Lets us list Pages owned by a Business Portfolio (New Pages Experience),
+      // which never appear under /me/accounts.
+      "business_management",
     ].join(","),
     state,
     response_type: "code",

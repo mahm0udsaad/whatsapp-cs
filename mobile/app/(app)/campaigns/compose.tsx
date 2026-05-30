@@ -42,10 +42,12 @@ function PagePickerScreen({
   pages,
   isLoading,
   onSelect,
+  onRetry,
 }: {
   pages: MetaPage[];
   isLoading: boolean;
   onSelect: (p: MetaPage) => void;
+  onRetry: () => void;
 }) {
   if (isLoading) {
     return (
@@ -63,11 +65,24 @@ function PagePickerScreen({
       <View className="flex-1 items-center justify-center px-8">
         <Ionicons name="flag-outline" size={48} color={managerColors.muted} />
         <Text className="text-center mt-4 font-semibold text-[16px]" style={{ color: managerColors.ink }}>
-          لا توجد صفحات
+          لا توجد صفحات متاحة
         </Text>
-        <Text className="text-center mt-2" style={{ color: managerColors.muted }}>
-          تأكد أن لديك صلاحية الإدارة على صفحة Facebook على الأقل.
+        <Text className="text-center mt-2 leading-6" style={{ color: managerColors.muted }}>
+          غالبًا لم تسمح بالصفحة أثناء تسجيل الدخول. أعد الربط ومن شاشة Facebook
+          الزرقاء اضغط «تعديل الوصول» وفعّل صفحتك، ثم عُد.
         </Text>
+        <Text className="text-center mt-2 leading-6 text-[12px]" style={{ color: managerColors.muted }}>
+          إن كانت صفحتك ضمن «حافظة أعمال» (Business Portfolio) فتأكد من منح
+          الوصول إليها عند الربط.
+        </Text>
+        <Pressable
+          onPress={onRetry}
+          className="mt-5 flex-row items-center gap-2 rounded-full px-5 py-2.5"
+          style={{ backgroundColor: managerColors.brand }}
+        >
+          <Ionicons name="refresh" size={16} color="#fff" />
+          <Text className="text-white font-semibold text-[14px]">إعادة المحاولة</Text>
+        </Pressable>
       </View>
     );
   }
@@ -854,6 +869,7 @@ export default function ComposeScreen() {
           pages={pagesQuery.data ?? []}
           isLoading={pagesQuery.isPending}
           onSelect={(page) => selectPageMutation.mutate(page)}
+          onRetry={() => pagesQuery.refetch()}
         />
       ) : (
         <ComposerScreen
