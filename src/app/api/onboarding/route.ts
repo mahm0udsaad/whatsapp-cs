@@ -51,6 +51,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Provisioning gate (App Store Review Guidelines 3.1.1 / 3.1.3(c)).
+    //
+    // Self-serve provisioning is NOT allowed: the service is provided only to
+    // businesses verified by the Nehgz team after signing the commercial
+    // agreement. Authentication alone (including Google sign-in, which
+    // auto-creates a user) must NOT grant the service. The team sets
+    // app_metadata.provisioning_approved = true on the user when they provision
+    // the account; everyone else is refused here so an individual/consumer
+    // cannot self-activate a workspace.
+    const approvedFlag = user.app_metadata?.provisioning_approved;
+    const approved = approvedFlag === true || approvedFlag === "true";
+
+    if (!approved) {
+      return NextResponse.json(
+        {
+          error:
+            "حسابك غير مُفعَّل للتجهيز الذاتي. نِحجز بوت خدمة للأعمال التجارية تُجهَّز يدوياً بعد التحقق من النشاط. تواصل مع فريق المبيعات لتفعيل حسابك.",
+          code: "provisioning_not_approved",
+        },
+        { status: 403 }
+      );
+    }
+
     const result = await provisionRestaurantForUser(
       user.id,
       user.email ?? null,
