@@ -14,8 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Check, RefreshCw, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, RefreshCw, Sparkles, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import { RestaurantWebsiteCrawlResponse } from "@/lib/types";
 
 type Step = 1 | 2 | 3 | 4;
@@ -79,6 +80,18 @@ export default function OnboardingPage() {
     if (currentStep > 1) {
       setCurrentStep((currentStep - 1) as Step);
     }
+  };
+
+  // The onboarding user is already authenticated, so navigating straight to
+  // /login bounces back to /dashboard → /onboarding. Sign out first, then land
+  // on the login page so they can switch accounts or start over.
+  const handleLogout = async () => {
+    await Promise.allSettled([
+      createClient().auth.signOut(),
+      fetch("/api/auth/member-logout", { method: "POST" }),
+    ]);
+    router.push("/login");
+    router.refresh();
   };
 
   const isStepValid = () => {
@@ -243,11 +256,23 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-transparent p-4">
       <div className="mx-auto max-w-3xl">
         <div className="mb-8 space-y-6">
-          <BrandLockup
-            className="items-start text-right"
-            imageClassName="w-32 self-start"
-            subtitle="انقل هوية متجرك نفسها من الإعداد إلى المساعد المباشر."
-          />
+          <div className="flex items-start justify-between gap-4">
+            <BrandLockup
+              className="items-start text-right"
+              imageClassName="w-32 self-start"
+              subtitle="انقل هوية متجرك نفسها من الإعداد إلى المساعد المباشر."
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleLogout}
+              disabled={loading}
+              className="shrink-0 gap-2"
+            >
+              <LogOut size={16} />
+              تسجيل الخروج
+            </Button>
+          </div>
           <div>
             <h1 className="mb-2 text-3xl font-bold text-[#172554]">
               إطلاق مساعد واتساب
