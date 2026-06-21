@@ -4,6 +4,7 @@ import { generateGeminiResponse } from "@/lib/gemini";
 import { sendWhatsAppMessage } from "@/lib/twilio";
 import { sendInteractiveMessage } from "@/lib/twilio-content";
 import { isSessionWindowOpen } from "@/lib/session-window";
+import { isAiWithinSchedule } from "@/lib/ai-schedule";
 import {
   RAG_MATCH_THRESHOLD,
   retrieveKnowledgeChunks,
@@ -561,6 +562,23 @@ export async function processPendingAIReplyJobs(limit = 10, inboundMessageId?: s
             status: "completed",
             processed_at: new Date().toISOString(),
             last_error: "ai_disabled",
+          })
+          .eq("id", job.id);
+        continue;
+      }
+
+      // Schedule gate: manager has restricted the bot to specific hours and we
+      // are currently outside that window. Complete silently so humans take over.
+      if (!isAiWithinSchedule(restaurant as Parameters<typeof isAiWithinSchedule>[0])) {
+        console.warn(
+          `[ai-reply] Outside AI schedule for restaurant ${job.restaurant_id}. Skipping.`
+        );
+        await adminSupabaseClient
+          .from("ai_reply_jobs")
+          .update({
+            status: "completed",
+            processed_at: new Date().toISOString(),
+            last_error: "outside_ai_schedule",
           })
           .eq("id", job.id);
         continue;

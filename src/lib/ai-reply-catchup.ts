@@ -16,6 +16,10 @@
 
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 import { queueAIReplyJob, processPendingAIReplyJobs } from "@/lib/ai-reply-jobs";
+import {
+  findUnansweredCustomerMessageId,
+  type CatchUpMessage,
+} from "@/lib/catchup-decision";
 
 export async function catchUpAIReplyIfNeeded(
   conversationId: string
@@ -31,16 +35,19 @@ export async function catchUpAIReplyIfNeeded(
     return { queued: false, reason: "not_bot_mode" };
   }
 
-  // 2. Find the latest message on the conversation. If it's not a customer
-  //    message, there's nothing to catch up on.
-  const { data: latestMessages } = await adminSupabaseClient
+  // 2. Pull the recent message tail and decide whether the last customer
+  //    message is still unanswered. Looking at a window (not just the single
+  //    latest row) makes the check robust to interleaved/non-reply rows.
+  const { data: recentMessages } = await adminSupabaseClient
     .from("messages")
     .select("id, role, created_at")
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: false })
-    .limit(1);
-  const latest = latestMessages?.[0];
-  if (!latest || latest.role !== "customer") {
+    .limit(20);
+  const inboundMessageId = findUnansweredCustomerMessageId(
+    (recentMessages ?? []) as CatchUpMessage[]
+  );
+  if (!inboundMessageId) {
     return { queued: false, reason: "no_pending_customer_message" };
   }
 
@@ -74,13 +81,13 @@ export async function catchUpAIReplyIfNeeded(
   const result = await queueAIReplyJob({
     restaurantId: conv.restaurant_id,
     conversationId: conv.id,
-    inboundMessageId: latest.id,
+    inboundMessageId,
     customerPhone: conv.customer_phone,
     senderPhoneNumber,
   });
   if (!result.queued) return { queued: false, reason: "enqueue_failed" };
 
-  void processPendingAIReplyJobs(1, latest.id).catch((err) =>
+  void processPendingAIReplyJobs(1, inboundMessageId).catch((err) =>
     console.error("[ai-reply-catchup] processPendingAIReplyJobs error:", err)
   );
 

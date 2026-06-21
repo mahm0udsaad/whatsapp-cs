@@ -332,6 +332,31 @@ export async function toggleAi(
   });
 }
 
+export interface AiSchedule {
+  /** When true the bot only auto-replies inside the daily window. */
+  enabled: boolean;
+  /** "HH:MM" in `timezone`. */
+  start: string;
+  end: string;
+  /** Run 24h on Friday & Saturday. */
+  weekend24h: boolean;
+  timezone: string;
+}
+
+export async function getAiSchedule(): Promise<AiSchedule> {
+  return apiFetch(`/api/mobile/ai/schedule`);
+}
+
+export async function saveAiSchedule(
+  input: Pick<AiSchedule, "enabled" | "start" | "end" | "weekend24h"> &
+    Partial<Pick<AiSchedule, "timezone">>
+): Promise<AiSchedule> {
+  return apiFetch(`/api/mobile/ai/schedule`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 // ---- Labels & archive ------------------------------------------------------
 
 export type LabelColor =

@@ -27,6 +27,7 @@ import {
 import { isManager } from "../../lib/roles";
 import { qk } from "../../lib/query-keys";
 import { SkeletonBlock } from "../../components/manager-ui";
+import { AiScheduleSheet } from "../../components/ai-schedule-sheet";
 import { captureException } from "../../lib/observability";
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -41,6 +42,7 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   const manager = isManager(member);
   const restaurantId = member?.restaurant_id ?? "";
@@ -249,6 +251,32 @@ export default function ProfileScreen() {
         </View>
       ) : null}
 
+      {manager ? (
+        <Pressable
+          onPress={() => setScheduleOpen(true)}
+          style={[styles.card, styles.cardNeutral, styles.scheduleRow]}
+        >
+          <View style={styles.scheduleIcon}>
+            <Ionicons name="time-outline" size={22} color="#011F91" />
+          </View>
+          <View style={styles.cardContent}>
+            <Text style={styles.scheduleTitle}>جدولة المساعد الذكي</Text>
+            <Text style={styles.scheduleSubtitle}>
+              تحديد أوقات تشغيل المساعد يومياً وفي عطلة نهاية الأسبوع
+            </Text>
+          </View>
+          <Ionicons name="chevron-back" size={22} color="#7A88B8" />
+        </Pressable>
+      ) : null}
+
+      {manager ? (
+        <AiScheduleSheet
+          visible={scheduleOpen}
+          onClose={() => setScheduleOpen(false)}
+          restaurantId={restaurantId}
+        />
+      ) : null}
+
       <View
         style={[
           styles.card,
@@ -392,6 +420,32 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flex: 1,
+  },
+  scheduleRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 12,
+  },
+  scheduleIcon: {
+    height: 44,
+    width: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 14,
+    backgroundColor: "#E8EEFF",
+  },
+  scheduleTitle: {
+    textAlign: "right",
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#16245C",
+  },
+  scheduleSubtitle: {
+    marginTop: 4,
+    textAlign: "right",
+    fontSize: 12,
+    lineHeight: 20,
+    color: "#7A88B8",
   },
   cardEyebrow: {
     textAlign: "right",

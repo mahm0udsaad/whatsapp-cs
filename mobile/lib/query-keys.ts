@@ -15,6 +15,8 @@ export const qk = {
   // ---- manager surface ----
   aiStatus: (restaurantId: string) =>
     ["manager", "ai-status", restaurantId] as const,
+  aiSchedule: (restaurantId: string) =>
+    ["manager", "ai-schedule", restaurantId] as const,
   overviewSummary: (restaurantId: string) =>
     ["manager", "overview", restaurantId] as const,
   teamRoster: (restaurantId: string) =>

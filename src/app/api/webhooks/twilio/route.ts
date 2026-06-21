@@ -6,6 +6,7 @@ import {
   validateTwilioRequest,
 } from "@/lib/twilio";
 import { queueAIReplyJob, processPendingAIReplyJobs } from "@/lib/ai-reply-jobs";
+import { isAiWithinSchedule } from "@/lib/ai-schedule";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import {
   notifyAgentsOfNewConversation,
@@ -501,7 +502,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // this conversation yet, auto-delegate to the bot. The eq('handler_mode',
     // 'unassigned') filter keeps this race-safe against a concurrent claim.
     let handlerMode: string = (conversation.handler_mode as string) || "unassigned";
-    if (handlerMode === "unassigned" && restaurant.ai_enabled === true) {
+    // The bot only auto-takes a conversation when AI is enabled AND the tenant's
+    // configured schedule allows it right now. Outside the scheduled window the
+    // conversation stays "unassigned" and is broadcast to human agents below.
+    if (
+      handlerMode === "unassigned" &&
+      restaurant.ai_enabled === true &&
+      isAiWithinSchedule(restaurant)
+    ) {
       const { data: promoted, error: promoteErr } = await adminSupabaseClient
         .from("conversations")
         .update({ handler_mode: "bot" })
