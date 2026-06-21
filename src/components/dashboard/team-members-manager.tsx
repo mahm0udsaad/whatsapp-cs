@@ -21,6 +21,7 @@ import {
   PowerOff,
   Power,
   ShieldCheck,
+  Trash2,
   UserPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -78,7 +79,8 @@ export function TeamMembersManager({ initialMembers }: Props) {
   const [editDraft, setEditDraft] = useState<{
     full_name: string;
     role: "agent" | "admin";
-  }>({ full_name: "", role: "agent" });
+    password: string;
+  }>({ full_name: "", role: "agent", password: "" });
 
   function pushToast(text: string, tone: Toast["tone"] = "success") {
     const id = Date.now() + Math.random();
@@ -125,7 +127,11 @@ export function TeamMembersManager({ initialMembers }: Props) {
     }
   }
 
-  async function patch(id: string, body: Partial<TeamMember>, label: string) {
+  async function patch(
+    id: string,
+    body: Partial<TeamMember> & { password?: string },
+    label: string
+  ) {
     setBusyId(id);
     try {
       const res = await fetch(`/api/dashboard/team-members/${id}`, {
@@ -149,16 +155,44 @@ export function TeamMembersManager({ initialMembers }: Props) {
 
   function startEdit(m: TeamMember) {
     setEditingId(m.id);
-    setEditDraft({ full_name: m.full_name ?? "", role: m.role });
+    setEditDraft({ full_name: m.full_name ?? "", role: m.role, password: "" });
   }
 
   async function saveEdit(id: string) {
-    await patch(
-      id,
-      { full_name: editDraft.full_name.trim(), role: editDraft.role },
-      "تم الحفظ"
-    );
+    const pwd = editDraft.password.trim();
+    if (pwd && pwd.length < 8) {
+      pushToast("كلمة المرور 8 أحرف على الأقل", "error");
+      return;
+    }
+    const body: Partial<TeamMember> & { password?: string } = {
+      full_name: editDraft.full_name.trim(),
+      role: editDraft.role,
+    };
+    if (pwd) body.password = pwd;
+    await patch(id, body, pwd ? "تم الحفظ وتغيير كلمة المرور" : "تم الحفظ");
     setEditingId(null);
+  }
+
+  async function remove(m: TeamMember) {
+    const ok = window.confirm(
+      `حذف الموظفة «${m.full_name || m.email || ""}» نهائياً؟ لا يمكن التراجع.`
+    );
+    if (!ok) return;
+    setBusyId(m.id);
+    try {
+      const res = await fetch(`/api/dashboard/team-members/${m.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        pushToast(data.error ?? "تعذر الحذف", "error");
+        return;
+      }
+      setMembers((prev) => prev.filter((x) => x.id !== m.id));
+      pushToast("تم حذف الموظفة");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (
@@ -319,6 +353,20 @@ export function TeamMembersManager({ initialMembers }: Props) {
                           <option value="agent">موظفة</option>
                           <option value="admin">مديرة</option>
                         </select>
+                        <Input
+                          type="password"
+                          value={editDraft.password}
+                          aria-label="كلمة مرور جديدة"
+                          autoComplete="new-password"
+                          minLength={8}
+                          placeholder="كلمة مرور جديدة (اتركيها فارغة لعدم التغيير)"
+                          onChange={(e) =>
+                            setEditDraft((d) => ({
+                              ...d,
+                              password: e.target.value,
+                            }))
+                          }
+                        />
                       </div>
                     ) : (
                       <>
@@ -423,6 +471,17 @@ export function TeamMembersManager({ initialMembers }: Props) {
                             تفعيل
                           </Button>
                         )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => remove(m)}
+                          disabled={busy}
+                          aria-label={`حذف ${m.full_name ?? ""}`}
+                          className="text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                        >
+                          <Trash2 size={13} aria-hidden="true" />
+                          حذف
+                        </Button>
                       </>
                     )}
                   </div>
