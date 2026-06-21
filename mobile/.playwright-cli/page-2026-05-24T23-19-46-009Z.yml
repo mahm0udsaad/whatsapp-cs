@@ -1,0 +1,785 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e5]:
+      - text:  
+      - generic [ref=e6]:
+        - generic [ref=e8]:
+          - link "لوحة التحكم" [ref=e9] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138
+            - generic [ref=e11]: لوحة التحكم
+          - link "الخدمات" [ref=e12] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/service
+            - generic [ref=e14]: الخدمات
+          - link "الاقسام" [ref=e15] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/category
+            - generic [ref=e17]: الاقسام
+          - link "المنتجات" [ref=e18] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/product
+            - generic [ref=e20]: المنتجات
+          - link "الحجوزات" [ref=e21] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/reservation
+            - generic [ref=e23]: الحجوزات
+          - link "الطلبات" [ref=e24] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/order
+            - generic [ref=e26]: الطلبات
+          - 'link "الفرع الحالي : Kiara" [ref=e27] [cursor=pointer]':
+            - /url: javascript:;
+            - generic [ref=e29]: "الفرع الحالي : Kiara"
+        - generic [ref=e30]:
+          - generic [ref=e32] [cursor=pointer]: 
+          - generic [ref=e33]:
+            - link "6 أيام" [ref=e35] [cursor=pointer]:
+              - /url: " https://kiara.nehgz.com/ar/plans "
+              - generic [ref=e41]:
+                - generic [ref=e42]: "6"
+                - paragraph [ref=e43]: أيام
+            - link " تجديد الإشتراك" [ref=e44] [cursor=pointer]:
+              - /url: https://kiara.nehgz.com/ar/plans
+              - generic [ref=e45]: 
+              - text: تجديد الإشتراك
+          - link "عرض المتجر" [ref=e47] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar
+          - generic [ref=e48]:
+            - generic [ref=e50] [cursor=pointer]:
+              - generic [ref=e51]: 
+              - generic: 
+              - generic: 
+              - generic: 
+            - text:            
+          - generic [ref=e52]:
+            - link "         " [ref=e53] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e54]:
+                - generic [ref=e55]: 
+                - generic: 
+                - generic: 
+                - generic: 
+                - generic: 
+                - generic: 
+                - generic: 
+                - generic: 
+                - generic: 
+                - generic: 
+              - text: 
+            - text:                
+          - img "user" [ref=e58] [cursor=pointer]
+          - text:  
+    - generic [ref=e59]:
+      - generic [ref=e60]:
+        - generic [ref=e61]:
+          - link "Logo" [ref=e62] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138
+            - img "Logo" [ref=e63]
+          - generic [ref=e65] [cursor=pointer]:
+            - generic [ref=e66]: 
+            - generic: 
+        - generic [ref=e69]:
+          - link " لوحة التحكم" [ref=e71] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138
+            - generic [ref=e72]:
+              - generic [ref=e74]: 
+              - generic [ref=e75]: لوحة التحكم
+          - generic [ref=e77] [cursor=pointer]:
+            - generic [ref=e79]: 
+            - generic [ref=e80]: الاقسام
+          - generic [ref=e83] [cursor=pointer]:
+            - generic [ref=e85]: 
+            - generic [ref=e86]: الخدمات
+          - generic [ref=e89] [cursor=pointer]:
+            - generic [ref=e91]: 
+            - generic [ref=e92]: الحجوزات
+          - link " التقارير جديد" [ref=e95] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/reports
+            - generic [ref=e96]:
+              - generic [ref=e98]: 
+              - generic [ref=e99]: التقارير
+            - generic [ref=e100]: جديد
+          - link " العملاء" [ref=e102] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/customer
+            - generic [ref=e103]:
+              - generic [ref=e105]: 
+              - generic [ref=e106]: العملاء
+          - generic [ref=e108] [cursor=pointer]:
+            - generic [ref=e110]: 
+            - generic [ref=e111]: المنتجات
+          - generic [ref=e114] [cursor=pointer]:
+            - generic [ref=e116]: 
+            - generic [ref=e117]: الطلبات
+          - generic [ref=e120] [cursor=pointer]:
+            - generic [ref=e122]: 
+            - generic [ref=e123]: الفروع
+          - generic [ref=e126] [cursor=pointer]:
+            - generic [ref=e128]: 
+            - generic [ref=e129]: الأدوار والصلاحيات
+          - generic [ref=e132] [cursor=pointer]:
+            - generic [ref=e134]: 
+            - generic [ref=e135]: الموظفين
+          - link " القوالب" [ref=e138] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/get-theme
+            - generic [ref=e139]:
+              - generic [ref=e141]: 
+              - generic [ref=e142]: القوالب
+          - link " أكواد الخصم" [ref=e144] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/coupons
+            - generic [ref=e145]:
+              - generic [ref=e147]: 
+              - generic [ref=e148]: أكواد الخصم
+          - link " المحفظة" [ref=e150] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/wallet
+            - generic [ref=e151]:
+              - generic [ref=e153]: 
+              - generic [ref=e154]: المحفظة
+          - link " خدمة واتساب" [ref=e156] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/whatsapp
+            - generic [ref=e157]:
+              - generic [ref=e159]: 
+              - generic [ref=e160]: خدمة واتساب
+          - generic [ref=e162] [cursor=pointer]:
+            - generic [ref=e164]: 
+            - generic [ref=e165]: الإعدادات العامة
+          - link " خطط الأسعار" [ref=e168] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/plans?9a2ca5dc-7c7a-47da-83df-ed9a9f6db138
+            - generic [ref=e169]:
+              - generic [ref=e171]: 
+              - generic [ref=e172]: خطط الأسعار
+        - link "تسجيل خروج" [ref=e174] [cursor=pointer]:
+          - /url: javascript:;
+          - generic [ref=e175]: تسجيل خروج
+      - generic [ref=e176]:
+        - generic [ref=e180]:
+          - generic [ref=e181]:
+            - generic [ref=e182]:
+              - heading "فلترات التقارير" [level=3] [ref=e184]
+              - button " اخفاء الفلترة" [ref=e187] [cursor=pointer]:
+                - generic [ref=e188]: 
+                - text: اخفاء الفلترة
+            - generic [ref=e189]:
+              - generic [ref=e192]:
+                - generic [ref=e193]:
+                  - generic [ref=e194]: نطاق التاريخ
+                  - combobox [ref=e195]
+                  - combobox "نطاق مخصص" [ref=e1589] [cursor=pointer]:
+                    - textbox "نطاق مخصص" [ref=e1590]
+                - generic [ref=e1591]:
+                  - generic [ref=e1592]: التاريخ من
+                  - textbox [ref=e1593]: 2026-03-01
+                - generic [ref=e1594]:
+                  - generic [ref=e1595]: التاريخ إلى
+                  - textbox [ref=e1596]: 2026-03-31
+                - generic [ref=e200]:
+                  - generic [ref=e201]: الفرع
+                  - listbox [ref=e202]:
+                    - option [ref=e203]: Kiara
+                  - combobox [ref=e206] [cursor=pointer]:
+                    - list
+                    - searchbox "Search" [ref=e208]
+                - generic [ref=e209]:
+                  - generic [ref=e210]: الموظفين
+                  - listbox [ref=e211]:
+                    - option [ref=e212]: الموظفة Ana
+                    - option [ref=e213]: موظفه 3 m
+                    - option [ref=e214]: موظفة 2 T
+                    - option [ref=e215]: موظفة 1 R
+                    - option [ref=e216]: جواهر
+                    - option [ref=e217]: سعاد
+                    - option [ref=e218]: سهى
+                    - option [ref=e219]: الموظفة lis
+                    - option [ref=e220]: وسيلة
+                  - combobox [ref=e223] [cursor=pointer]:
+                    - list
+                    - searchbox "Search" [ref=e225]
+                - generic [ref=e226]:
+                  - generic [ref=e227]: الخدمات
+                  - listbox [ref=e228]:
+                    - option [ref=e229]: "- مساج إسترخاء أحجار 40د - 🍃"
+                    - option [ref=e230]: "- مساج إسترخاء احجار 60د -🍃"
+                    - option [ref=e231]: "- تركيب أظافر جاهزه - 🍃"
+                    - option [ref=e232]: "- بديكير اليد - 🍃"
+                    - option [ref=e233]: "- بديكير ومناكير اطفال - 🍃"
+                    - option [ref=e234]: "- بكـج سبا وعنايه - 🍃"
+                    - option [ref=e235]: "- لون فرنسي يد - 🍃"
+                    - option [ref=e236]: "- لون فرنسي ارجل - 🍃"
+                    - option [ref=e237]: "- بديكير الأرجل - 🍃"
+                    - option [ref=e238]: "- مساج علاجى احجار 60 د - 🍃"
+                    - option [ref=e239]: "- مساج مكس - 🍃"
+                    - option [ref=e240]: "- مساج اخشاب (للسيلوليت )40د - 🍃"
+                    - option [ref=e241]: "- مساج اخشاب (للسيلوليت )60د - 🍃"
+                    - option [ref=e242]: "- مساج كاسات الهوى 40 د - 🍃"
+                    - option [ref=e243]: "- مساج كاسات الهوى 60د - 🍃"
+                    - option [ref=e244]: "- مساج العملات المعدنية 40د - 🍃"
+                    - option [ref=e245]: "- مساج العملات المعدنية 60 د - 🍃"
+                    - option [ref=e246]: "- مساج الريفلوكسولوجي - 🍃"
+                    - option [ref=e247]: "- مساج الحامل 40 د - 🍃"
+                    - option [ref=e248]: "- مساج الحامل 60 د - 🍃"
+                    - option [ref=e249]: "- مساج الاطفال - 🍃"
+                    - option [ref=e250]: "- مساج vip - 🍃"
+                    - option [ref=e251]: "- بديكير و مناكير كلاسيكي - 🍃"
+                    - option [ref=e252]: "- إضافة لون عادي - 🍃"
+                    - option [ref=e253]: "- بديكير و مناكير سبيشال - 🍃"
+                    - option [ref=e254]: "- برافين اليد - 🍃"
+                    - option [ref=e255]: "- برافين الأرجل - 🍃"
+                    - option [ref=e256]: "- حمام مغربي عادي - 🍃"
+                    - option [ref=e257]: "- حمام مغربي بالاعشاب - 🍃"
+                    - option [ref=e258]: "- حمام مغربي ملكي - 🍃"
+                    - option [ref=e259]: "- واكس الجسم كامل - 🍃"
+                    - option [ref=e260]: "- واكس اليد و الارجل مع منطقة الإبط - 🍃"
+                    - option [ref=e261]: "- واكس منطقه البطن - 🍃"
+                    - option [ref=e262]: "- واكس منطقه الظهر - 🍃"
+                    - option [ref=e263]: "- قص الشعر - 🍃"
+                    - option [ref=e264]: "- قص الغرة - 🍃"
+                    - option [ref=e265]: "- قص أطراف الشعر - 🍃"
+                    - option [ref=e266]: "- حف حواجب بالخيط - 🍃"
+                    - option [ref=e267]: "- حف الوجه كامل - 🍃"
+                    - option [ref=e268]: "- حف الحواجب مع الصبغه - 🍃"
+                    - option [ref=e269]: "- استشوار الشعرS - 🍃"
+                    - option [ref=e270]: "- لف اطراف بالسراميك - 🍃"
+                    - option [ref=e271]: "- فير شعر كامل معا الاستشوار S 100 - 🍃"
+                    - option [ref=e272]: "- مساج التصريف اللمفاوي 60د - 🍃"
+                    - option [ref=e273]: "- مساج سبيشال - 🍃"
+                    - option [ref=e274]: "- مساج النفاس - 🍃"
+                    - option [ref=e275]: "- مساج تفريغ هواء الرأس - 🍃"
+                    - option [ref=e276]: "- المسـاج اللمفاوي للوجه - 🍃"
+                    - option [ref=e277]: "- المساج التايلندي - 🍃"
+                    - option [ref=e278]: "- ميـني مغربي وبديكير ومناكيـر - 🍃"
+                    - option [ref=e279]: "- تركيب الأظافر - 🍃"
+                    - option [ref=e280]: "- ديتوكس مع فحص الفروه - 🍃"
+                    - option [ref=e281]: "- ديتوكس عميق وفحص فروه - 🍃"
+                    - option [ref=e282]: "- استشوار فوليـوم - 🍃"
+                    - option [ref=e283]: "- تركيب اكستنشن حبات كلبسات - 🍃"
+                    - option [ref=e284]: "- مساج سقنتشر 3 فـ 1 - 🍃"
+                    - option [ref=e285]: "- بكج كيـارا المميز - 🍃"
+                    - option [ref=e286]: "- مسـاج الكبلـز - 🍃"
+                    - option [ref=e287]: "- باقة الخوات ( 4 ) - 🍃"
+                    - option [ref=e288]: "- بكج عيـد الميـلاد - 🍃"
+                    - option [ref=e289]: "- إضافه لون مناكير ماركه o.p.i - 🍃"
+                    - option [ref=e290]: تنظيف بشرة – أكتيف بالانس (Active Balance
+                    - option [ref=e291]: تنظيف بشرة – هارموني فايس (Harmony Face
+                    - option [ref=e292]: تنظيف بشره – بيرفكت غلو (Perfect Glow) “
+                    - option [ref=e293]: تنظيف بشره – ريتش نوتشر (Rich Nature) “
+                    - option [ref=e294]: "- تشقيـر الحواجب - 🍃"
+                    - option [ref=e295]: "- تنظيـف الحواجب بالفيــت - 🍃"
+                    - option [ref=e296]: "- تركيب أظافر مع خدمه البدكير - 🍃"
+                    - option [ref=e297]: "- استشوار m - 🍃"
+                    - option [ref=e298]: "- استشوار L - 🍃"
+                    - option [ref=e299]: لـون جـل - 🍃
+                    - option [ref=e300]: "- فير شعر كامل معا الاستشوار m150 - 🍃"
+                    - option [ref=e301]: "- فير شعر كامل معا الاستشوار L200 - 🍃"
+                    - option [ref=e302]: "- فير شعر كامل معا الاستشوار xL250 - 🍃"
+                    - option [ref=e303]: "- بكـج تنظيف البشـره للكبلـز - 🍃"
+                    - option [ref=e304]: "- بكـج البديكيـر والمناكـير للكبلـز - 🍃"
+                    - option [ref=e305]: "- مساج الخلعـه - 🍃"
+                    - option [ref=e306]: "- مساج رفـع الارحـام - 🍃"
+                  - combobox [ref=e309] [cursor=pointer]:
+                    - list
+                    - searchbox "Search" [ref=e311]
+                - generic [ref=e312]:
+                  - generic [ref=e313]: الحالة
+                  - combobox [ref=e314]
+                  - combobox "الكل" [ref=e317] [cursor=pointer]:
+                    - textbox "الكل" [ref=e318]
+              - button " تطبيق الفلترة" [ref=e321] [cursor=pointer]:
+                - generic [ref=e322]:
+                  - generic [ref=e323]: 
+                  - text: تطبيق الفلترة
+          - generic [ref=e324]:
+            - generic [ref=e327]:
+              - generic [ref=e328]:
+                - generic [ref=e330]: 
+                - generic [ref=e331]:
+                  - generic [ref=e625]: 
+                  - generic [ref=e332]: 84.3%
+              - generic [ref=e333]:
+                - paragraph [ref=e334]: إجمالي الدخل
+                - heading "5,007.00" [level=3] [ref=e1597]:
+                  - text: 5,007.00
+                  - img [ref=e337]
+            - generic [ref=e344]:
+              - generic [ref=e345]:
+                - generic [ref=e347]: 
+                - generic [ref=e348]:
+                  - generic [ref=e627]: 
+                  - generic [ref=e349]: 82.2%
+              - generic [ref=e350]:
+                - paragraph [ref=e351]: الحجوزات
+                - heading "38" [level=3] [ref=e1598]
+            - generic [ref=e355]:
+              - generic [ref=e356]:
+                - generic [ref=e358]: 
+                - generic [ref=e359]:
+                  - generic [ref=e629]: 
+                  - generic [ref=e360]: 80.1%
+              - generic [ref=e361]:
+                - paragraph [ref=e362]: العملاء الجدد
+                - heading "38" [level=3] [ref=e1599]
+            - generic [ref=e366]:
+              - generic [ref=e367]:
+                - generic [ref=e369]: 
+                - generic [ref=e370]:
+                  - generic [ref=e631]: 
+                  - generic [ref=e371]: 84.3%
+              - generic [ref=e372]:
+                - paragraph [ref=e373]: الضريبة
+                - heading "653.09" [level=3] [ref=e1600]:
+                  - text: "653.09"
+                  - img [ref=e376]
+          - generic [ref=e381]:
+            - heading " أداء المبيعات" [level=3] [ref=e385]:
+              - generic [ref=e386]: 
+              - text: أداء المبيعات
+            - heading " عدد الحجوزات" [level=3] [ref=e392]:
+              - generic [ref=e393]: 
+              - text: عدد الحجوزات
+            - generic [ref=e397]:
+              - heading " توزيع الخدمات" [level=3] [ref=e400]:
+                - generic [ref=e401]: 
+                - text: توزيع الخدمات
+              - generic [ref=e445]:
+                - generic [ref=e1602]:
+                  - generic [ref=e1603]:
+                    - generic "- بديكير و مناكير كلاسيكي - 🍃" [ref=e1606]
+                    - generic [ref=e1607]:
+                      - generic [ref=e1608]: "11"
+                      - generic [ref=e1609]: حجوزات
+                  - generic [ref=e1612]:
+                    - generic [ref=e1613]:
+                      - generic [ref=e1614]: 
+                      - generic [ref=e1615]: "الدخل:"
+                      - generic [ref=e1616]: 1,595.00
+                    - generic [ref=e1617]:
+                      - generic [ref=e1618]: "نسبة:"
+                      - generic [ref=e1619]: 28.9%
+                - generic [ref=e1621]:
+                  - generic [ref=e1622]:
+                    - generic "- مساج إسترخاء أحجار 40د - 🍃" [ref=e1625]
+                    - generic [ref=e1626]:
+                      - generic [ref=e1627]: "3"
+                      - generic [ref=e1628]: حجوزات
+                  - generic [ref=e1631]:
+                    - generic [ref=e1632]:
+                      - generic [ref=e1633]: 
+                      - generic [ref=e1634]: "الدخل:"
+                      - generic [ref=e1635]: "450.00"
+                    - generic [ref=e1636]:
+                      - generic [ref=e1637]: "نسبة:"
+                      - generic [ref=e1638]: 7.9%
+                - generic [ref=e1640]:
+                  - generic [ref=e1641]:
+                    - generic "- حف حواجب بالخيط - 🍃" [ref=e1644]
+                    - generic [ref=e1645]:
+                      - generic [ref=e1646]: "3"
+                      - generic [ref=e1647]: حجوزات
+                  - generic [ref=e1650]:
+                    - generic [ref=e1651]:
+                      - generic [ref=e1652]: 
+                      - generic [ref=e1653]: "الدخل:"
+                      - generic [ref=e1654]: "117.00"
+                    - generic [ref=e1655]:
+                      - generic [ref=e1656]: "نسبة:"
+                      - generic [ref=e1657]: 7.9%
+                - generic [ref=e1659]:
+                  - generic [ref=e1660]:
+                    - generic "- مساج علاجى احجار 60 د - 🍃" [ref=e1663]
+                    - generic [ref=e1664]:
+                      - generic [ref=e1665]: "2"
+                      - generic [ref=e1666]: حجوزات
+                  - generic [ref=e1669]:
+                    - generic [ref=e1670]:
+                      - generic [ref=e1671]: 
+                      - generic [ref=e1672]: "الدخل:"
+                      - generic [ref=e1673]: "370.00"
+                    - generic [ref=e1674]:
+                      - generic [ref=e1675]: "نسبة:"
+                      - generic [ref=e1676]: 5.3%
+                - generic [ref=e1678]:
+                  - generic [ref=e1679]:
+                    - generic "- استشوار فوليـوم - 🍃" [ref=e1682]
+                    - generic [ref=e1683]:
+                      - generic [ref=e1684]: "2"
+                      - generic [ref=e1685]: حجوزات
+                  - generic [ref=e1688]:
+                    - generic [ref=e1689]:
+                      - generic [ref=e1690]: 
+                      - generic [ref=e1691]: "الدخل:"
+                      - generic [ref=e1692]: "160.00"
+                    - generic [ref=e1693]:
+                      - generic [ref=e1694]: "نسبة:"
+                      - generic [ref=e1695]: 5.3%
+                - generic [ref=e1697]:
+                  - generic [ref=e1698]:
+                    - generic "- تركيب الأظافر - 🍃" [ref=e1701]
+                    - generic [ref=e1702]:
+                      - generic [ref=e1703]: "2"
+                      - generic [ref=e1704]: حجوزات
+                  - generic [ref=e1707]:
+                    - generic [ref=e1708]:
+                      - generic [ref=e1709]: 
+                      - generic [ref=e1710]: "الدخل:"
+                      - generic [ref=e1711]: "170.00"
+                    - generic [ref=e1712]:
+                      - generic [ref=e1713]: "نسبة:"
+                      - generic [ref=e1714]: 5.3%
+                - generic [ref=e1716]:
+                  - generic [ref=e1717]:
+                    - generic "- قص الغرة - 🍃" [ref=e1720]
+                    - generic [ref=e1721]:
+                      - generic [ref=e1722]: "2"
+                      - generic [ref=e1723]: حجوزات
+                  - generic [ref=e1726]:
+                    - generic [ref=e1727]:
+                      - generic [ref=e1728]: 
+                      - generic [ref=e1729]: "الدخل:"
+                      - generic [ref=e1730]: "30.00"
+                    - generic [ref=e1731]:
+                      - generic [ref=e1732]: "نسبة:"
+                      - generic [ref=e1733]: 5.3%
+                - generic [ref=e1735]:
+                  - generic [ref=e1736]:
+                    - generic "- حمام مغربي بالاعشاب - 🍃" [ref=e1739]
+                    - generic [ref=e1740]:
+                      - generic [ref=e1741]: "2"
+                      - generic [ref=e1742]: حجوزات
+                  - generic [ref=e1745]:
+                    - generic [ref=e1746]:
+                      - generic [ref=e1747]: 
+                      - generic [ref=e1748]: "الدخل:"
+                      - generic [ref=e1749]: "400.00"
+                    - generic [ref=e1750]:
+                      - generic [ref=e1751]: "نسبة:"
+                      - generic [ref=e1752]: 5.3%
+                - generic [ref=e1754]:
+                  - generic [ref=e1755]:
+                    - generic "- بديكير و مناكير سبيشال - 🍃" [ref=e1758]
+                    - generic [ref=e1759]:
+                      - generic [ref=e1760]: "2"
+                      - generic [ref=e1761]: حجوزات
+                  - generic [ref=e1764]:
+                    - generic [ref=e1765]:
+                      - generic [ref=e1766]: 
+                      - generic [ref=e1767]: "الدخل:"
+                      - generic [ref=e1768]: "378.00"
+                    - generic [ref=e1769]:
+                      - generic [ref=e1770]: "نسبة:"
+                      - generic [ref=e1771]: 5.3%
+                - generic [ref=e1773]:
+                  - generic [ref=e1774]:
+                    - generic "- واكس اليد و الارجل مع منطقة الإبط - 🍃" [ref=e1777]
+                    - generic [ref=e1778]:
+                      - generic [ref=e1779]: "1"
+                      - generic [ref=e1780]: حجوزات
+                  - generic [ref=e1783]:
+                    - generic [ref=e1784]:
+                      - generic [ref=e1785]: 
+                      - generic [ref=e1786]: "الدخل:"
+                      - generic [ref=e1787]: "120.00"
+                    - generic [ref=e1788]:
+                      - generic [ref=e1789]: "نسبة:"
+                      - generic [ref=e1790]: 2.6%
+                - generic [ref=e1792]:
+                  - generic [ref=e1793]:
+                    - generic "- قص الشعر - 🍃" [ref=e1796]
+                    - generic [ref=e1797]:
+                      - generic [ref=e1798]: "1"
+                      - generic [ref=e1799]: حجوزات
+                  - generic [ref=e1802]:
+                    - generic [ref=e1803]:
+                      - generic [ref=e1804]: 
+                      - generic [ref=e1805]: "الدخل:"
+                      - generic [ref=e1806]: "59.00"
+                    - generic [ref=e1807]:
+                      - generic [ref=e1808]: "نسبة:"
+                      - generic [ref=e1809]: 2.6%
+                - generic [ref=e1811]:
+                  - generic [ref=e1812]:
+                    - generic "- حمام مغربي عادي - 🍃" [ref=e1815]
+                    - generic [ref=e1816]:
+                      - generic [ref=e1817]: "1"
+                      - generic [ref=e1818]: حجوزات
+                  - generic [ref=e1821]:
+                    - generic [ref=e1822]:
+                      - generic [ref=e1823]: 
+                      - generic [ref=e1824]: "الدخل:"
+                      - generic [ref=e1825]: "150.00"
+                    - generic [ref=e1826]:
+                      - generic [ref=e1827]: "نسبة:"
+                      - generic [ref=e1828]: 2.6%
+                - generic [ref=e1830]:
+                  - generic [ref=e1831]:
+                    - generic "- حف الحواجب مع الصبغه - 🍃" [ref=e1834]
+                    - generic [ref=e1835]:
+                      - generic [ref=e1836]: "1"
+                      - generic [ref=e1837]: حجوزات
+                  - generic [ref=e1840]:
+                    - generic [ref=e1841]:
+                      - generic [ref=e1842]: 
+                      - generic [ref=e1843]: "الدخل:"
+                      - generic [ref=e1844]: "54.00"
+                    - generic [ref=e1845]:
+                      - generic [ref=e1846]: "نسبة:"
+                      - generic [ref=e1847]: 2.6%
+                - generic [ref=e1849]:
+                  - generic [ref=e1850]:
+                    - generic "- مساج التصريف اللمفاوي 60د - 🍃" [ref=e1853]
+                    - generic [ref=e1854]:
+                      - generic [ref=e1855]: "1"
+                      - generic [ref=e1856]: حجوزات
+                  - generic [ref=e1859]:
+                    - generic [ref=e1860]:
+                      - generic [ref=e1861]: 
+                      - generic [ref=e1862]: "الدخل:"
+                      - generic [ref=e1863]: "185.00"
+                    - generic [ref=e1864]:
+                      - generic [ref=e1865]: "نسبة:"
+                      - generic [ref=e1866]: 2.6%
+                - generic [ref=e1868]:
+                  - generic [ref=e1869]:
+                    - generic "- ميـني مغربي وبديكير ومناكيـر - 🍃" [ref=e1872]
+                    - generic [ref=e1873]:
+                      - generic [ref=e1874]: "1"
+                      - generic [ref=e1875]: حجوزات
+                  - generic [ref=e1878]:
+                    - generic [ref=e1879]:
+                      - generic [ref=e1880]: 
+                      - generic [ref=e1881]: "الدخل:"
+                      - generic [ref=e1882]: "250.00"
+                    - generic [ref=e1883]:
+                      - generic [ref=e1884]: "نسبة:"
+                      - generic [ref=e1885]: 2.6%
+                - generic [ref=e1887]:
+                  - generic [ref=e1888]:
+                    - generic "- مساج vip - 🍃" [ref=e1891]
+                    - generic [ref=e1892]:
+                      - generic [ref=e1893]: "1"
+                      - generic [ref=e1894]: حجوزات
+                  - generic [ref=e1897]:
+                    - generic [ref=e1898]:
+                      - generic [ref=e1899]: 
+                      - generic [ref=e1900]: "الدخل:"
+                      - generic [ref=e1901]: "290.00"
+                    - generic [ref=e1902]:
+                      - generic [ref=e1903]: "نسبة:"
+                      - generic [ref=e1904]: 2.6%
+                - generic [ref=e1906]:
+                  - generic [ref=e1907]:
+                    - generic "تنظيف بشرة – أكتيف بالانس (Active Balance" [ref=e1910]
+                    - generic [ref=e1911]:
+                      - generic [ref=e1912]: "1"
+                      - generic [ref=e1913]: حجوزات
+                  - generic [ref=e1916]:
+                    - generic [ref=e1917]:
+                      - generic [ref=e1918]: 
+                      - generic [ref=e1919]: "الدخل:"
+                      - generic [ref=e1920]: "200.00"
+                    - generic [ref=e1921]:
+                      - generic [ref=e1922]: "نسبة:"
+                      - generic [ref=e1923]: 2.6%
+                - generic [ref=e1925]:
+                  - generic [ref=e1926]:
+                    - generic "- تشقيـر الحواجب - 🍃" [ref=e1929]
+                    - generic [ref=e1930]:
+                      - generic [ref=e1931]: "1"
+                      - generic [ref=e1932]: حجوزات
+                  - generic [ref=e1935]:
+                    - generic [ref=e1936]:
+                      - generic [ref=e1937]: 
+                      - generic [ref=e1938]: "الدخل:"
+                      - generic [ref=e1939]: "29.00"
+                    - generic [ref=e1940]:
+                      - generic [ref=e1941]: "نسبة:"
+                      - generic [ref=e1942]: 2.6%
+          - generic [ref=e408]:
+            - generic [ref=e409]:
+              - heading " أداء الموظفين" [level=3] [ref=e410]:
+                - generic [ref=e411]: 
+                - text: أداء الموظفين
+              - group [ref=e412]:
+                - button "تحميل PNG" [ref=e413] [cursor=pointer]
+                - button "تحميل PDF" [ref=e414] [cursor=pointer]
+            - generic [ref=e451]:
+              - generic [ref=e1944]:
+                - generic [ref=e1945]:
+                  - generic [ref=e1948]: taha
+                  - generic [ref=e1949]:
+                    - generic [ref=e1950]: "17"
+                    - generic [ref=e1951]: حجوزات
+                - generic [ref=e1954]:
+                  - generic [ref=e1955]:
+                    - generic [ref=e1956]: 
+                    - generic [ref=e1957]: "الدخل:"
+                    - generic [ref=e1958]: 2,630.00
+                  - generic [ref=e1959]:
+                    - generic [ref=e1960]: "نسبة:"
+                    - generic [ref=e1961]: 44.7%
+              - generic [ref=e1963]:
+                - generic [ref=e1964]:
+                  - generic [ref=e1967]: mira
+                  - generic [ref=e1968]:
+                    - generic [ref=e1969]: "12"
+                    - generic [ref=e1970]: حجوزات
+                - generic [ref=e1973]:
+                  - generic [ref=e1974]:
+                    - generic [ref=e1975]: 
+                    - generic [ref=e1976]: "الدخل:"
+                    - generic [ref=e1977]: "974.00"
+                  - generic [ref=e1978]:
+                    - generic [ref=e1979]: "نسبة:"
+                    - generic [ref=e1980]: 31.6%
+              - generic [ref=e1982]:
+                - generic [ref=e1983]:
+                  - generic [ref=e1986]: rose
+                  - generic [ref=e1987]:
+                    - generic [ref=e1988]: "4"
+                    - generic [ref=e1989]: حجوزات
+                - generic [ref=e1992]:
+                  - generic [ref=e1993]:
+                    - generic [ref=e1994]: 
+                    - generic [ref=e1995]: "الدخل:"
+                    - generic [ref=e1996]: "675.00"
+                  - generic [ref=e1997]:
+                    - generic [ref=e1998]: "نسبة:"
+                    - generic [ref=e1999]: 10.5%
+              - generic [ref=e2001]:
+                - generic [ref=e2002]:
+                  - generic [ref=e2005]: lis
+                  - generic [ref=e2006]:
+                    - generic [ref=e2007]: "4"
+                    - generic [ref=e2008]: حجوزات
+                - generic [ref=e2011]:
+                  - generic [ref=e2012]:
+                    - generic [ref=e2013]: 
+                    - generic [ref=e2014]: "الدخل:"
+                    - generic [ref=e2015]: "608.00"
+                  - generic [ref=e2016]:
+                    - generic [ref=e2017]: "نسبة:"
+                    - generic [ref=e2018]: 10.5%
+              - generic [ref=e2020]:
+                - generic [ref=e2021]:
+                  - generic [ref=e2024]: tina
+                  - generic [ref=e2025]:
+                    - generic [ref=e2026]: "1"
+                    - generic [ref=e2027]: حجوزات
+                - generic [ref=e2030]:
+                  - generic [ref=e2031]:
+                    - generic [ref=e2032]: 
+                    - generic [ref=e2033]: "الدخل:"
+                    - generic [ref=e2034]: "120.00"
+                  - generic [ref=e2035]:
+                    - generic [ref=e2036]: "نسبة:"
+                    - generic [ref=e2037]: 2.6%
+          - generic [ref=e420]:
+            - generic [ref=e422]:
+              - heading " حالات دفع الحجوزات" [level=3] [ref=e424]:
+                - generic [ref=e425]: 
+                - text: حالات دفع الحجوزات
+              - generic [ref=e456]:
+                - generic [ref=e2039]:
+                  - generic [ref=e2040]:
+                    - generic [ref=e2043]: قيد الإنتظار
+                    - generic [ref=e2044]:
+                      - generic [ref=e2045]: "38"
+                      - generic [ref=e2046]: حجوزات
+                  - generic [ref=e2049]:
+                    - generic [ref=e2050]:
+                      - generic [ref=e2051]: 
+                      - generic [ref=e2052]: "الدخل:"
+                      - generic [ref=e2053]: 5,007.00
+                    - generic [ref=e2054]:
+                      - generic [ref=e2055]: "نسبة:"
+                      - generic [ref=e2056]: 100%
+                - generic [ref=e2058]:
+                  - generic [ref=e2059]:
+                    - generic [ref=e2062]: تم الدفع
+                    - generic [ref=e2063]:
+                      - generic [ref=e2064]: "0"
+                      - generic [ref=e2065]: حجوزات
+                  - generic [ref=e2067]:
+                    - generic [ref=e2068]:
+                      - generic [ref=e2069]: 
+                      - generic [ref=e2070]: "الدخل:"
+                      - generic [ref=e2071]: "0.00"
+                    - generic [ref=e2072]:
+                      - generic [ref=e2073]: "نسبة:"
+                      - generic [ref=e2074]: 0%
+            - generic [ref=e431]:
+              - heading " حالات الحجوزات" [level=3] [ref=e433]:
+                - generic [ref=e434]: 
+                - text: حالات الحجوزات
+              - generic [ref=e493]:
+                - generic [ref=e2076]:
+                  - generic [ref=e2077]:
+                    - generic [ref=e2080]: تحت المراجعة
+                    - generic [ref=e2081]:
+                      - generic [ref=e2082]: "0"
+                      - generic [ref=e2083]: حجوزات
+                  - generic [ref=e2085]:
+                    - generic [ref=e2086]:
+                      - generic [ref=e2087]: 
+                      - generic [ref=e2088]: "الدخل:"
+                      - generic [ref=e2089]: "0.00"
+                    - generic [ref=e2090]:
+                      - generic [ref=e2091]: "نسبة:"
+                      - generic [ref=e2092]: 0%
+                - generic [ref=e2094]:
+                  - generic [ref=e2095]:
+                    - generic [ref=e2098]: مؤكد
+                    - generic [ref=e2099]:
+                      - generic [ref=e2100]: "0"
+                      - generic [ref=e2101]: حجوزات
+                  - generic [ref=e2103]:
+                    - generic [ref=e2104]:
+                      - generic [ref=e2105]: 
+                      - generic [ref=e2106]: "الدخل:"
+                      - generic [ref=e2107]: "0.00"
+                    - generic [ref=e2108]:
+                      - generic [ref=e2109]: "نسبة:"
+                      - generic [ref=e2110]: 0%
+                - generic [ref=e2112]:
+                  - generic [ref=e2113]:
+                    - generic [ref=e2116]: تم بنجاح
+                    - generic [ref=e2117]:
+                      - generic [ref=e2118]: "0"
+                      - generic [ref=e2119]: حجوزات
+                  - generic [ref=e2121]:
+                    - generic [ref=e2122]:
+                      - generic [ref=e2123]: 
+                      - generic [ref=e2124]: "الدخل:"
+                      - generic [ref=e2125]: "0.00"
+                    - generic [ref=e2126]:
+                      - generic [ref=e2127]: "نسبة:"
+                      - generic [ref=e2128]: 0%
+                - generic [ref=e2130]:
+                  - generic [ref=e2131]:
+                    - generic [ref=e2134]: تم الإلغاء
+                    - generic [ref=e2135]:
+                      - generic [ref=e2136]: "0"
+                      - generic [ref=e2137]: حجوزات
+                  - generic [ref=e2139]:
+                    - generic [ref=e2140]:
+                      - generic [ref=e2141]: 
+                      - generic [ref=e2142]: "الدخل:"
+                      - generic [ref=e2143]: "0.00"
+                    - generic [ref=e2144]:
+                      - generic [ref=e2145]: "نسبة:"
+                      - generic [ref=e2146]: 0%
+                - generic [ref=e2148]:
+                  - generic [ref=e2149]:
+                    - generic [ref=e2152]: فائت
+                    - generic [ref=e2153]:
+                      - generic [ref=e2154]: "38"
+                      - generic [ref=e2155]: حجوزات
+                  - generic [ref=e2158]:
+                    - generic [ref=e2159]:
+                      - generic [ref=e2160]: 
+                      - generic [ref=e2161]: "الدخل:"
+                      - generic [ref=e2162]: 5,007.00
+                    - generic [ref=e2163]:
+                      - generic [ref=e2164]: "نسبة:"
+                      - generic [ref=e2165]: 100%
+        - generic [ref=e440]:
+          - generic [ref=e441]:
+            - text: 2026©
+            - link "Menus Sa" [ref=e442] [cursor=pointer]:
+              - /url: https://menus-sa.com
+          - list:
+            - listitem
+  - text:  
+  - img

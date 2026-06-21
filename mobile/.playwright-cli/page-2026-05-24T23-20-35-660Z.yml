@@ -1,0 +1,236 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e5]:
+      - text:  
+      - generic [ref=e6]:
+        - generic [ref=e8]:
+          - link "لوحة التحكم" [ref=e9] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138
+            - generic [ref=e11]: لوحة التحكم
+          - link "الخدمات" [ref=e12] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/service
+            - generic [ref=e14]: الخدمات
+          - link "الاقسام" [ref=e15] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/category
+            - generic [ref=e17]: الاقسام
+          - link "المنتجات" [ref=e18] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/product
+            - generic [ref=e20]: المنتجات
+          - link "الحجوزات" [ref=e21] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/reservation
+            - generic [ref=e23]: الحجوزات
+          - link "الطلبات" [ref=e24] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/order
+            - generic [ref=e26]: الطلبات
+          - 'link "الفرع الحالي : Kiara" [ref=e27] [cursor=pointer]':
+            - /url: javascript:;
+            - generic [ref=e29]: "الفرع الحالي : Kiara"
+        - generic [ref=e30]:
+          - generic [ref=e32] [cursor=pointer]: 
+          - generic [ref=e33]:
+            - link "6 أيام" [ref=e35] [cursor=pointer]:
+              - /url: " https://kiara.nehgz.com/ar/plans "
+              - generic [ref=e41]:
+                - generic [ref=e42]: "6"
+                - paragraph [ref=e43]: أيام
+            - link " تجديد الإشتراك" [ref=e44] [cursor=pointer]:
+              - /url: https://kiara.nehgz.com/ar/plans
+              - generic [ref=e45]: 
+              - text: تجديد الإشتراك
+          - link "عرض المتجر" [ref=e47] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar
+          - generic [ref=e50] [cursor=pointer]:
+            - generic [ref=e51]: 
+            - generic: 
+            - generic: 
+            - generic: 
+          - generic [ref=e52]:
+            - link "         " [ref=e53] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e54]:
+                - generic [ref=e55]: 
+                - generic: 
+                - generic: 
+                - generic: 
+                - generic: 
+                - generic: 
+                - generic: 
+                - generic: 
+                - generic: 
+                - generic: 
+              - text: 
+            - text:                
+          - img "user" [ref=e58] [cursor=pointer]
+          - text:  
+    - generic [ref=e59]:
+      - generic [ref=e60]:
+        - generic [ref=e61]:
+          - link "Logo" [ref=e62] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138
+            - img "Logo" [ref=e63]
+          - generic [ref=e65] [cursor=pointer]:
+            - generic [ref=e66]: 
+            - generic: 
+        - generic [ref=e69]:
+          - link " لوحة التحكم" [ref=e71] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138
+            - generic [ref=e72]:
+              - generic [ref=e74]: 
+              - generic [ref=e75]: لوحة التحكم
+          - generic [ref=e77] [cursor=pointer]:
+            - generic [ref=e79]: 
+            - generic [ref=e80]: الاقسام
+          - generic [ref=e83] [cursor=pointer]:
+            - generic [ref=e85]: 
+            - generic [ref=e86]: الخدمات
+          - generic [ref=e89] [cursor=pointer]:
+            - generic [ref=e91]: 
+            - generic [ref=e92]: الحجوزات
+          - link " التقارير جديد" [ref=e95] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/reports
+            - generic [ref=e96]:
+              - generic [ref=e98]: 
+              - generic [ref=e99]: التقارير
+            - generic [ref=e100]: جديد
+          - link " العملاء" [ref=e102] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/customer
+            - generic [ref=e103]:
+              - generic [ref=e105]: 
+              - generic [ref=e106]: العملاء
+          - generic [ref=e108] [cursor=pointer]:
+            - generic [ref=e110]: 
+            - generic [ref=e111]: المنتجات
+          - generic [ref=e114] [cursor=pointer]:
+            - generic [ref=e116]: 
+            - generic [ref=e117]: الطلبات
+          - generic [ref=e120] [cursor=pointer]:
+            - generic [ref=e122]: 
+            - generic [ref=e123]: الفروع
+          - generic [ref=e126] [cursor=pointer]:
+            - generic [ref=e128]: 
+            - generic [ref=e129]: الأدوار والصلاحيات
+          - generic [ref=e132] [cursor=pointer]:
+            - generic [ref=e134]: 
+            - generic [ref=e135]: الموظفين
+          - link " القوالب" [ref=e138] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/get-theme
+            - generic [ref=e139]:
+              - generic [ref=e141]: 
+              - generic [ref=e142]: القوالب
+          - link " أكواد الخصم" [ref=e144] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/coupons
+            - generic [ref=e145]:
+              - generic [ref=e147]: 
+              - generic [ref=e148]: أكواد الخصم
+          - link " المحفظة" [ref=e150] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/wallet
+            - generic [ref=e151]:
+              - generic [ref=e153]: 
+              - generic [ref=e154]: المحفظة
+          - link " خدمة واتساب" [ref=e156] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/whatsapp
+            - generic [ref=e157]:
+              - generic [ref=e159]: 
+              - generic [ref=e160]: خدمة واتساب
+          - generic [ref=e162] [cursor=pointer]:
+            - generic [ref=e164]: 
+            - generic [ref=e165]: الإعدادات العامة
+          - link " خطط الأسعار" [ref=e168] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/plans?9a2ca5dc-7c7a-47da-83df-ed9a9f6db138
+            - generic [ref=e169]:
+              - generic [ref=e171]: 
+              - generic [ref=e172]: خطط الأسعار
+        - link "تسجيل خروج" [ref=e174] [cursor=pointer]:
+          - /url: javascript:;
+          - generic [ref=e175]: تسجيل خروج
+      - generic [ref=e176]:
+        - generic [ref=e179]:
+          - generic [ref=e182]:
+            - link "0 الطلبات" [ref=e184] [cursor=pointer]:
+              - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/order?status=all
+              - generic [ref=e185]:
+                - generic [ref=e187]:
+                  - generic:
+                    - img
+                - generic [ref=e188]: "0"
+                - generic [ref=e189]: الطلبات
+            - link "1978 الحجوزات" [ref=e191] [cursor=pointer]:
+              - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/reservation?status=all
+              - generic [ref=e192]:
+                - generic [ref=e194]:
+                  - generic:
+                    - img
+                - generic [ref=e195]: "1978"
+                - generic [ref=e196]: الحجوزات
+            - link "82 الخدمات" [ref=e198] [cursor=pointer]:
+              - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/service?status=all
+              - generic [ref=e199]:
+                - generic [ref=e201]:
+                  - generic:
+                    - img
+                - generic [ref=e202]: "82"
+                - generic [ref=e203]: الخدمات
+            - link "12 الاقسام" [ref=e205] [cursor=pointer]:
+              - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/category?status=all
+              - generic [ref=e206]:
+                - generic [ref=e208]:
+                  - generic:
+                    - img
+                - generic [ref=e209]: "12"
+                - generic [ref=e210]: الاقسام
+            - link "1 المنتجات" [ref=e212] [cursor=pointer]:
+              - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/product?status=all
+              - generic [ref=e213]:
+                - generic [ref=e215]:
+                  - generic:
+                    - img
+                - generic [ref=e216]: "1"
+                - generic [ref=e217]: المنتجات
+            - link "1516 عملاء" [ref=e219] [cursor=pointer]:
+              - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/customer?status=all
+              - generic [ref=e220]:
+                - generic [ref=e222]:
+                  - generic:
+                    - img
+                - generic [ref=e223]: "1516"
+                - generic [ref=e224]: عملاء
+            - link "9 الموظفين" [ref=e226] [cursor=pointer]:
+              - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/staff?status=all
+              - generic [ref=e227]:
+                - generic [ref=e229]:
+                  - generic:
+                    - img
+                - generic [ref=e230]: "9"
+                - generic [ref=e231]: الموظفين
+          - generic [ref=e232]:
+            - generic [ref=e235]:
+              - generic [ref=e238]:
+                - generic [ref=e240]: 
+                - generic [ref=e242]: 0%
+              - paragraph [ref=e243]: الحجوزات اليومية
+              - heading "—" [level=3] [ref=e244]
+              - paragraph [ref=e245]: مقابل أمس
+            - generic [ref=e248]:
+              - generic [ref=e251]:
+                - generic [ref=e253]: 
+                - generic [ref=e255]: 0%
+              - paragraph [ref=e256]: دخل اليوم
+              - heading "—" [level=3] [ref=e257]:
+                - text: —
+                - img [ref=e259]
+              - paragraph [ref=e264]: مقابل أمس
+          - heading " توزيع الخدمات" [level=3] [ref=e269]:
+            - generic [ref=e270]: 
+            - text: توزيع الخدمات
+          - heading " أداء الموظفين" [level=3] [ref=e281]:
+            - generic [ref=e282]: 
+            - text: أداء الموظفين
+        - generic [ref=e290]:
+          - generic [ref=e291]:
+            - text: 2026©
+            - link "Menus Sa" [ref=e292] [cursor=pointer]:
+              - /url: https://menus-sa.com
+          - list:
+            - listitem
+  - text:  
+  - img

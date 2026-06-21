@@ -1,0 +1,28 @@
+{
+  "selected_period": {
+    "label": "February 2026",
+    "from": "2026-02-01",
+    "to": "2026-02-28"
+  },
+  "comparison": {
+    "april_2026": {
+      "bookings": 16,
+      "income": 2293.0
+    },
+    "march_2026": {
+      "bookings": 38,
+      "income": 5007.0
+    },
+    "february_2026": {
+      "paid_bookings": 117,
+      "pending_bookings": 21,
+      "paid_income": 17034.0,
+      "pending_income": 3399.0,
+      "top_staff": [
+        { "name": "rose", "bookings": 40, "income": 6417.0 },
+        { "name": "taha", "bookings": 37, "income": 5765.0 },
+        { "name": "mira", "bookings": 35, "income": 3946.0 }
+      ]
+    }
+  }
+}

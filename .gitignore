@@ -43,3 +43,4 @@ next-env.d.ts
 # claude code worktrees (should never be tracked as gitlinks)
 .claude/worktrees/
 vercel.env.template
+HANDOFF_TO_NEXT_AI.md

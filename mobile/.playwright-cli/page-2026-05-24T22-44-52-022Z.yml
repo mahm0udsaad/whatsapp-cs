@@ -1,0 +1,520 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e5]:
+      - text:  
+      - generic [ref=e6]:
+        - generic [ref=e8]:
+          - link "لوحة التحكم" [ref=e9] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138
+            - generic [ref=e11]: لوحة التحكم
+          - link "الخدمات" [ref=e12] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/service
+            - generic [ref=e14]: الخدمات
+          - link "الاقسام" [ref=e15] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/category
+            - generic [ref=e17]: الاقسام
+          - link "المنتجات" [ref=e18] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/product
+            - generic [ref=e20]: المنتجات
+          - link "الحجوزات" [ref=e21] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/reservation
+            - generic [ref=e23]: الحجوزات
+          - link "الطلبات" [ref=e24] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/order
+            - generic [ref=e26]: الطلبات
+          - 'link "الفرع الحالي : Kiara" [ref=e27] [cursor=pointer]':
+            - /url: javascript:;
+            - generic [ref=e29]: "الفرع الحالي : Kiara"
+        - generic [ref=e30]:
+          - generic [ref=e32] [cursor=pointer]: 
+          - generic [ref=e33]:
+            - link "6 أيام" [ref=e35] [cursor=pointer]:
+              - /url: " https://kiara.nehgz.com/ar/plans "
+              - generic [ref=e41]:
+                - generic [ref=e42]: "6"
+                - paragraph [ref=e43]: أيام
+            - link " تجديد الإشتراك" [ref=e44] [cursor=pointer]:
+              - /url: https://kiara.nehgz.com/ar/plans
+              - generic [ref=e45]: 
+              - text: تجديد الإشتراك
+          - link "عرض المتجر" [ref=e47] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar
+          - generic [ref=e48]:
+            - generic [ref=e50] [cursor=pointer]:
+              - generic [ref=e51]: 
+              - generic: 
+              - generic: 
+              - generic: 
+            - text:            
+          - generic [ref=e52]:
+            - link "         " [ref=e53] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e54]:
+                - generic [ref=e55]: 
+                - generic: 
+                - generic: 
+                - generic: 
+                - generic: 
+                - generic: 
+                - generic: 
+                - generic: 
+                - generic: 
+                - generic: 
+              - text: 
+            - text:                
+          - img "user" [ref=e58] [cursor=pointer]
+          - text:  
+    - generic [ref=e59]:
+      - generic [ref=e60]:
+        - generic [ref=e61]:
+          - link "Logo" [ref=e62] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138
+            - img "Logo" [ref=e63]
+          - generic [ref=e65] [cursor=pointer]:
+            - generic [ref=e66]: 
+            - generic: 
+        - generic [ref=e69]:
+          - link " لوحة التحكم" [ref=e71] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138
+            - generic [ref=e72]:
+              - generic [ref=e74]: 
+              - generic [ref=e75]: لوحة التحكم
+          - generic [ref=e77] [cursor=pointer]:
+            - generic [ref=e79]: 
+            - generic [ref=e80]: الاقسام
+          - generic [ref=e83] [cursor=pointer]:
+            - generic [ref=e85]: 
+            - generic [ref=e86]: الخدمات
+          - generic [ref=e89] [cursor=pointer]:
+            - generic [ref=e91]: 
+            - generic [ref=e92]: الحجوزات
+          - link " التقارير جديد" [ref=e95] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/reports
+            - generic [ref=e96]:
+              - generic [ref=e98]: 
+              - generic [ref=e99]: التقارير
+            - generic [ref=e100]: جديد
+          - link " العملاء" [ref=e102] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/customer
+            - generic [ref=e103]:
+              - generic [ref=e105]: 
+              - generic [ref=e106]: العملاء
+          - generic [ref=e108] [cursor=pointer]:
+            - generic [ref=e110]: 
+            - generic [ref=e111]: المنتجات
+          - generic [ref=e114] [cursor=pointer]:
+            - generic [ref=e116]: 
+            - generic [ref=e117]: الطلبات
+          - generic [ref=e120] [cursor=pointer]:
+            - generic [ref=e122]: 
+            - generic [ref=e123]: الفروع
+          - generic [ref=e126] [cursor=pointer]:
+            - generic [ref=e128]: 
+            - generic [ref=e129]: الأدوار والصلاحيات
+          - generic [ref=e132] [cursor=pointer]:
+            - generic [ref=e134]: 
+            - generic [ref=e135]: الموظفين
+          - link " القوالب" [ref=e138] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/get-theme
+            - generic [ref=e139]:
+              - generic [ref=e141]: 
+              - generic [ref=e142]: القوالب
+          - link " أكواد الخصم" [ref=e144] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/coupons
+            - generic [ref=e145]:
+              - generic [ref=e147]: 
+              - generic [ref=e148]: أكواد الخصم
+          - link " المحفظة" [ref=e150] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/wallet
+            - generic [ref=e151]:
+              - generic [ref=e153]: 
+              - generic [ref=e154]: المحفظة
+          - link " خدمة واتساب" [ref=e156] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/whatsapp
+            - generic [ref=e157]:
+              - generic [ref=e159]: 
+              - generic [ref=e160]: خدمة واتساب
+          - generic [ref=e162] [cursor=pointer]:
+            - generic [ref=e164]: 
+            - generic [ref=e165]: الإعدادات العامة
+          - link " خطط الأسعار" [ref=e168] [cursor=pointer]:
+            - /url: https://kiara.nehgz.com/ar/plans?9a2ca5dc-7c7a-47da-83df-ed9a9f6db138
+            - generic [ref=e169]:
+              - generic [ref=e171]: 
+              - generic [ref=e172]: خطط الأسعار
+        - link "تسجيل خروج" [ref=e174] [cursor=pointer]:
+          - /url: javascript:;
+          - generic [ref=e175]: تسجيل خروج
+      - generic [ref=e176]:
+        - generic [ref=e180]:
+          - generic [ref=e181]:
+            - generic [ref=e182]:
+              - img [ref=e184]
+              - textbox "البحث" [ref=e187]
+            - generic [ref=e190]:
+              - link "إضافة حجز جديد" [ref=e191] [cursor=pointer]:
+                - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/reservation/create
+              - link "إظهار تقويم الحجز" [ref=e192] [cursor=pointer]:
+                - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/reservation-calender
+              - button "اظهار الفلترة" [ref=e193] [cursor=pointer]
+              - button "اظهار الإحصائيات" [ref=e194] [cursor=pointer]
+              - button "الحجوزات اليومية" [ref=e195] [cursor=pointer]
+          - generic [ref=e198]:
+            - table [ref=e200]:
+              - rowgroup [ref=e201]:
+                - 'row "الاسم: تفعيل لترتيب العمود تنازلياً رقم الجوال: تفعيل لترتيب العمود تصاعدياً بريد إلكتروني: تفعيل لترتيب العمود تصاعدياً الموظفين: تفعيل لترتيب العمود تصاعدياً الخدمة: تفعيل لترتيب العمود تصاعدياً التكلفة الإجمالية: تفعيل لترتيب العمود تصاعدياً تاريخ: تفعيل لترتيب العمود تصاعدياً من: تفعيل لترتيب العمود تصاعدياً إلى: تفعيل لترتيب العمود تصاعدياً الحالة أنشئت في: تفعيل لترتيب العمود تصاعدياً التحكم" [ref=e202]':
+                  - 'cell "الاسم: تفعيل لترتيب العمود تنازلياً" [ref=e203] [cursor=pointer]': الاسم
+                  - 'cell "رقم الجوال: تفعيل لترتيب العمود تصاعدياً" [ref=e204] [cursor=pointer]': رقم الجوال
+                  - 'cell "بريد إلكتروني: تفعيل لترتيب العمود تصاعدياً" [ref=e205] [cursor=pointer]': بريد إلكتروني
+                  - 'cell "الموظفين: تفعيل لترتيب العمود تصاعدياً" [ref=e206] [cursor=pointer]': الموظفين
+                  - 'cell "الخدمة: تفعيل لترتيب العمود تصاعدياً" [ref=e207] [cursor=pointer]': الخدمة
+                  - 'cell "التكلفة الإجمالية: تفعيل لترتيب العمود تصاعدياً" [ref=e208] [cursor=pointer]': التكلفة الإجمالية
+                  - 'cell "تاريخ: تفعيل لترتيب العمود تصاعدياً" [ref=e209] [cursor=pointer]': تاريخ
+                  - 'cell "من: تفعيل لترتيب العمود تصاعدياً" [ref=e210] [cursor=pointer]': من
+                  - 'cell "إلى: تفعيل لترتيب العمود تصاعدياً" [ref=e211] [cursor=pointer]': إلى
+                  - cell "الحالة" [ref=e212]
+                  - 'cell "أنشئت في: تفعيل لترتيب العمود تصاعدياً" [ref=e213] [cursor=pointer]': أنشئت في
+                  - rowheader "التحكم" [ref=e214]
+              - rowgroup [ref=e215]:
+                - row "Test 966554866685 الموظفة Ana - مساج إسترخاء أحجار 40د - 🍃 150 10-05-2026 22:00 22:40 فائت (غير مدفوع) 2026-05-09 13:38:23" [ref=e216]:
+                  - cell "Test" [ref=e217]
+                  - cell "966554866685" [ref=e218]
+                  - cell [ref=e219]
+                  - cell "الموظفة Ana" [ref=e220]: الموظفة Ana
+                  - cell "- مساج إسترخاء أحجار 40د - 🍃" [ref=e221]: "- مساج إسترخاء أحجار 40د - 🍃"
+                  - cell "150" [ref=e222]
+                  - cell "10-05-2026" [ref=e223]: 10-05-2026
+                  - cell "22:00" [ref=e224]: 22:00
+                  - cell "22:40" [ref=e225]: 22:40
+                  - cell "فائت (غير مدفوع)" [ref=e226]:
+                    - generic [ref=e227]: فائت (غير مدفوع)
+                  - cell "2026-05-09 13:38:23" [ref=e228]
+                  - cell [ref=e229]:
+                    - generic [ref=e230]:
+                      - link [ref=e231] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/reservation/2077
+                        - img [ref=e233]
+                      - link [ref=e237] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/print-reservation/2077
+                        - img [ref=e239]
+                      - link [ref=e243] [cursor=pointer]:
+                        - /url: javascript:;
+                        - img [ref=e245]
+                - row "Test 966554866685 موظفة 1 R - مساج كاسات الهوى 40 د - 🍃 150 10-05-2026 16:00 16:40 فائت (غير مدفوع) 2026-05-09 13:24:16" [ref=e249]:
+                  - cell "Test" [ref=e250]
+                  - cell "966554866685" [ref=e251]
+                  - cell [ref=e252]
+                  - cell "موظفة 1 R" [ref=e253]: موظفة 1 R
+                  - cell "- مساج كاسات الهوى 40 د - 🍃" [ref=e254]: "- مساج كاسات الهوى 40 د - 🍃"
+                  - cell "150" [ref=e255]
+                  - cell "10-05-2026" [ref=e256]: 10-05-2026
+                  - cell "16:00" [ref=e257]: 16:00
+                  - cell "16:40" [ref=e258]: 16:40
+                  - cell "فائت (غير مدفوع)" [ref=e259]:
+                    - generic [ref=e260]: فائت (غير مدفوع)
+                  - cell "2026-05-09 13:24:16" [ref=e261]
+                  - cell [ref=e262]:
+                    - generic [ref=e263]:
+                      - link [ref=e264] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/reservation/2076
+                        - img [ref=e266]
+                      - link [ref=e270] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/print-reservation/2076
+                        - img [ref=e272]
+                      - link [ref=e276] [cursor=pointer]:
+                        - /url: javascript:;
+                        - img [ref=e278]
+                - row "Test 966554866685 موظفه 3 m موظفة 2 T - مساج علاجى احجار 60 د - 🍃 - قص الشعر - 🍃 244 18-05-2026 08-05-2026 13:00 14:00 13:40 14:30 فائت (غير مدفوع) 2026-05-07 00:30:25" [ref=e282]:
+                  - cell "Test" [ref=e283]
+                  - cell "966554866685" [ref=e284]
+                  - cell [ref=e285]
+                  - cell "موظفه 3 m موظفة 2 T" [ref=e286]:
+                    - text: موظفه 3 m
+                    - text: موظفة 2 T
+                  - cell "- مساج علاجى احجار 60 د - 🍃 - قص الشعر - 🍃" [ref=e287]:
+                    - text: "- مساج علاجى احجار 60 د - 🍃"
+                    - text: "- قص الشعر - 🍃"
+                  - cell "244" [ref=e288]
+                  - cell "18-05-2026 08-05-2026" [ref=e289]:
+                    - text: 18-05-2026
+                    - text: 08-05-2026
+                  - cell "13:00 14:00" [ref=e290]:
+                    - text: 13:00
+                    - text: 14:00
+                  - cell "13:40 14:30" [ref=e291]:
+                    - text: 13:40
+                    - text: 14:30
+                  - cell "فائت (غير مدفوع)" [ref=e292]:
+                    - generic [ref=e293]: فائت (غير مدفوع)
+                  - cell "2026-05-07 00:30:25" [ref=e294]
+                  - cell [ref=e295]:
+                    - generic [ref=e296]:
+                      - link [ref=e297] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/reservation/2074
+                        - img [ref=e299]
+                      - link [ref=e303] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/print-reservation/2074
+                        - img [ref=e305]
+                      - link [ref=e309] [cursor=pointer]:
+                        - /url: javascript:;
+                        - img [ref=e311]
+                - row "966543866685 موظفه 3 m - حمام مغربي عادي - 🍃 - قص الشعر - 🍃 209 26-05-2026 08-05-2026 12:40 19:00 13:10 19:40 موعد قادم (غير مدفوع) 2026-05-07 00:12:25" [ref=e315]:
+                  - cell [ref=e316]
+                  - cell "966543866685" [ref=e317]
+                  - cell [ref=e318]
+                  - cell "موظفه 3 m" [ref=e319]: موظفه 3 m
+                  - cell "- حمام مغربي عادي - 🍃 - قص الشعر - 🍃" [ref=e320]:
+                    - text: "- حمام مغربي عادي - 🍃"
+                    - text: "- قص الشعر - 🍃"
+                  - cell "209" [ref=e321]
+                  - cell "26-05-2026 08-05-2026" [ref=e322]:
+                    - text: 26-05-2026
+                    - text: 08-05-2026
+                  - cell "12:40 19:00" [ref=e323]:
+                    - text: 12:40
+                    - text: 19:00
+                  - cell "13:10 19:40" [ref=e324]:
+                    - text: 13:10
+                    - text: 19:40
+                  - cell "موعد قادم (غير مدفوع)" [ref=e325]:
+                    - generic [ref=e326]: موعد قادم (غير مدفوع)
+                  - cell "2026-05-07 00:12:25" [ref=e327]
+                  - cell [ref=e328]:
+                    - generic [ref=e329]:
+                      - link [ref=e330] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/reservation/2072
+                        - img [ref=e332]
+                      - link [ref=e336] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/print-reservation/2072
+                        - img [ref=e338]
+                      - link [ref=e342] [cursor=pointer]:
+                        - /url: javascript:;
+                        - img [ref=e344]
+                - row "966543866685 موظفة 2 T - مساج العملات المعدنية 40د - 🍃 150 07-05-2026 16:50 17:30 فائت (غير مدفوع) 2026-05-06 23:56:16" [ref=e348]:
+                  - cell [ref=e349]
+                  - cell "966543866685" [ref=e350]
+                  - cell [ref=e351]
+                  - cell "موظفة 2 T" [ref=e352]: موظفة 2 T
+                  - cell "- مساج العملات المعدنية 40د - 🍃" [ref=e353]: "- مساج العملات المعدنية 40د - 🍃"
+                  - cell "150" [ref=e354]
+                  - cell "07-05-2026" [ref=e355]: 07-05-2026
+                  - cell "16:50" [ref=e356]: 16:50
+                  - cell "17:30" [ref=e357]: 17:30
+                  - cell "فائت (غير مدفوع)" [ref=e358]:
+                    - generic [ref=e359]: فائت (غير مدفوع)
+                  - cell "2026-05-06 23:56:16" [ref=e360]
+                  - cell [ref=e361]:
+                    - generic [ref=e362]:
+                      - link [ref=e363] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/reservation/2071
+                        - img [ref=e365]
+                      - link [ref=e369] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/print-reservation/2071
+                        - img [ref=e371]
+                      - link [ref=e375] [cursor=pointer]:
+                        - /url: javascript:;
+                        - img [ref=e377]
+                - row "Test 966554866685 الموظفة Ana - مساج إسترخاء أحجار 40د - 🍃 - قص أطراف الشعر - 🍃 189 07-05-2026 07-05-2026 21:00 14:00 21:10 14:40 فائت (غير مدفوع) 2026-05-06 23:48:04" [ref=e381]:
+                  - cell "Test" [ref=e382]
+                  - cell "966554866685" [ref=e383]
+                  - cell [ref=e384]
+                  - cell "الموظفة Ana" [ref=e385]: الموظفة Ana
+                  - cell "- مساج إسترخاء أحجار 40د - 🍃 - قص أطراف الشعر - 🍃" [ref=e386]:
+                    - text: "- مساج إسترخاء أحجار 40د - 🍃"
+                    - text: "- قص أطراف الشعر - 🍃"
+                  - cell "189" [ref=e387]
+                  - cell "07-05-2026 07-05-2026" [ref=e388]:
+                    - text: 07-05-2026
+                    - text: 07-05-2026
+                  - cell "21:00 14:00" [ref=e389]:
+                    - text: 21:00
+                    - text: 14:00
+                  - cell "21:10 14:40" [ref=e390]:
+                    - text: 21:10
+                    - text: 14:40
+                  - cell "فائت (غير مدفوع)" [ref=e391]:
+                    - generic [ref=e392]: فائت (غير مدفوع)
+                  - cell "2026-05-06 23:48:04" [ref=e393]
+                  - cell [ref=e394]:
+                    - generic [ref=e395]:
+                      - link [ref=e396] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/reservation/2069
+                        - img [ref=e398]
+                      - link [ref=e402] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/print-reservation/2069
+                        - img [ref=e404]
+                      - link [ref=e408] [cursor=pointer]:
+                        - /url: javascript:;
+                        - img [ref=e410]
+                - row "966532445469 موظفه 3 m موظفة 2 T - مساج إسترخاء أحجار 40د - 🍃 - قص الشعر - 🍃 209 24-04-2026 24-04-2026 14:00 13:00 14:30 13:40 فائت (غير مدفوع) 2026-04-23 01:50:19" [ref=e414]:
+                  - cell [ref=e415]
+                  - cell "966532445469" [ref=e416]
+                  - cell [ref=e417]
+                  - cell "موظفه 3 m موظفة 2 T" [ref=e418]:
+                    - text: موظفه 3 m
+                    - text: موظفة 2 T
+                  - cell "- مساج إسترخاء أحجار 40د - 🍃 - قص الشعر - 🍃" [ref=e419]:
+                    - text: "- مساج إسترخاء أحجار 40د - 🍃"
+                    - text: "- قص الشعر - 🍃"
+                  - cell "209" [ref=e420]
+                  - cell "24-04-2026 24-04-2026" [ref=e421]:
+                    - text: 24-04-2026
+                    - text: 24-04-2026
+                  - cell "14:00 13:00" [ref=e422]:
+                    - text: 14:00
+                    - text: 13:00
+                  - cell "14:30 13:40" [ref=e423]:
+                    - text: 14:30
+                    - text: 13:40
+                  - cell "فائت (غير مدفوع)" [ref=e424]:
+                    - generic [ref=e425]: فائت (غير مدفوع)
+                  - cell "2026-04-23 01:50:19" [ref=e426]
+                  - cell [ref=e427]:
+                    - generic [ref=e428]:
+                      - link [ref=e429] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/reservation/2067
+                        - img [ref=e431]
+                      - link [ref=e435] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/print-reservation/2067
+                        - img [ref=e437]
+                      - link [ref=e441] [cursor=pointer]:
+                        - /url: javascript:;
+                        - img [ref=e443]
+                - row "966503255447 الموظفة Ana موظفة 2 T - مساج علاجى احجار 60 د - 🍃 - مساج تفريغ هواء الرأس - 🍃 235 19-04-2026 19-04-2026 20:00 20:00 20:40 20:10 فائت (غير مدفوع) 2026-04-18 17:34:15" [ref=e447]:
+                  - cell [ref=e448]
+                  - cell "966503255447" [ref=e449]
+                  - cell [ref=e450]
+                  - cell "الموظفة Ana موظفة 2 T" [ref=e451]:
+                    - text: الموظفة Ana
+                    - text: موظفة 2 T
+                  - cell "- مساج علاجى احجار 60 د - 🍃 - مساج تفريغ هواء الرأس - 🍃" [ref=e452]:
+                    - text: "- مساج علاجى احجار 60 د - 🍃"
+                    - text: "- مساج تفريغ هواء الرأس - 🍃"
+                  - cell "235" [ref=e453]
+                  - cell "19-04-2026 19-04-2026" [ref=e454]:
+                    - text: 19-04-2026
+                    - text: 19-04-2026
+                  - cell "20:00 20:00" [ref=e455]:
+                    - text: 20:00
+                    - text: 20:00
+                  - cell "20:40 20:10" [ref=e456]:
+                    - text: 20:40
+                    - text: 20:10
+                  - cell "فائت (غير مدفوع)" [ref=e457]:
+                    - generic [ref=e458]: فائت (غير مدفوع)
+                  - cell "2026-04-18 17:34:15" [ref=e459]
+                  - cell [ref=e460]:
+                    - generic [ref=e461]:
+                      - link [ref=e462] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/reservation/2065
+                        - img [ref=e464]
+                      - link [ref=e468] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/print-reservation/2065
+                        - img [ref=e470]
+                      - link [ref=e474] [cursor=pointer]:
+                        - /url: javascript:;
+                        - img [ref=e476]
+                - row "نوره 🫡 0591106343 الموظفة Ana - مساج إسترخاء أحجار 40د - 🍃 - بديكير اليد - 🍃 250 14-04-2026 14-04-2026 16:00 16:00 16:40 16:40 فائت (غير مدفوع) 2026-04-14 02:56:01" [ref=e480]:
+                  - cell "نوره 🫡" [ref=e481]
+                  - cell "0591106343" [ref=e482]
+                  - cell [ref=e483]
+                  - cell "الموظفة Ana" [ref=e484]: الموظفة Ana
+                  - cell "- مساج إسترخاء أحجار 40د - 🍃 - بديكير اليد - 🍃" [ref=e485]:
+                    - text: "- مساج إسترخاء أحجار 40د - 🍃"
+                    - text: "- بديكير اليد - 🍃"
+                  - cell "250" [ref=e486]
+                  - cell "14-04-2026 14-04-2026" [ref=e487]:
+                    - text: 14-04-2026
+                    - text: 14-04-2026
+                  - cell "16:00 16:00" [ref=e488]:
+                    - text: 16:00
+                    - text: 16:00
+                  - cell "16:40 16:40" [ref=e489]:
+                    - text: 16:40
+                    - text: 16:40
+                  - cell "فائت (غير مدفوع)" [ref=e490]:
+                    - generic [ref=e491]: فائت (غير مدفوع)
+                  - cell "2026-04-14 02:56:01" [ref=e492]
+                  - cell [ref=e493]:
+                    - generic [ref=e494]:
+                      - link [ref=e495] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/reservation/2063
+                        - img [ref=e497]
+                      - link [ref=e501] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/print-reservation/2063
+                        - img [ref=e503]
+                      - link [ref=e507] [cursor=pointer]:
+                        - /url: javascript:;
+                        - img [ref=e509]
+                - row "عقيلة عبده مدخلي 966580427348 الموظفة lis - مساج إسترخاء احجار 60د -🍃 185 03-04-2026 20:00 20:40 فائت (غير مدفوع) 2026-04-03 18:45:01" [ref=e513]:
+                  - cell "عقيلة عبده مدخلي" [ref=e514]
+                  - cell "966580427348" [ref=e515]
+                  - cell [ref=e516]
+                  - cell "الموظفة lis" [ref=e517]: الموظفة lis
+                  - cell "- مساج إسترخاء احجار 60د -🍃" [ref=e518]: "- مساج إسترخاء احجار 60د -🍃"
+                  - cell "185" [ref=e519]
+                  - cell "03-04-2026" [ref=e520]: 03-04-2026
+                  - cell "20:00" [ref=e521]: 20:00
+                  - cell "20:40" [ref=e522]: 20:40
+                  - cell "فائت (غير مدفوع)" [ref=e523]:
+                    - generic [ref=e524]: فائت (غير مدفوع)
+                  - cell "2026-04-03 18:45:01" [ref=e525]
+                  - cell [ref=e526]:
+                    - generic [ref=e527]:
+                      - link [ref=e528] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/reservation/2062
+                        - img [ref=e530]
+                      - link [ref=e534] [cursor=pointer]:
+                        - /url: https://kiara.nehgz.com/ar/9a2ca5dc-7c7a-47da-83df-ed9a9f6db138/print-reservation/2062
+                        - img [ref=e536]
+                      - link [ref=e540] [cursor=pointer]:
+                        - /url: javascript:;
+                        - img [ref=e542]
+            - generic [ref=e546]:
+              - generic [ref=e547]:
+                - generic [ref=e549]:
+                  - text: أظهر
+                  - combobox "أظهر مدخلات" [ref=e550]:
+                    - option "10" [selected]
+                    - option "25"
+                    - option "50"
+                    - option "100"
+                  - text: مدخلات
+                - status [ref=e551]: إظهار 1 إلى 10 من أصل 1.278 مدخل
+              - list [ref=e554]:
+                - listitem [ref=e555]:
+                  - link "السابق":
+                    - /url: "#"
+                - listitem [ref=e556]:
+                  - link "1" [ref=e557] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=e558]:
+                  - link "2" [ref=e559] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=e560]:
+                  - link "3" [ref=e561] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=e562]:
+                  - link "4" [ref=e563] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=e564]:
+                  - link "5" [ref=e565] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=e566]:
+                  - link "…":
+                    - /url: "#"
+                - listitem [ref=e567]:
+                  - link "128" [ref=e568] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=e569]:
+                  - link "التالي" [ref=e570] [cursor=pointer]:
+                    - /url: "#"
+        - generic [ref=e572]:
+          - generic [ref=e573]:
+            - text: 2026©
+            - link "Menus Sa" [ref=e574] [cursor=pointer]:
+              - /url: https://menus-sa.com
+          - list:
+            - listitem
+  - text:  
+  - img

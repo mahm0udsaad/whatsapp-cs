@@ -1,0 +1,36 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - tabpanel [ref=e7]:
+      - heading "تسجيل الدخول إلى حسابك" [level=2] [ref=e8]
+      - paragraph [ref=e9]: قم بإدخال بياناتك لتسجيل الدخول
+      - generic [ref=e10]:
+        - textbox "اسم المستخدم" [ref=e12]
+        - textbox "كلمة المرور" [ref=e14]
+        - link "هل نسيت كلمة السر ؟" [ref=e16] [cursor=pointer]:
+          - /url: https://kiara.nehgz.com/ar/password/reset
+        - button "تسجيل الدخول" [ref=e18] [cursor=pointer]:
+          - generic [ref=e19]: تسجيل الدخول
+    - generic [ref=e21]:
+      - link "Logo" [ref=e22] [cursor=pointer]:
+        - /url: https://nehgz.com/ar
+        - img "Logo" [ref=e23]
+      - heading "كل ما تحتاجه لنشر خدماتك على نطاق أوسع" [level=3] [ref=e24]
+      - heading "سجل الآن وانضم إلى العديد من مقدمي الخدمات حول المملكة واستفد من المزايا التسويقية والإدارية مع منصة جاهز" [level=5] [ref=e25]
+      - generic [ref=e26]:
+        - paragraph [ref=e27]:
+          - img [ref=e29]
+          - text: مكان واحد لجميع خدماتك
+        - paragraph [ref=e31]:
+          - img [ref=e33]
+          - text: متجر الكتروني متكامل
+        - paragraph [ref=e35]:
+          - img [ref=e37]
+          - text: حلول الدفع المختلفة
+        - paragraph [ref=e39]:
+          - img [ref=e41]
+          - text: إدارة الموظفين والجداول الزمنية
+        - paragraph [ref=e43]:
+          - img [ref=e45]
+          - text: العديد من المزايا الضخمة.
+    - contentinfo [ref=e47]
+  - img

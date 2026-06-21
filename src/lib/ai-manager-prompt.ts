@@ -67,8 +67,10 @@ JSON only. Schema:
 }
 
 Rules for emitInstructions:
-- Emit 0 or 1 rule per turn. Multiple rules only if owner clearly gave multiple distinct rules.
-- If owner is just chatting or asking a question, return empty array.
+- Emit 1 rule (or more, if the owner clearly gave multiple distinct rules) WHENEVER the owner has given enough detail to write an applicable rule. This is the whole point of the conversation — do not just talk.
+- CRITICAL: if your previous turn asked a clarifying question and the owner has now answered it, the rule is complete — you MUST emit it in THIS turn. Do not ask another question and do not just acknowledge.
+- CRITICAL: never write a reply that claims the rule is saved, applied, or activated (e.g. "تم الاعتماد", "سأقوم بالرد", "تم الحفظ", "تمام تم تطبيقها") UNLESS you are emitting that rule in emitInstructions in the SAME turn. If emitInstructions is empty, your reply must NOT imply anything was saved.
+- Only return an empty array when the owner is genuinely just chatting, greeting, or you still need one clarification before the rule can be written.
 - Do NOT reference "Hanan" or "المالكة" anywhere in the body — write it as "عند ..." or "إذا ...".
 
 Active rules so far (for context, do NOT restate):
