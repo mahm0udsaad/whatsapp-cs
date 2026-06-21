@@ -19,6 +19,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../../../lib/supabase";
+import { displayMessageText } from "../../../lib/message-display";
 import { useSessionStore } from "../../../lib/session-store";
 import { isManager } from "../../../lib/roles";
 import {
@@ -272,7 +273,7 @@ export default function InboxScreen() {
       if (convIds.length > 0) {
         const { data: recent } = await supabase
           .from("messages")
-          .select("conversation_id, content, created_at, role")
+          .select("conversation_id, content, created_at, role, metadata")
           .in("conversation_id", convIds)
           .order("created_at", { ascending: false })
           .limit(convIds.length * 3);
@@ -280,10 +281,11 @@ export default function InboxScreen() {
           conversation_id: string;
           content: string | null;
           role: "customer" | "agent" | "system";
+          metadata?: Record<string, unknown> | null;
         }[]) {
           if (!latestByConv.has(m.conversation_id)) {
             latestByConv.set(m.conversation_id, {
-              content: m.content ?? "",
+              content: displayMessageText({ content: m.content, metadata: m.metadata }),
               role: m.role,
             });
           }
@@ -436,7 +438,9 @@ export default function InboxScreen() {
             const shouldIncrementUnread = isCustomer || isBotReply;
             const merged: ListItem = {
               ...prev[idx],
-              preview: msg.content ?? prev[idx].preview,
+              preview: msg.content
+                ? displayMessageText({ content: msg.content, metadata: msg.metadata })
+                : prev[idx].preview,
               preview_role: msg.role,
               last_message_at: msg.created_at,
               last_inbound_at: isCustomer

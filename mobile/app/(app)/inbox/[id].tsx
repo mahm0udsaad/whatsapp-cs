@@ -48,6 +48,7 @@ import {
 } from "../../../lib/escalation-labels";
 import { setActiveConv } from "../../../lib/active-conv";
 import { captureException } from "../../../lib/observability";
+import { displayMessageText } from "../../../lib/message-display";
 import {
   ActivityIndicator,
   Image,
@@ -1855,6 +1856,7 @@ function MessageBubble({ message }: { message: Msg }) {
   const isCustomer = message.role === "customer";
   const isSystem = message.role === "system";
   const slots = messageMediaSlots(message);
+  const displayContent = displayMessageText(message);
   const hasOnlyMediaPlaceholder =
     slots.length > 0 && isMediaPlaceholderText(message.content);
   if (isSystem) {
@@ -1901,12 +1903,12 @@ function MessageBubble({ message }: { message: Msg }) {
                 bubbleTone={isCustomer ? "customer" : "agent"}
               />
             ))}
-            {message.content && !hasOnlyMediaPlaceholder ? (
-              <MessageText content={message.content} isCustomer={isCustomer} />
+            {displayContent && !hasOnlyMediaPlaceholder ? (
+              <MessageText content={displayContent} isCustomer={isCustomer} />
             ) : null}
           </View>
         ) : (
-          <MessageText content={message.content} isCustomer={isCustomer} />
+          <MessageText content={displayContent} isCustomer={isCustomer} />
         )}
         <View className="mt-1 flex-row-reverse items-center gap-1.5">
           <Text
