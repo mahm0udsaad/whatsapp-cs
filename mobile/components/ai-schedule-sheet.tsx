@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,51 +13,72 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker, {
+  type DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import { getAiSchedule, saveAiSchedule, type AiSchedule } from "../lib/api";
 import { qk } from "../lib/query-keys";
 
-// Half-hour slots "00:00".."23:30"; the end picker also offers "23:59".
-const SLOTS: string[] = Array.from({ length: 48 }, (_, i) => {
-  const h = Math.floor(i / 2);
-  const m = i % 2 === 0 ? "00" : "30";
-  return `${String(h).padStart(2, "0")}:${m}`;
-});
-const END_SLOTS = [...SLOTS, "23:59"];
+// Convert "HH:MM" (or "HH:MM:SS") to a Date anchored to today so the native
+// picker has something to render, and back to a zero-padded "HH:MM" string.
+function timeToDate(value: string): Date {
+  const [h, m] = value.split(":");
+  const d = new Date();
+  d.setHours(Number(h) || 0, Number(m) || 0, 0, 0);
+  return d;
+}
+function dateToTime(d: Date): string {
+  const h = String(d.getHours()).padStart(2, "0");
+  const m = String(d.getMinutes()).padStart(2, "0");
+  return `${h}:${m}`;
+}
 
-function TimeStrip({
+function TimeField({
   label,
   value,
-  options,
   onChange,
 }: {
   label: string;
   value: string;
-  options: string[];
   onChange: (v: string) => void;
 }) {
+  // Android shows the picker as a one-shot dialog opened on tap; iOS renders an
+  // inline native time pill ("compact") that opens the wheel popover itself.
+  const [androidOpen, setAndroidOpen] = useState(false);
+
+  const handleChange = (event: DateTimePickerEvent, date?: Date) => {
+    if (Platform.OS === "android") setAndroidOpen(false);
+    if (event.type === "set" && date) onChange(dateToTime(date));
+  };
+
   return (
     <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.strip}
-      >
-        {options.map((opt) => {
-          const active = opt === value;
-          return (
-            <Pressable
-              key={opt}
-              onPress={() => onChange(opt)}
-              style={[styles.chip, active && styles.chipActive]}
-            >
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                {opt}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      <View style={styles.fieldRow}>
+        <Text style={styles.fieldLabel}>{label}</Text>
+        {Platform.OS === "ios" ? (
+          <DateTimePicker
+            value={timeToDate(value)}
+            mode="time"
+            display="compact"
+            minuteInterval={5}
+            onChange={handleChange}
+            themeVariant="light"
+          />
+        ) : (
+          <Pressable onPress={() => setAndroidOpen(true)} style={styles.timePill}>
+            <Text style={styles.timePillText}>{value}</Text>
+          </Pressable>
+        )}
+      </View>
+      {Platform.OS === "android" && androidOpen ? (
+        <DateTimePicker
+          value={timeToDate(value)}
+          mode="time"
+          display="default"
+          minuteInterval={5}
+          onChange={handleChange}
+        />
+      ) : null}
     </View>
   );
 }
@@ -143,18 +165,8 @@ export function AiScheduleSheet({
 
             {enabled ? (
               <>
-                <TimeStrip
-                  label="وقت البدء"
-                  value={start}
-                  options={SLOTS}
-                  onChange={setStart}
-                />
-                <TimeStrip
-                  label="وقت الانتهاء"
-                  value={end}
-                  options={END_SLOTS}
-                  onChange={setEnd}
-                />
+                <TimeField label="وقت البدء" value={start} onChange={setStart} />
+                <TimeField label="وقت الانتهاء" value={end} onChange={setEnd} />
 
                 <View style={styles.card}>
                   <View style={styles.cardRow}>
@@ -245,28 +257,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E7EBFB",
     backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
     paddingVertical: 14,
   },
+  fieldRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    columnGap: 12,
+  },
   fieldLabel: {
-    paddingHorizontal: 16,
-    marginBottom: 10,
     textAlign: "right",
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
     color: "#16245C",
   },
-  strip: { paddingHorizontal: 12, columnGap: 8, flexDirection: "row-reverse" },
-  chip: {
-    paddingHorizontal: 14,
+  timePill: {
+    paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: "#E7EBFB",
     backgroundColor: "#F5F7FF",
   },
-  chipActive: { backgroundColor: "#011F91", borderColor: "#011F91" },
-  chipText: { fontSize: 15, fontWeight: "600", color: "#5E6A99" },
-  chipTextActive: { color: "#FFFFFF" },
+  timePillText: { fontSize: 17, fontWeight: "700", color: "#16245C" },
   summary: {
     textAlign: "right",
     fontSize: 13,
