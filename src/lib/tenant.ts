@@ -93,23 +93,79 @@ export async function getCurrentUser() {
 }
 
 export async function getTenantContextForUser(userId: string): Promise<TenantContext | null> {
-  const { data: profile } = await adminSupabaseClient
+  const { data: profileRow } = await adminSupabaseClient
     .from("profiles")
     .select("*")
     .eq("id", userId)
     .maybeSingle();
 
-  if (!profile) {
-    return null;
-  }
+  // Resolve the restaurant the way the rest of the app does: an owner owns a
+  // restaurant; otherwise the user may be a `team_members` staffer
+  // (Supabase-auth employee) of someone else's restaurant.
+  let restaurant: Restaurant | null = null;
+  let isMember = false;
 
-  const { data: restaurant } = await adminSupabaseClient
+  const { data: ownedRestaurant } = await adminSupabaseClient
     .from("restaurants")
     .select("*")
     .eq("owner_id", userId)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
+
+  if (ownedRestaurant) {
+    restaurant = ownedRestaurant as Restaurant;
+  } else {
+    const { data: member } = await adminSupabaseClient
+      .from("team_members")
+      .select("restaurant_id")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (member?.restaurant_id) {
+      isMember = true;
+      const { data: memberRestaurant } = await adminSupabaseClient
+        .from("restaurants")
+        .select("*")
+        .eq("id", member.restaurant_id)
+        .maybeSingle();
+      restaurant = (memberRestaurant as Restaurant | null) ?? null;
+    }
+  }
+
+  // An employee created via the team panel has an auth user but may not have a
+  // `profiles` row. Synthesize a minimal profile so the dashboard can render
+  // their name/email instead of failing and bouncing them to onboarding.
+  let profile = profileRow as Profile | null;
+  if (!profile) {
+    if (!isMember && !restaurant) {
+      // Neither a profile, nor an owned/member restaurant — nothing to show.
+      return null;
+    }
+    let email: string | null = null;
+    let fullName: string | null = null;
+    try {
+      const { data: authUser } =
+        await adminSupabaseClient.auth.admin.getUserById(userId);
+      email = authUser?.user?.email ?? null;
+      fullName =
+        (authUser?.user?.user_metadata?.full_name as string | undefined) ?? null;
+    } catch {
+      // best-effort — fall back to nulls below
+    }
+    const now = new Date().toISOString();
+    profile = {
+      id: userId,
+      full_name: fullName,
+      email,
+      avatar_url: null,
+      created_at: now,
+      updated_at: now,
+    };
+  }
 
   let aiAgent: AiAgent | null = null;
   if (restaurant) {
@@ -150,18 +206,57 @@ export async function getTenantContextForUser(userId: string): Promise<TenantCon
   }
 
   return {
-    profile: profile as Profile,
-    restaurant: restaurant as Restaurant | null,
+    profile,
+    restaurant,
     aiAgent,
     primarySender,
-    setupStatus: deriveSetupStatus(
-      restaurant as Restaurant | null,
-      primarySender
-    ),
+    setupStatus: deriveSetupStatus(restaurant, primarySender),
+    isMember,
   };
 }
 
 export async function getRestaurantForUserId(userId: string) {
+  // Owner path: the user owns a restaurant.
+  const { data: owned } = await adminSupabaseClient
+    .from("restaurants")
+    .select("*")
+    .eq("owner_id", userId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (owned) return owned as Restaurant;
+
+  // Member path: the user is an active `team_members` staffer of a restaurant
+  // owned by someone else. Without this fallback, every dashboard page would
+  // bounce employees to /onboarding.
+  const { data: member } = await adminSupabaseClient
+    .from("team_members")
+    .select("restaurant_id")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!member?.restaurant_id) return null;
+
+  const { data: memberRestaurant } = await adminSupabaseClient
+    .from("restaurants")
+    .select("*")
+    .eq("id", member.restaurant_id)
+    .maybeSingle();
+
+  return (memberRestaurant as Restaurant | null) ?? null;
+}
+
+/**
+ * Strict owner-only resolution: returns the restaurant ONLY if `userId` is its
+ * owner. Unlike `getRestaurantForUserId` (which falls back to team membership),
+ * this returns null for staff members — use it to gate owner-only surfaces
+ * (team management, staff CRUD) so an employee's auth user can't reach them.
+ */
+export async function getOwnerRestaurantForUserId(userId: string) {
   const { data: restaurant } = await adminSupabaseClient
     .from("restaurants")
     .select("*")

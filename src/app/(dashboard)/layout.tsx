@@ -17,10 +17,17 @@ export default async function DashboardLayout({
   const tenant = await getTenantContextForUser(user.id);
 
   if (!tenant?.restaurant) {
-    redirect("/onboarding");
+    // Members can't provision a restaurant — if theirs is missing/inactive,
+    // onboarding (which creates a NEW restaurant) is wrong; send to login.
+    redirect(tenant?.isMember ? "/login" : "/onboarding");
   }
 
-  if (tenant.setupStatus === "draft" || tenant.setupStatus === "failed") {
+  // Onboarding is an owner-only flow. A staff member joins an already-set-up
+  // restaurant, so never funnel them back into it on draft/failed status.
+  if (
+    !tenant.isMember &&
+    (tenant.setupStatus === "draft" || tenant.setupStatus === "failed")
+  ) {
     redirect("/onboarding");
   }
 

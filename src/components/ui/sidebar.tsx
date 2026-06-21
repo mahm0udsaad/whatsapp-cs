@@ -205,24 +205,22 @@ export function Sidebar({
     },
     {
       title: "الفريق",
-      items: [
-        ...(isOwner
-          ? [
-              {
-                href: "/dashboard/shifts",
-                label: "الجدول",
-                description: "مواعيد الدوام والحضور",
-                icon: CalendarClock,
-              },
-            ]
-          : []),
-        {
-          href: "/dashboard/team",
-          label: t("nav.team"),
-          description: "الأعضاء والصلاحيات",
-          icon: Users,
-        },
-      ],
+      items: isOwner
+        ? [
+            {
+              href: "/dashboard/shifts",
+              label: "الجدول",
+              description: "مواعيد الدوام والحضور",
+              icon: CalendarClock,
+            },
+            {
+              href: "/dashboard/team",
+              label: t("nav.team"),
+              description: "الأعضاء والصلاحيات",
+              icon: Users,
+            },
+          ]
+        : [],
     },
   ].filter((section) => section.items.length > 0);
 

@@ -3,7 +3,7 @@ import { adminSupabaseClient } from "@/lib/supabase/admin";
 import { hashPassword } from "@/lib/member-auth";
 import {
   getCurrentSessionContext,
-  getRestaurantForUserId,
+  getOwnerRestaurantForUserId,
 } from "@/lib/tenant";
 
 async function authorizeOwner(memberId: string) {
@@ -18,7 +18,7 @@ async function authorizeOwner(memberId: string) {
     };
   }
 
-  const restaurant = await getRestaurantForUserId(session.ownerId);
+  const restaurant = await getOwnerRestaurantForUserId(session.ownerId);
   if (!restaurant) {
     return {
       error: NextResponse.json(

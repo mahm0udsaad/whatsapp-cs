@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 import {
   getCurrentSessionContext,
-  getRestaurantForUserId,
+  getOwnerRestaurantForUserId,
 } from "@/lib/tenant";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -41,7 +41,7 @@ async function getOwnerRestaurant() {
       ),
     };
   }
-  const restaurant = await getRestaurantForUserId(session.ownerId);
+  const restaurant = await getOwnerRestaurantForUserId(session.ownerId);
   if (!restaurant) {
     return {
       ok: false as const,

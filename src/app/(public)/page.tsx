@@ -106,10 +106,13 @@ export default async function LandingPage() {
   const user = await getCurrentUser();
   if (user) {
     const tenant = await getTenantContextForUser(user.id);
+    if (!tenant?.restaurant) {
+      redirect(tenant?.isMember ? "/login" : "/onboarding");
+    }
+    // Onboarding is owner-only; members go straight to the dashboard.
     if (
-      !tenant?.restaurant ||
-      tenant.setupStatus === "draft" ||
-      tenant.setupStatus === "failed"
+      !tenant.isMember &&
+      (tenant.setupStatus === "draft" || tenant.setupStatus === "failed")
     ) {
       redirect("/onboarding");
     }

@@ -16,7 +16,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 import {
   getCurrentSessionContext,
-  getRestaurantForUserId,
+  getOwnerRestaurantForUserId,
 } from "@/lib/tenant";
 
 const VALID_ROLES = new Set(["agent", "admin"]);
@@ -38,7 +38,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       { status: 403 }
     );
   }
-  const restaurant = await getRestaurantForUserId(session.ownerId);
+  const restaurant = await getOwnerRestaurantForUserId(session.ownerId);
   if (!restaurant) {
     return NextResponse.json({ error: "Restaurant not found" }, { status: 404 });
   }
@@ -153,7 +153,7 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
       { status: 403 }
     );
   }
-  const restaurant = await getRestaurantForUserId(session.ownerId);
+  const restaurant = await getOwnerRestaurantForUserId(session.ownerId);
   if (!restaurant) {
     return NextResponse.json({ error: "Restaurant not found" }, { status: 404 });
   }

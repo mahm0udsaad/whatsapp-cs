@@ -303,6 +303,10 @@ export interface TenantContext {
   aiAgent: AiAgent | null;
   primarySender: WhatsAppSender | null;
   setupStatus: SetupStatus;
+  // True when the user reached this restaurant as a `team_members` staffer
+  // (Supabase-auth employee) rather than as the owner. Members never go
+  // through onboarding — they join an already-provisioned restaurant.
+  isMember: boolean;
 }
 
 export interface TwilioWebhookRequest {

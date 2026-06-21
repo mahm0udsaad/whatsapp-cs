@@ -3,7 +3,7 @@ import { adminSupabaseClient } from "@/lib/supabase/admin";
 import { hashPassword } from "@/lib/member-auth";
 import {
   getCurrentSessionContext,
-  getRestaurantForUserId,
+  getOwnerRestaurantForUserId,
 } from "@/lib/tenant";
 
 const USERNAME_RE = /^[a-z0-9_.-]{3,32}$/;
@@ -20,7 +20,7 @@ export async function GET() {
     );
   }
 
-  const restaurant = await getRestaurantForUserId(session.ownerId);
+  const restaurant = await getOwnerRestaurantForUserId(session.ownerId);
   if (!restaurant) {
     return NextResponse.json({ error: "Restaurant not found" }, { status: 404 });
   }
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const restaurant = await getRestaurantForUserId(session.ownerId);
+  const restaurant = await getOwnerRestaurantForUserId(session.ownerId);
   if (!restaurant) {
     return NextResponse.json({ error: "Restaurant not found" }, { status: 404 });
   }

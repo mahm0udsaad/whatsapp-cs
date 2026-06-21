@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 import {
   getCurrentSessionContext,
-  getRestaurantForUserId,
+  getOwnerRestaurantForUserId,
 } from "@/lib/tenant";
 import { getLocale, createTranslator } from "@/lib/i18n";
 import { TeamManager } from "@/components/dashboard/team-manager";
@@ -40,9 +40,12 @@ export default async function TeamPage() {
     );
   }
 
-  const restaurant = await getRestaurantForUserId(session.ownerId);
+  // Owner-only surface. A staff member's auth user owns no restaurant, so
+  // `getOwnerRestaurantForUserId` returns null — bounce them to the dashboard
+  // (NOT onboarding, which would try to create a brand-new restaurant).
+  const restaurant = await getOwnerRestaurantForUserId(session.ownerId);
   if (!restaurant) {
-    redirect("/onboarding");
+    redirect("/dashboard");
   }
 
   const [legacyRes, teamRes] = await Promise.all([
