@@ -16,6 +16,7 @@ import {
   Menu,
   MessageSquare,
   Package,
+  QrCode,
   Store,
   Users,
   X,
@@ -194,6 +195,12 @@ export function Sidebar({
           label: "العملاء",
           description: "قاعدة بيانات العملاء",
           icon: Users,
+        },
+        {
+          href: "/dashboard/export",
+          label: "تصدير محادثات العميل",
+          description: "سحب سجل واتساب عبر رمز QR",
+          icon: QrCode,
         },
         {
           href: "/dashboard/marketing",
