@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-type Filter = "open" | "expired" | "mine" | "unassigned";
+type Filter = "open" | "expired" | "mine" | "unassigned" | "all";
 
 type Row = {
   id: string;
@@ -38,6 +38,7 @@ const FILTERS: Array<{ key: Filter; label: string }> = [
   { key: "expired", label: "منتهية" },
   { key: "mine", label: "ملفاتي" },
   { key: "unassigned", label: "غير مستلمة" },
+  { key: "all", label: "الكل" },
 ];
 
 function modeBadge(mode: Row["handler_mode"]) {
@@ -73,7 +74,8 @@ export function ConversationsInboxShell({
   const [filter, setFilter] = useState<Filter>(
     initialFilter === "expired" ||
       initialFilter === "mine" ||
-      initialFilter === "unassigned"
+      initialFilter === "unassigned" ||
+      initialFilter === "all"
       ? initialFilter
       : "open"
   );
