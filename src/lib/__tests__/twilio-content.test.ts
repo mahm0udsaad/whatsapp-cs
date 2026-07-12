@@ -127,9 +127,17 @@ describe("twilio-content", () => {
   });
 
   describe("getApprovalStatus", () => {
-    it("sends correct GET and returns status with rejectionReason", async () => {
+    it("parses the nested whatsapp approval payload Twilio returns", async () => {
       mockFetch.mockResolvedValueOnce(
-        jsonResponse({ status: "rejected", rejection_reason: "Not compliant" })
+        jsonResponse({
+          sid: "HXABC123",
+          account_sid: "AC123",
+          whatsapp: {
+            type: "whatsapp",
+            status: "rejected",
+            rejection_reason: "Not compliant",
+          },
+        })
       );
 
       const result = await getApprovalStatus("HXABC123");
@@ -146,6 +154,24 @@ describe("twilio-content", () => {
       // GET is the default, so method should be undefined
       expect(options.method).toBeUndefined();
       expect(options.headers.Authorization).toBe(expectedAuth);
+    });
+
+    it("falls back to a top-level status field", async () => {
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ status: "approved" })
+      );
+
+      const result = await getApprovalStatus("HXABC123");
+
+      expect(result).toEqual({ status: "approved", rejectionReason: undefined });
+    });
+
+    it("throws when no status is present instead of returning undefined", async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse({ sid: "HXABC123" }));
+
+      await expect(getApprovalStatus("HXABC123")).rejects.toThrow(
+        /approval status missing/
+      );
     });
   });
 

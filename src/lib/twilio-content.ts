@@ -88,14 +88,24 @@ export async function getApprovalStatus(contentSid: string): Promise<{
   status: string;
   rejectionReason?: string;
 }> {
+  // Twilio nests the WhatsApp approval under a `whatsapp` key:
+  // { sid, account_sid, whatsapp: { status, rejection_reason, ... } }
   const result = await contentApiFetch<{
-    status: string;
+    status?: string;
     rejection_reason?: string;
+    whatsapp?: { status?: string; rejection_reason?: string };
   }>(`/Content/${contentSid}/ApprovalRequests`);
 
+  const status = result.whatsapp?.status ?? result.status;
+  if (!status) {
+    throw new Error(
+      `Twilio approval status missing for ${contentSid}: ${JSON.stringify(result)}`
+    );
+  }
+
   return {
-    status: result.status,
-    rejectionReason: result.rejection_reason,
+    status,
+    rejectionReason: result.whatsapp?.rejection_reason ?? result.rejection_reason,
   };
 }
 
