@@ -132,6 +132,20 @@ interface CampaignContext {
   template_content_sid: string;
   from_phone: string;
   status_callback: string;
+  /** Template declares at least one {{n}} variable ({{1}} = customer name). */
+  has_name_variable: boolean;
+  language: string;
+}
+
+/**
+ * {{1}} is always the customer name. Campaigns go to many recipients and not
+ * every customer record has a stored name, so a missing name must degrade to
+ * a polite generic greeting — never a literal "{{1}}" or a Twilio 63028.
+ * Precedence: stored recipient name → campaign-level fallback (metadata["1"],
+ * set in the wizard) → language default.
+ */
+function defaultNameFallback(language: string): string {
+  return language === "en" ? "Dear customer" : "عميلنا العزيز";
 }
 
 /** Twilio surfaces HTTP-style status codes on the err.status field. */
@@ -227,7 +241,7 @@ async function dispatchClaimedJobs(jobs: JobRow[]) {
     const [{ data: template }, { data: restaurant }] = await Promise.all([
       adminSupabaseClient
         .from("marketing_templates")
-        .select("twilio_content_sid, approval_status")
+        .select("twilio_content_sid, approval_status, variables, language")
         .eq("id", campaign.template_id)
         .single(),
       adminSupabaseClient
@@ -255,6 +269,9 @@ async function dispatchClaimedJobs(jobs: JobRow[]) {
       template_content_sid: template.twilio_content_sid as string,
       from_phone: fromNumber,
       status_callback: statusCallback,
+      has_name_variable:
+        Array.isArray(template.variables) && template.variables.length > 0,
+      language: (template.language as string) || "ar",
     });
     // Make sure the campaign reflects sending state on first dispatch.
     await adminSupabaseClient
@@ -343,15 +360,21 @@ async function dispatchClaimedJobs(jobs: JobRow[]) {
       continue;
     }
 
-    // Build content variables. Recipient.name → {{1}}; metadata keys override.
+    // Build content variables. Recipient.name → {{1}}; metadata fills the
+    // rest (and acts as the {{1}} fallback when the name is missing).
     const vars: Record<string, string> = {};
-    if (recipient.name) vars["1"] = recipient.name as string;
+    if (typeof recipient.name === "string" && recipient.name.trim()) {
+      vars["1"] = recipient.name.trim();
+    }
     if (recipient.metadata && typeof recipient.metadata === "object") {
       for (const [k, v] of Object.entries(
         recipient.metadata as Record<string, unknown>
       )) {
         if (vars[k] === undefined) vars[k] = String(v);
       }
+    }
+    if (ctx.has_name_variable && !vars["1"]?.trim()) {
+      vars["1"] = defaultNameFallback(ctx.language);
     }
 
     try {
