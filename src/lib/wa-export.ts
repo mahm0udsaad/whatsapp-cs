@@ -96,3 +96,17 @@ export async function disconnectExport(id: string): Promise<void> {
   const res = await waExportFetch(`/exports/${id}/disconnect`, { method: "POST" });
   if (!res.ok) throw new Error(`wa-export disconnect failed (${res.status})`);
 }
+
+/**
+ * Download the built ZIP archive for a ready export as an in-memory Buffer.
+ * Used by the ingest route to unzip + persist chats into our DB before the
+ * session is disconnected (which purges the archive on the VPS).
+ */
+export async function downloadExportZip(id: string): Promise<Buffer> {
+  const res = await waExportFetch(`/exports/${id}/download`);
+  if (!res.ok) {
+    throw new Error(`wa-export download failed (${res.status})`);
+  }
+  const arrayBuf = await res.arrayBuffer();
+  return Buffer.from(arrayBuf);
+}

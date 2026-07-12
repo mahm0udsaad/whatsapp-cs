@@ -41,6 +41,16 @@ interface Progress {
   bytes: number;
 }
 
+interface IngestResult {
+  chatsImported: number;
+  skippedGroups: number;
+  skippedNoNumber: number;
+  customersUpserted: number;
+  messagesInserted: number;
+  mediaUploaded: number;
+  mediaSkipped: number;
+}
+
 const ACTIVE: Status[] = ["pending_qr", "scanning", "connected", "syncing"];
 
 function mb(bytes: number): string {
@@ -56,6 +66,8 @@ export function ExportClientData() {
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState<IngestResult | null>(null);
 
   const statusRef = useRef<Status>("idle");
   statusRef.current = status;
@@ -68,6 +80,7 @@ export function ExportClientData() {
     setQrDataUrl(null);
     setProgress(null);
     setNumber(null);
+    setSaved(null);
     try {
       const res = await fetch("/api/dashboard/export/start", { method: "POST" });
       const data = await res.json();
@@ -131,6 +144,34 @@ export function ExportClientData() {
     }
   }, [exportId]);
 
+  // Approve = persist the pulled chats into our database, THEN disconnect.
+  // We only unlink WhatsApp after a successful save, so a failed save can be
+  // retried without losing the archive.
+  const approveAndSave = useCallback(async () => {
+    if (!exportId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/dashboard/export/${exportId}/ingest`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "فشل حفظ المحادثات");
+      setSaved(data.result as IngestResult);
+      // Saved successfully — now unlink WhatsApp and purge the temp archive.
+      await fetch(`/api/dashboard/export/${exportId}/disconnect`, { method: "POST" });
+      setExportId(null);
+      setStatus("idle");
+      setQrDataUrl(null);
+      setProgress(null);
+      setNumber(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "فشل حفظ المحادثات");
+    } finally {
+      setSaving(false);
+    }
+  }, [exportId]);
+
   const isActive = ACTIVE.includes(status);
 
   return (
@@ -147,6 +188,32 @@ export function ExportClientData() {
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {/* Saved: persisted-to-DB summary (survives the status reset) */}
+        {saved && (
+          <div className="space-y-4 rounded-lg border border-green-200 bg-green-50 p-4">
+            <div className="flex items-center gap-2 text-green-800">
+              <CheckCircle2 className="size-5" />
+              <span className="text-sm font-medium">
+                تم حفظ المحادثات في قاعدة البيانات.
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <SavedStat label="محادثات محفوظة" value={saved.chatsImported} />
+              <SavedStat label="رسائل" value={saved.messagesInserted} />
+              <SavedStat label="عملاء" value={saved.customersUpserted} />
+              <SavedStat label="وسائط" value={saved.mediaUploaded} />
+            </div>
+            <p className="text-xs text-green-700">
+              تم تخطّي {saved.skippedGroups.toLocaleString("en-US")} مجموعة/بث. تظهر
+              المحادثات الآن في{" "}
+              <a href="/dashboard/conversations" className="font-medium underline">
+                صفحة المحادثات
+              </a>{" "}
+              (بتبويب «منتهية») وصفحة العملاء.
+            </p>
+          </div>
+        )}
+
         {/* Idle: the generate button */}
         {(status === "idle" || status === "disconnected") && (
           <div className="flex flex-col items-center gap-4 py-6">
@@ -237,28 +304,37 @@ export function ExportClientData() {
             </div>
             <ProgressGrid progress={progress} />
             <div className="flex flex-wrap gap-3">
+              <Button onClick={approveAndSave} disabled={saving || disconnecting}>
+                {saving ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="size-4" />
+                )}
+                اعتماد وحفظ المحادثات في النظام
+              </Button>
               <a
                 href={`/api/dashboard/export/${exportId}/download`}
-                className={buttonVariants()}
+                className={buttonVariants({ variant: "outline" })}
               >
-                <Download className="size-4" /> تنزيل الأرشيف (ZIP)
+                <Download className="size-4" /> تنزيل نسخة (ZIP)
               </a>
               <Button
                 onClick={disconnect}
-                variant="destructive"
-                disabled={disconnecting}
+                variant="ghost"
+                disabled={disconnecting || saving}
               >
                 {disconnecting ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
                   <Power className="size-4" />
                 )}
-                اعتماد وفصل الاتصال
+                فصل بدون حفظ
               </Button>
             </div>
             <p className="text-xs text-slate-400">
-              بعد الاعتماد سيتم فصل الاتصال بواتساب العميل وحذف البيانات المؤقتة من
-              الخادم.
+              «اعتماد وحفظ» يخزّن المحادثات الفردية (بدون المجموعات) والوسائط في
+              قاعدة بياناتنا لتظهر في صفحتَي المحادثات والعملاء، ثم يفصل الاتصال
+              ويحذف البيانات المؤقتة من الخادم.
             </p>
           </div>
         )}
@@ -278,6 +354,17 @@ export function ExportClientData() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function SavedStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border border-green-200 bg-white p-3 text-center">
+      <div className="text-lg font-bold text-green-900">
+        {value.toLocaleString("en-US")}
+      </div>
+      <div className="text-xs text-green-700">{label}</div>
+    </div>
   );
 }
 
