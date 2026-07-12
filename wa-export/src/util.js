@@ -35,4 +35,9 @@ function safeId(id) {
   return String(id || 'unknown').replace(/[^a-zA-Z0-9._-]/g, '_');
 }
 
-module.exports = { extFromMime, safeId };
+// Promise-based delay.
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, Math.max(0, ms || 0)));
+}
+
+module.exports = { extFromMime, safeId, sleep };

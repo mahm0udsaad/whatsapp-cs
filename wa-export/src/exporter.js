@@ -6,7 +6,7 @@ const archiver = require('archiver');
 const QRCode = require('qrcode');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const { config } = require('./config');
-const { extFromMime, safeId } = require('./util');
+const { extFromMime, safeId, sleep } = require('./util');
 
 /**
  * Lifecycle status of one export:
@@ -105,8 +105,11 @@ class WaExport {
       const info = this.client.info || {};
       this.number = info.wid && info.wid.user ? info.wid.user : (info.wid && info.wid._serialized) || null;
       this.pushname = info.pushname || null;
-      // Auto-begin the pull as soon as the phone is linked.
-      this.pull().catch((e) => this._fail(`pull failed: ${e && e.message ? e.message : e}`));
+      // Wait for WhatsApp's history backfill to land, THEN pull. Reading on the
+      // `ready` edge only sees the last message per chat.
+      this._waitForHistorySync()
+        .then(() => this.pull())
+        .catch((e) => this._fail(`pull failed: ${e && e.message ? e.message : e}`));
     });
 
     await this.client.initialize();
@@ -115,6 +118,54 @@ class WaExport {
   _fail(msg) {
     this.error = msg;
     this.status = Status.ERROR;
+  }
+
+  /**
+   * A freshly linked device receives its message history as a background
+   * backfill that streams in over the seconds/minutes after `ready`. Pulling
+   * immediately captures only the last (preview) message per chat. Wait an
+   * initial grace period, then poll a sample of chats until the loaded-message
+   * count stops growing (backfill drained) or a hard ceiling elapses.
+   */
+  async _waitForHistorySync() {
+    const { syncSettleMs, syncSettleMaxMs, syncPollMs } = config;
+    this.status = Status.SYNCING;
+    await sleep(syncSettleMs);
+    const deadline = Date.now() + Math.max(0, syncSettleMaxMs - syncSettleMs);
+    let prev = -1;
+    let stableRounds = 0;
+    while (Date.now() < deadline) {
+      const count = await this._sampleLoadedMessages();
+      if (count <= prev) {
+        stableRounds += 1;
+        if (stableRounds >= 2) break; // two flat polls in a row => settled
+      } else {
+        stableRounds = 0;
+      }
+      prev = count;
+      await sleep(syncPollMs);
+    }
+  }
+
+  /** Sum of currently-loaded messages across a sample of 1:1 chats (cheap sync probe). */
+  async _sampleLoadedMessages() {
+    let chats = [];
+    try {
+      chats = await this.client.getChats();
+    } catch {
+      return 0;
+    }
+    const sample = chats.filter((c) => !c.isGroup).slice(0, 20);
+    let total = 0;
+    for (const c of sample) {
+      try {
+        const m = await c.fetchMessages({ limit: config.fetchLimitPerChat });
+        total += m.length;
+      } catch {
+        /* ignore per-chat probe errors */
+      }
+    }
+    return total;
   }
 
   async pull() {

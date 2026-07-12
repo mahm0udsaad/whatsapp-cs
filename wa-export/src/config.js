@@ -31,6 +31,15 @@ const config = {
   // History depth knobs.
   fetchLimitPerChat: int('FETCH_LIMIT_PER_CHAT', 1000),
   maxChats: int('MAX_CHATS', 0), // 0 = all
+  // After `ready`, WhatsApp streams the linked-device history backfill to the
+  // freshly linked device over the following seconds/minutes. Reading before it
+  // lands yields only the last (preview) message per chat, so wait for it to
+  // settle first. syncSettleMs = initial grace before the first read;
+  // syncSettleMaxMs = hard ceiling on total wait; syncPollMs = re-check cadence
+  // (proceed early once the loaded-message count stops growing).
+  syncSettleMs: int('SYNC_SETTLE_MS', 60000),
+  syncSettleMaxMs: int('SYNC_SETTLE_MAX_MS', 300000),
+  syncPollMs: int('SYNC_POLL_MS', 20000),
   downloadMedia: bool('MEDIA', true),
   // Skip a media file larger than this (bytes) to avoid runaway pulls. 0 = no cap.
   maxMediaBytes: int('MAX_MEDIA_BYTES', 0),
