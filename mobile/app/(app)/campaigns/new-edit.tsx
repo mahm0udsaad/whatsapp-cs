@@ -1,7 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  Alert,
-} from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Animated, Easing } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -25,7 +23,7 @@ import {
 } from "../../../lib/template-examples";
 import { qk } from "../../../lib/query-keys";
 import { useSessionStore } from "../../../lib/session-store";
-import { ManagerCard, managerColors } from "../../../components/manager-ui";
+import { ManagerCard, managerColors, softShadow } from "../../../components/manager-ui";
 import {
   ActivityIndicator,
   Image,
@@ -63,6 +61,71 @@ interface Draft {
   example?: TemplateExample;
 }
 
+type StepId = "content" | "image" | "message" | "audience" | "schedule" | "review";
+
+interface StepDef {
+  id: StepId;
+  title: string;
+  subtitle: string;
+}
+
+const NEW_TEMPLATE_STEPS: StepDef[] = [
+  {
+    id: "content",
+    title: "محتوى القالب",
+    subtitle: "اسم القالب وبيانات الاعتماد التي يراها مراجع واتساب",
+  },
+  {
+    id: "image",
+    title: "صورة الرأس",
+    subtitle: "ارفع صورة أو ولّدها بالذكاء الاصطناعي",
+  },
+  {
+    id: "review",
+    title: "المراجعة والإرسال",
+    subtitle: "هكذا ستظهر الرسالة لمراجع واتساب",
+  },
+];
+
+const REUSE_STEPS: StepDef[] = [
+  {
+    id: "message",
+    title: "الرسالة",
+    subtitle: "اسم الحملة ومتغيّرات الرسالة",
+  },
+  {
+    id: "audience",
+    title: "الجمهور",
+    subtitle: "اختر من سيستلم هذه الحملة",
+  },
+  {
+    id: "schedule",
+    title: "التوقيت",
+    subtitle: "أرسل الآن أو حدد موعداً",
+  },
+  {
+    id: "review",
+    title: "المراجعة والإطلاق",
+    subtitle: "تأكد من كل شيء قبل الإرسال",
+  },
+];
+
+/**
+ * {{1}} is always the customer name, filled per-recipient from the customer
+ * record at send time. This is the campaign-level fallback greeting used for
+ * recipients with no stored name — the owner can customize it but never
+ * types an individual customer's name.
+ */
+const nameFallbackFor = (language: string) =>
+  language === "en" ? "Dear customer" : "عميلنا العزيز";
+
+const AR_DIGITS = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
+const arNum = (n: number) =>
+  String(n)
+    .split("")
+    .map((d) => AR_DIGITS[Number(d)] ?? d)
+    .join("");
+
 export default function CampaignNewEditScreen() {
   const params = useLocalSearchParams<{ example?: string; from?: string }>();
   const member = useSessionStore((s) => s.activeMember);
@@ -80,6 +143,20 @@ export default function CampaignNewEditScreen() {
   });
   const [scheduleKind, setScheduleKind] = useState<ScheduleKind>("now");
   const [reuseVarValues, setReuseVarValues] = useState<string[]>([]);
+  const [stepIndex, setStepIndex] = useState(0);
+
+  // Step transition: quick fade + slide, onboarding-style.
+  const stepAnim = useRef(new Animated.Value(1)).current;
+  const goToStep = (next: number) => {
+    stepAnim.setValue(0);
+    setStepIndex(next);
+    Animated.timing(stepAnim, {
+      toValue: 1,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  };
 
   const selectedPhones = useMemo<string[]>(() => {
     const arr = (globalThis as unknown as Record<string, unknown>)[
@@ -146,6 +223,11 @@ export default function CampaignNewEditScreen() {
           "MARKETING",
         reuseTemplateId: t.id,
       });
+      // Seed the {{1}} fallback greeting so no recipient ever gets a raw
+      // "{{1}}" — real names from the customer record still take precedence.
+      if ((t.variables?.length ?? 0) > 0) {
+        setReuseVarValues([nameFallbackFor(t.language ?? "ar")]);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.example, params.from, templatesQuery.data]);
@@ -229,7 +311,6 @@ export default function CampaignNewEditScreen() {
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!draft) throw new Error("لا توجد بيانات");
-      if (!draft.campaignName.trim()) throw new Error("اسم الحملة مطلوب");
 
       let templateId = draft.reuseTemplateId;
 
@@ -272,6 +353,8 @@ export default function CampaignNewEditScreen() {
         );
         return { pendingTemplateId: template.id };
       }
+
+      if (!draft.campaignName.trim()) throw new Error("اسم الحملة مطلوب");
 
       // Reuse path → create the campaign (with optional schedule)
       const scheduledAt =
@@ -344,15 +427,15 @@ export default function CampaignNewEditScreen() {
 
   if (bootstrapError) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-[#F6F7F9] p-6">
+      <SafeAreaView className="flex-1 items-center justify-center bg-[#EFF3FF] p-6">
         <Text className="text-center text-sm text-red-700">
           {bootstrapError}
         </Text>
         <Pressable
           onPress={() => router.back()}
-          className="mt-3 rounded-full border border-gray-200 px-4 py-2"
+          className="mt-3 rounded-full border border-[#D6DDF8] px-4 py-2"
         >
-          <Text className="text-xs text-gray-700">العودة</Text>
+          <Text className="text-xs text-[#5E6A99]">العودة</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -360,125 +443,237 @@ export default function CampaignNewEditScreen() {
 
   if (!draft) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-[#F6F7F9]">
+      <SafeAreaView className="flex-1 items-center justify-center bg-[#EFF3FF]">
         <ActivityIndicator />
       </SafeAreaView>
     );
   }
 
   const isNewTemplate = !draft.reuseTemplateId;
-  const submitDisabled =
-    createMutation.isPending ||
-    !draft.campaignName.trim() ||
-    (!isNewTemplate && audienceCount === 0) ||
-    (isNewTemplate &&
-      draft.headerType === "image" &&
-      !draft.headerImageUrl);
+  const steps = (isNewTemplate ? NEW_TEMPLATE_STEPS : REUSE_STEPS).filter(
+    (s) => s.id !== "image" || draft.headerType === "image"
+  );
+  const step = steps[Math.min(stepIndex, steps.length - 1)];
+  const isLastStep = stepIndex >= steps.length - 1;
+
+  const varCount = draft.variables?.length ?? 0;
+  const stepValid = (() => {
+    switch (step.id) {
+      case "content":
+        // Meta reviewers judge the realized sample message — empty or
+        // placeholder-looking samples are a documented rejection cause.
+        return (
+          !!draft.templateName.trim() &&
+          Array.from({ length: varCount }).every((_, i) =>
+            (draft.sampleValues?.[i] ?? "").trim()
+          )
+        );
+      case "image":
+        return !!draft.headerImageUrl;
+      case "message":
+        // {{1}} (index 0) is auto-personalized with a backend fallback, so
+        // only the shared variables ({{2}}+) are required here.
+        return (
+          !!draft.campaignName.trim() &&
+          Array.from({ length: varCount }).every(
+            (_, i) => i === 0 || (reuseVarValues[i] ?? "").trim()
+          )
+        );
+      case "audience":
+        return audienceCount > 0;
+      default:
+        return true;
+    }
+  })();
+
+  const previewSamples = isNewTemplate
+    ? draft.sampleValues
+    : [
+        reuseVarValues[0]?.trim() || nameFallbackFor(draft.language),
+        ...reuseVarValues.slice(1),
+      ];
+
+  const scheduleLabel =
+    scheduleKind === "now"
+      ? "الآن"
+      : scheduleKind === "+1h"
+        ? "بعد ساعة"
+        : scheduleKind === "+3h"
+          ? "بعد ٣ ساعات"
+          : "غداً";
+
+  const audienceLabel =
+    audienceKind === "all"
+      ? "كل العملاء"
+      : audienceKind === "30d"
+        ? "آخر ٣٠ يوم"
+        : audienceKind === "90d"
+          ? "آخر ٩٠ يوم"
+          : `عملاء محددون (${arNum(selectedPhones.length)})`;
+
+  const primaryLabel = isLastStep
+    ? isNewTemplate
+      ? "إرسال القالب للاعتماد"
+      : scheduleKind === "now"
+        ? `إطلاق الحملة (${audienceCount.toLocaleString("ar")})`
+        : "جدولة الحملة"
+    : "التالي";
+
+  const onPrimary = () => {
+    if (isLastStep) {
+      createMutation.mutate();
+    } else {
+      goToStep(stepIndex + 1);
+    }
+  };
+
+  const onBack = () => {
+    if (stepIndex === 0) router.back();
+    else goToStep(stepIndex - 1);
+  };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F6F7F9]" edges={["bottom"]}>
-      <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 140 }}>
-        {/* Campaign name */}
-        <ManagerCard className="mb-3">
-          <Text className="text-right text-xs font-bold text-gray-500">
-            اسم الحملة
+    <SafeAreaView className="flex-1 bg-[#EFF3FF]" edges={["top", "bottom"]}>
+      {/* ---- Wizard header: progress + step title -------------------------- */}
+      <View className="border-b border-[#D6DDF8] bg-white px-4 pb-3 pt-3">
+        <View className="flex-row-reverse items-center justify-between">
+          <Text className="text-[11px] font-bold text-[#5E6A99]">
+            الخطوة {arNum(stepIndex + 1)} من {arNum(steps.length)}
           </Text>
-          <TextInput
-            value={draft.campaignName}
-            onChangeText={(v) => setDraft({ ...draft, campaignName: v })}
-            textAlign="right"
-            className="mt-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-950"
-          />
-        </ManagerCard>
-
-        {/* Template name (new-template path only) */}
-        {isNewTemplate ? (
-          <ManagerCard className="mb-3">
-            <Text className="text-right text-xs font-bold text-gray-500">
-              اسم القالب (داخلي)
-            </Text>
-            <TextInput
-              value={draft.templateName}
-              onChangeText={(v) => setDraft({ ...draft, templateName: v })}
-              textAlign="right"
-              className="mt-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-950"
+          <Pressable onPress={() => router.back()} hitSlop={8}>
+            <Ionicons name="close" size={18} color={managerColors.muted} />
+          </Pressable>
+        </View>
+        <View className="mt-2 flex-row-reverse gap-1.5">
+          {steps.map((s, i) => (
+            <View
+              key={s.id}
+              className={`h-1.5 flex-1 rounded-full ${
+                i <= stepIndex ? "bg-[#011F91]" : "bg-[#E2E8FF]"
+              }`}
             />
-            <Text className="mt-1 text-right text-[10px] text-gray-400">
-              يُستخدم لدى واتساب للاعتماد. أحرف ورقم فقط.
-            </Text>
-          </ManagerCard>
-        ) : null}
+          ))}
+        </View>
+        <Text className="mt-3 text-right text-lg font-bold text-[#16245C]">
+          {step.title}
+        </Text>
+        <Text className="mt-0.5 text-right text-[11px] text-[#5E6A99]">
+          {step.subtitle}
+        </Text>
+      </View>
 
-        {/* Variable fill-ins — what Meta reviewers see as the realized
-            message. The body keeps the `{{n}}` placeholders; these values
-            are sent alongside as realistic sample data. */}
-        {isNewTemplate && draft.variables && draft.variables.length > 0 ? (
-          <ManagerCard className="mb-3">
-            <Text className="text-right text-xs font-bold text-gray-500">
-              املئي بيانات الاعتماد (مثال حقيقي)
-            </Text>
-            <Text className="mt-1 text-right text-[10px] text-gray-400">
-              قيم واقعية يراها مراجع واتساب أثناء الاعتماد. لا تؤثر على ما
-              سيُرسل لعملائك لاحقاً.
-            </Text>
-            <View className="mt-2 gap-2">
-              {draft.variables.map((label, idx) => (
-                <View key={`${label}-${idx}`}>
-                  <Text className="text-right text-[11px] font-semibold text-gray-600">
-                    {`{{${idx + 1}}} — ${label}`}
-                  </Text>
-                  <TextInput
-                    value={draft.sampleValues?.[idx] ?? ""}
-                    onChangeText={(v) => {
-                      const next = [...(draft.sampleValues ?? [])];
-                      while (next.length < (draft.variables?.length ?? 0)) {
-                        next.push("");
-                      }
-                      next[idx] = v;
-                      setDraft({ ...draft, sampleValues: next });
-                    }}
-                    textAlign="right"
-                    className="mt-1 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-950"
-                  />
-                </View>
-              ))}
-            </View>
-          </ManagerCard>
-        ) : null}
-
-        {/* Image picker — only when header_type === 'image' and template is new */}
-        {isNewTemplate && draft.headerType === "image" ? (
-          <ManagerCard className="mb-3">
-            <Text className="text-right text-xs font-bold text-gray-500">
-              صورة الرأس
-            </Text>
-
-            {draft.headerImageUrl ? (
-              <Image
-                source={{ uri: draft.headerImageUrl }}
-                style={{
-                  width: "100%",
-                  height: 180,
-                  borderRadius: 8,
-                  marginTop: 8,
-                  backgroundColor: "#eee",
-                }}
-                resizeMode="cover"
-              />
-            ) : (
-              <View className="mt-2 items-center justify-center rounded-md border border-dashed border-gray-300 bg-white py-10">
-                <Ionicons name="image-outline" size={32} color="#9CA3AF" />
-                <Text className="mt-1 text-[11px] text-gray-500">
-                  اختر من المعرض أو وَلِّد بالذكاء الاصطناعي
+      <Animated.View
+        style={{
+          flex: 1,
+          opacity: stepAnim,
+          transform: [
+            {
+              translateY: stepAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [12, 0],
+              }),
+            },
+          ],
+        }}
+      >
+        <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 140 }}>
+          {/* ================= NEW TEMPLATE: content ======================= */}
+          {step.id === "content" ? (
+            <>
+              <ManagerCard className="mb-3">
+                <Text className="text-right text-xs font-bold text-gray-500">
+                  اسم القالب (داخلي)
                 </Text>
-              </View>
-            )}
+                <TextInput
+                  value={draft.templateName}
+                  onChangeText={(v) => setDraft({ ...draft, templateName: v })}
+                  textAlign="right"
+                  className="mt-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-950"
+                />
+                <Text className="mt-1 text-right text-[10px] text-gray-400">
+                  يُستخدم لدى واتساب للاعتماد. أحرف ورقم فقط.
+                </Text>
+              </ManagerCard>
 
-            <View className="mt-2 flex-row-reverse gap-2">
+              {draft.variables && draft.variables.length > 0 ? (
+                <ManagerCard className="mb-3">
+                  <Text className="text-right text-xs font-bold text-gray-500">
+                    بيانات الاعتماد (مثال حقيقي)
+                  </Text>
+                  <Text className="mt-1 text-right text-[10px] text-gray-400">
+                    قيم واقعية يراها مراجع واتساب أثناء الاعتماد. لا تؤثر على ما
+                    سيُرسل لعملائك لاحقاً.
+                  </Text>
+                  <View className="mt-2 gap-2">
+                    {draft.variables.map((label, idx) => (
+                      <View key={`${label}-${idx}`}>
+                        <Text className="text-right text-[11px] font-semibold text-gray-600">
+                          {`{{${idx + 1}}} — ${label}`}
+                        </Text>
+                        <TextInput
+                          value={draft.sampleValues?.[idx] ?? ""}
+                          onChangeText={(v) => {
+                            const next = [...(draft.sampleValues ?? [])];
+                            while (next.length < (draft.variables?.length ?? 0)) {
+                              next.push("");
+                            }
+                            next[idx] = v;
+                            setDraft({ ...draft, sampleValues: next });
+                          }}
+                          textAlign="right"
+                          className="mt-1 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-950"
+                        />
+                      </View>
+                    ))}
+                  </View>
+                </ManagerCard>
+              ) : null}
+            </>
+          ) : null}
+
+          {/* ================= NEW TEMPLATE: image ========================= */}
+          {step.id === "image" ? (
+            <ManagerCard className="mb-3">
+              {draft.headerImageUrl ? (
+                <View>
+                  <Image
+                    source={{ uri: draft.headerImageUrl }}
+                    style={{
+                      width: "100%",
+                      height: 190,
+                      borderRadius: 12,
+                      backgroundColor: "#eee",
+                    }}
+                    resizeMode="cover"
+                  />
+                  <Pressable
+                    onPress={() =>
+                      setDraft({ ...draft, headerImageUrl: null })
+                    }
+                    className="mt-2 items-center rounded-full border border-gray-200 bg-white py-1.5"
+                  >
+                    <Text className="text-[11px] text-gray-600">
+                      إزالة الصورة والاختيار من جديد
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <View className="items-center justify-center rounded-xl border border-dashed border-[#B9C6F5] bg-[#F5F7FF] py-10">
+                  <Ionicons
+                    name="image-outline"
+                    size={34}
+                    color={managerColors.brand}
+                  />
+                  <Text className="mt-1 text-[11px] text-[#5E6A99]">
+                    اختر من المعرض أو وَلِّد بالذكاء الاصطناعي
+                  </Text>
+                </View>
+              )}
+
               <Pressable
                 onPress={() => uploadMutation.mutate()}
                 disabled={uploadMutation.isPending}
-                className="flex-1 flex-row-reverse items-center justify-center gap-1.5 rounded-full border border-gray-200 bg-white py-2"
+                className="mt-3 flex-row-reverse items-center justify-center gap-1.5 rounded-full border border-gray-200 bg-white py-2.5"
               >
                 {uploadMutation.isPending ? (
                   <ActivityIndicator size="small" />
@@ -495,221 +690,480 @@ export default function CampaignNewEditScreen() {
                   </>
                 )}
               </Pressable>
-            </View>
 
-            <Text className="mt-3 text-right text-[11px] font-bold text-gray-500">
-              أو ولِّدي بالذكاء الاصطناعي
-            </Text>
-            <TextInput
-              value={imagePrompt}
-              onChangeText={setImagePrompt}
-              placeholder="مثال: صورة دعائية لخصم 50% بألوان دافئة"
-              placeholderTextColor="#9CA3AF"
-              textAlign="right"
-              multiline
-              className="mt-1 min-h-[56px] rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-950"
-            />
-            <Pressable
-              onPress={() => generateMutation.mutate()}
-              disabled={generateMutation.isPending || !imagePrompt.trim()}
-              className={`mt-2 flex-row-reverse items-center justify-center gap-1.5 rounded-full py-2 ${
-                !imagePrompt.trim() || generateMutation.isPending
-                  ? "bg-gray-200"
-                  : "bg-emerald-600"
-              }`}
-            >
-              {generateMutation.isPending ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="sparkles" size={14} color="#fff" />
-                  <Text className="text-xs font-bold text-white">
-                    وَلِّدي صورة
-                  </Text>
-                </>
-              )}
-            </Pressable>
-          </ManagerCard>
-        ) : null}
-
-        {/* Live preview */}
-        <ManagerCard className="mb-3">
-          <Text className="text-right text-xs font-bold text-gray-500">
-            معاينة الرسالة
-          </Text>
-          <View className="mt-2 rounded-md border border-gray-100 bg-gray-50 p-3">
-            {draft.headerType === "text" && draft.headerText ? (
-              <Text className="mb-1 text-right text-[11px] font-bold text-gray-700">
-                {draft.headerText}
+              <Text className="mt-4 text-right text-[11px] font-bold text-gray-500">
+                أو ولِّدي بالذكاء الاصطناعي
               </Text>
-            ) : null}
-            {draft.headerType === "image" && draft.headerImageUrl ? (
-              <Image
-                source={{ uri: draft.headerImageUrl }}
-                style={{
-                  width: "100%",
-                  height: 140,
-                  borderRadius: 6,
-                  marginBottom: 6,
-                  backgroundColor: "#eee",
-                }}
+              <TextInput
+                value={imagePrompt}
+                onChangeText={setImagePrompt}
+                placeholder="مثال: صورة دعائية لخصم 50% بألوان دافئة"
+                placeholderTextColor="#9CA3AF"
+                textAlign="right"
+                multiline
+                className="mt-1 min-h-[56px] rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-950"
               />
-            ) : null}
-            <Text className="text-right text-sm leading-6 text-gray-950">
-              {renderBodyWithSamples(
-                draft.body,
-                isNewTemplate ? draft.sampleValues : reuseVarValues
-              )}
-            </Text>
-            {draft.footerText ? (
-              <Text className="mt-2 text-right text-[10px] text-gray-500">
-                {draft.footerText}
-              </Text>
-            ) : null}
-          </View>
-          {isNewTemplate ? (
-            <Text className="mt-2 text-right text-[10px] text-amber-700">
-              سيتم إرسال القالب لواتساب للاعتماد. إشعار سيصلك عند النتيجة.
-            </Text>
+              <Pressable
+                onPress={() => generateMutation.mutate()}
+                disabled={generateMutation.isPending || !imagePrompt.trim()}
+                className={`mt-2 flex-row-reverse items-center justify-center gap-1.5 rounded-full py-2.5 ${
+                  !imagePrompt.trim() || generateMutation.isPending
+                    ? "bg-gray-200"
+                    : "bg-[#011F91]"
+                }`}
+              >
+                {generateMutation.isPending ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="sparkles" size={14} color="#FCBD05" />
+                    <Text className="text-xs font-bold text-white">
+                      وَلِّدي صورة
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            </ManagerCard>
           ) : null}
-        </ManagerCard>
 
-        {/* Variable fill-ins for reuse path */}
-        {!isNewTemplate && draft.variables && draft.variables.length > 0 ? (
-          <ManagerCard className="mb-3">
-            <Text className="text-right text-xs font-bold text-gray-500">
-              متغيّرات الرسالة
-            </Text>
-            <Text className="mt-1 text-right text-[10px] text-gray-400">
-              {"ستُرسل هذه القيم لجميع العملاء. اسم العميل يُملأ تلقائياً في {{1}}."}
-            </Text>
-            <View className="mt-2 gap-2">
-              {draft.variables.map((label, idx) => {
-                if (idx === 0) return null;
-                return (
-                  <View key={`var-${idx}`}>
-                    <Text className="text-right text-[11px] font-semibold text-gray-600">
-                      {`{{${idx + 1}}} — ${label}`}
+          {/* ================= REUSE: message =============================== */}
+          {step.id === "message" ? (
+            <>
+              <ManagerCard className="mb-3">
+                <Text className="text-right text-xs font-bold text-gray-500">
+                  اسم الحملة
+                </Text>
+                <TextInput
+                  value={draft.campaignName}
+                  onChangeText={(v) => setDraft({ ...draft, campaignName: v })}
+                  textAlign="right"
+                  className="mt-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-950"
+                />
+              </ManagerCard>
+
+              {draft.variables && draft.variables.length > 0 ? (
+                <ManagerCard className="mb-3">
+                  {/* {{1}} — never typed by the owner: auto-personalized per
+                      recipient, with a customizable fallback greeting. */}
+                  <View className="rounded-xl border border-[#D6DDF8] bg-[#F5F7FF] p-3">
+                    <View className="flex-row-reverse items-center gap-2">
+                      <View className="h-8 w-8 items-center justify-center rounded-full bg-[#011F91]">
+                        <Ionicons name="person" size={14} color="#FCBD05" />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-right text-xs font-bold text-[#16245C]">
+                          اسم العميل — يُملأ تلقائياً
+                        </Text>
+                        <Text className="mt-0.5 text-right text-[10px] leading-4 text-[#5E6A99]">
+                          كل عميل يستلم الرسالة باسمه المحفوظ لديك. لا تكتب اسماً هنا.
+                        </Text>
+                      </View>
+                    </View>
+                    <Text className="mt-3 text-right text-[11px] font-semibold text-gray-600">
+                      إذا لم يكن للعميل اسم محفوظ، نستخدم بدلاً منه:
                     </Text>
                     <TextInput
-                      value={reuseVarValues[idx] ?? ""}
+                      value={reuseVarValues[0] ?? ""}
                       onChangeText={(v) => {
                         const next = [...reuseVarValues];
-                        while (next.length <= idx) next.push("");
-                        next[idx] = v;
+                        if (next.length === 0) next.push("");
+                        next[0] = v;
                         setReuseVarValues(next);
                       }}
-                      textAlign="right"
+                      placeholder={nameFallbackFor(draft.language)}
                       placeholderTextColor="#9CA3AF"
+                      textAlign="right"
                       className="mt-1 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-950"
                     />
                   </View>
-                );
-              })}
-            </View>
-          </ManagerCard>
-        ) : null}
 
-        {/* Audience + schedule — only meaningful on reuse path */}
-        {!isNewTemplate ? (
-          <>
-            <ManagerCard className="mb-3">
-              <Text className="text-right text-xs font-bold text-gray-500">
-                الجمهور
-              </Text>
-              <View className="mt-2 flex-row-reverse flex-wrap gap-2">
-                <Chip
+                  {draft.variables.length > 1 ? (
+                    <>
+                      <Text className="mt-4 text-right text-xs font-bold text-gray-500">
+                        باقي متغيّرات الرسالة
+                      </Text>
+                      <Text className="mt-1 text-right text-[10px] text-gray-400">
+                        هذه القيم موحّدة وتُرسل لجميع العملاء كما هي.
+                      </Text>
+                      <View className="mt-2 gap-2">
+                        {draft.variables.map((label, idx) => {
+                          if (idx === 0) return null;
+                          const missing = !(reuseVarValues[idx] ?? "").trim();
+                          return (
+                            <View key={`var-${idx}`}>
+                              <Text className="text-right text-[11px] font-semibold text-gray-600">
+                                {`${label} (مطلوب)`}
+                              </Text>
+                              <TextInput
+                                value={reuseVarValues[idx] ?? ""}
+                                onChangeText={(v) => {
+                                  const next = [...reuseVarValues];
+                                  while (next.length <= idx) next.push("");
+                                  next[idx] = v;
+                                  setReuseVarValues(next);
+                                }}
+                                textAlign="right"
+                                placeholderTextColor="#9CA3AF"
+                                className={`mt-1 rounded-md border bg-white px-3 py-2 text-sm text-gray-950 ${
+                                  missing ? "border-amber-300" : "border-gray-200"
+                                }`}
+                              />
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </>
+                  ) : null}
+                </ManagerCard>
+              ) : null}
+
+              <MessagePreview draft={draft} samples={previewSamples} />
+            </>
+          ) : null}
+
+          {/* ================= REUSE: audience ============================== */}
+          {step.id === "audience" ? (
+            <>
+              <View className="mb-3 gap-2">
+                <AudienceOption
+                  icon="people"
                   label="كل العملاء"
+                  hint="جميع من راسل مطعمك عبر واتساب"
                   active={audienceKind === "all"}
                   onPress={() => setAudienceKind("all")}
                 />
-                <Chip
+                <AudienceOption
+                  icon="time"
                   label="آخر ٣٠ يوم"
+                  hint="العملاء النشطون خلال الشهر الماضي"
                   active={audienceKind === "30d"}
                   onPress={() => setAudienceKind("30d")}
                 />
-                <Chip
+                <AudienceOption
+                  icon="calendar"
                   label="آخر ٩٠ يوم"
+                  hint="العملاء النشطون خلال ٣ أشهر"
                   active={audienceKind === "90d"}
                   onPress={() => setAudienceKind("90d")}
                 />
                 {selectedPhones.length > 0 ? (
-                  <Chip
-                    label={`المحددين (${selectedPhones.length})`}
+                  <AudienceOption
+                    icon="checkmark-circle"
+                    label={`المحددون (${arNum(selectedPhones.length)})`}
+                    hint="جهات الاتصال التي اخترتها من قائمة العملاء"
                     active={audienceKind === "selected"}
                     onPress={() => setAudienceKind("selected")}
                   />
                 ) : null}
               </View>
-              <View className="mt-3 flex-row-reverse items-center justify-between rounded-md bg-gray-50 px-3 py-2">
-                <Text className="text-sm text-gray-700">جهات الاتصال</Text>
-                <Text className="text-lg font-bold text-gray-950 tabular-nums">
-                  {audienceQuery.isLoading && audienceKind !== "selected"
-                    ? "…"
-                    : audienceCount.toLocaleString()}
-                </Text>
-              </View>
-            </ManagerCard>
 
-            <ManagerCard className="mb-3">
-              <Text className="text-right text-xs font-bold text-gray-500">
-                الإرسال
-              </Text>
-              <View className="mt-2 flex-row-reverse flex-wrap gap-2">
-                <Chip
-                  label="الآن"
-                  active={scheduleKind === "now"}
-                  onPress={() => setScheduleKind("now")}
-                />
-                <Chip
-                  label="بعد ساعة"
-                  active={scheduleKind === "+1h"}
-                  onPress={() => setScheduleKind("+1h")}
-                />
-                <Chip
-                  label="بعد ٣ ساعات"
-                  active={scheduleKind === "+3h"}
-                  onPress={() => setScheduleKind("+3h")}
-                />
-                <Chip
-                  label="غداً"
-                  active={scheduleKind === "+24h"}
-                  onPress={() => setScheduleKind("+24h")}
-                />
-              </View>
-            </ManagerCard>
-          </>
-        ) : null}
-      </ScrollView>
+              <ManagerCard>
+                <View className="flex-row-reverse items-center justify-between">
+                  <View className="flex-row-reverse items-center gap-2">
+                    <Ionicons
+                      name="paper-plane-outline"
+                      size={16}
+                      color={managerColors.brand}
+                    />
+                    <Text className="text-sm text-gray-700">
+                      سيستلم هذه الحملة
+                    </Text>
+                  </View>
+                  <Text className="text-xl font-bold text-[#16245C] tabular-nums">
+                    {audienceQuery.isLoading && audienceKind !== "selected"
+                      ? "…"
+                      : audienceCount.toLocaleString("ar")}
+                  </Text>
+                </View>
+                {audienceCount === 0 && !audienceQuery.isLoading ? (
+                  <Text className="mt-2 text-right text-[11px] text-red-600">
+                    لا توجد جهات اتصال في هذا الجمهور — اختر جمهوراً آخر.
+                  </Text>
+                ) : null}
+              </ManagerCard>
+            </>
+          ) : null}
 
-      <View className="absolute bottom-0 left-0 right-0 border-t border-gray-200 bg-white p-3">
+          {/* ================= REUSE: schedule ============================== */}
+          {step.id === "schedule" ? (
+            <View className="gap-2">
+              <AudienceOption
+                icon="flash"
+                label="أرسل الآن"
+                hint="تبدأ الحملة فور التأكيد"
+                active={scheduleKind === "now"}
+                onPress={() => setScheduleKind("now")}
+              />
+              <AudienceOption
+                icon="hourglass"
+                label="بعد ساعة"
+                hint="مناسب لتجهيز المطبخ قبل الطلبات"
+                active={scheduleKind === "+1h"}
+                onPress={() => setScheduleKind("+1h")}
+              />
+              <AudienceOption
+                icon="restaurant"
+                label="بعد ٣ ساعات"
+                hint="مثلاً قبل وقت الذروة"
+                active={scheduleKind === "+3h"}
+                onPress={() => setScheduleKind("+3h")}
+              />
+              <AudienceOption
+                icon="sunny"
+                label="غداً في نفس الوقت"
+                hint="تُرسل تلقائياً دون أي إجراء منك"
+                active={scheduleKind === "+24h"}
+                onPress={() => setScheduleKind("+24h")}
+              />
+            </View>
+          ) : null}
+
+          {/* ================= review (both paths) ========================== */}
+          {step.id === "review" ? (
+            <>
+              <MessagePreview draft={draft} samples={previewSamples} />
+
+              {isNewTemplate ? (
+                <ManagerCard className="mb-3">
+                  <View className="flex-row-reverse items-center gap-2">
+                    <Ionicons
+                      name="shield-checkmark-outline"
+                      size={16}
+                      color={managerColors.warning}
+                    />
+                    <Text className="flex-1 text-right text-[11px] leading-5 text-[#8A5E00]">
+                      سيُرسل القالب لواتساب للاعتماد — يستغرق عادة من دقائق إلى
+                      ساعات. سيصلك إشعار فور صدور النتيجة، وبعدها تُنشئ الحملة
+                      بنقرة واحدة.
+                    </Text>
+                  </View>
+                </ManagerCard>
+              ) : (
+                <ManagerCard className="mb-3">
+                  <SummaryRow
+                    icon="megaphone-outline"
+                    label="الحملة"
+                    value={draft.campaignName}
+                  />
+                  <SummaryRow
+                    icon="people-outline"
+                    label="الجمهور"
+                    value={`${audienceLabel} — ${audienceCount.toLocaleString("ar")} جهة`}
+                  />
+                  <SummaryRow
+                    icon="alarm-outline"
+                    label="التوقيت"
+                    value={scheduleLabel}
+                    last
+                  />
+                </ManagerCard>
+              )}
+            </>
+          ) : null}
+        </ScrollView>
+      </Animated.View>
+
+      {/* ---- Footer: back / next ------------------------------------------- */}
+      <View
+        className="absolute bottom-0 left-0 right-0 border-t border-[#D6DDF8] bg-white p-3"
+        style={softShadow}
+      >
         <View className="flex-row-reverse gap-2">
           <Pressable
-            disabled={submitDisabled}
-            onPress={() => createMutation.mutate()}
-            className={`flex-1 items-center rounded-lg py-3 ${
-              submitDisabled ? "bg-[#B6E5D6]" : "bg-[#00A884]"
+            disabled={createMutation.isPending || !stepValid}
+            onPress={onPrimary}
+            className={`flex-[2] flex-row-reverse items-center justify-center gap-2 rounded-xl py-3.5 ${
+              createMutation.isPending || !stepValid
+                ? "bg-[#B9C6F5]"
+                : isLastStep
+                  ? "bg-[#00A884]"
+                  : "bg-[#011F91]"
             }`}
           >
             {createMutation.isPending ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text className="font-bold text-white">
-                {isNewTemplate
-                  ? "إرسال القالب للاعتماد"
-                  : `إنشاء الحملة (${audienceCount.toLocaleString()})`}
-              </Text>
+              <>
+                <Text className="font-bold text-white">{primaryLabel}</Text>
+                <Ionicons
+                  name={isLastStep ? "paper-plane" : "arrow-back"}
+                  size={15}
+                  color="#fff"
+                />
+              </>
             )}
           </Pressable>
           <Pressable
-            onPress={() => router.back()}
-            className="flex-1 items-center rounded-lg border border-gray-200 py-3"
+            onPress={onBack}
+            disabled={createMutation.isPending}
+            className="flex-1 items-center justify-center rounded-xl border border-[#D6DDF8] bg-white py-3.5"
           >
-            <Text className="font-semibold text-gray-700">إلغاء</Text>
+            <Text className="font-semibold text-[#5E6A99]">
+              {stepIndex === 0 ? "إلغاء" : "رجوع"}
+            </Text>
           </Pressable>
         </View>
       </View>
     </SafeAreaView>
+  );
+}
+
+/** WhatsApp-style bubble preview of the realized message. */
+function MessagePreview({
+  draft,
+  samples,
+}: {
+  draft: Draft;
+  samples: string[] | null | undefined;
+}) {
+  return (
+    <View className="mb-3 overflow-hidden rounded-2xl border border-[#D8E5D0] bg-[#E5DDD5]">
+      <View className="flex-row-reverse items-center gap-2 bg-[#075E54] px-3 py-2">
+        <Ionicons name="logo-whatsapp" size={14} color="#fff" />
+        <Text className="text-[11px] font-bold text-white">
+          هكذا ستصل الرسالة لعميلك
+        </Text>
+      </View>
+      <View className="p-3">
+        <View
+          className="max-w-[92%] self-end rounded-xl rounded-tr-sm bg-white p-2.5"
+          style={softShadow}
+        >
+          {draft.headerType === "text" && draft.headerText ? (
+            <Text className="mb-1 text-right text-[12px] font-bold text-gray-800">
+              {draft.headerText}
+            </Text>
+          ) : null}
+          {draft.headerType === "image" && draft.headerImageUrl ? (
+            <Image
+              source={{ uri: draft.headerImageUrl }}
+              style={{
+                width: "100%",
+                height: 140,
+                borderRadius: 8,
+                marginBottom: 6,
+                backgroundColor: "#eee",
+              }}
+            />
+          ) : null}
+          <Text className="text-right text-sm leading-6 text-gray-950">
+            {renderBodyWithSamples(draft.body, samples)}
+          </Text>
+          {draft.footerText ? (
+            <Text className="mt-1.5 text-right text-[10px] text-gray-500">
+              {draft.footerText}
+            </Text>
+          ) : null}
+          <Text className="mt-1 text-left text-[9px] text-gray-400">
+            {new Date().toLocaleTimeString("ar", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </Text>
+        </View>
+        {Array.isArray(draft.buttons) && draft.buttons.length > 0 ? (
+          <View className="mt-1 max-w-[92%] gap-1 self-end">
+            {draft.buttons.map((b, i) => (
+              <View
+                key={i}
+                className="items-center rounded-xl bg-white py-2"
+                style={softShadow}
+              >
+                <Text className="text-[12px] font-semibold text-[#00A5F4]">
+                  {String(
+                    (b as Record<string, unknown>).text ??
+                      (b as Record<string, unknown>).title ??
+                      "زر"
+                  )}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+function SummaryRow({
+  icon,
+  label,
+  value,
+  last,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: string;
+  last?: boolean;
+}) {
+  return (
+    <View
+      className={`flex-row-reverse items-center justify-between py-2.5 ${
+        last ? "" : "border-b border-[#EEF1FD]"
+      }`}
+    >
+      <View className="flex-row-reverse items-center gap-2">
+        <Ionicons name={icon} size={15} color={managerColors.muted} />
+        <Text className="text-xs text-[#5E6A99]">{label}</Text>
+      </View>
+      <Text className="max-w-[60%] text-left text-xs font-bold text-[#16245C]">
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function AudienceOption({
+  icon,
+  label,
+  hint,
+  active,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  hint: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className={`flex-row-reverse items-center gap-3 rounded-xl border px-3 py-3 ${
+        active
+          ? "border-[#011F91] bg-[#E2E8FF]"
+          : "border-[#D6DDF8] bg-white"
+      }`}
+    >
+      <View
+        className={`h-9 w-9 items-center justify-center rounded-full ${
+          active ? "bg-[#011F91]" : "bg-[#F5F7FF]"
+        }`}
+      >
+        <Ionicons
+          name={icon}
+          size={16}
+          color={active ? "#FCBD05" : managerColors.muted}
+        />
+      </View>
+      <View className="flex-1">
+        <Text
+          className={`text-right text-sm font-bold ${
+            active ? "text-[#011F91]" : "text-[#16245C]"
+          }`}
+        >
+          {label}
+        </Text>
+        <Text className="mt-0.5 text-right text-[10px] text-[#5E6A99]">
+          {hint}
+        </Text>
+      </View>
+      <Ionicons
+        name={active ? "radio-button-on" : "radio-button-off"}
+        size={18}
+        color={active ? managerColors.brand : "#C7D0F0"}
+      />
+    </Pressable>
   );
 }
 
@@ -723,33 +1177,4 @@ function renderBodyWithSamples(
     const v = samples[i];
     return v && v.trim() ? v : match;
   });
-}
-
-function Chip({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className={`rounded-full border px-3 py-1.5 ${
-        active
-          ? "border-emerald-300 bg-emerald-50"
-          : "border-gray-200 bg-white"
-      }`}
-    >
-      <Text
-        className={`text-xs font-semibold ${
-          active ? "text-emerald-900" : "text-gray-700"
-        }`}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
 }

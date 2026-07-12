@@ -12,7 +12,7 @@ export default function CampaignsLayout() {
     >
       <Stack.Screen
         name="index"
-        options={{ title: "التسويق" }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="whatsapp"
@@ -36,7 +36,7 @@ export default function CampaignsLayout() {
       />
       <Stack.Screen
         name="new-edit"
-        options={{ title: "بيانات الحملة" }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="[id]"
