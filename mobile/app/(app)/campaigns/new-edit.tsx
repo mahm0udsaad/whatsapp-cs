@@ -129,6 +129,27 @@ const REUSE_STEPS: StepDef[] = [
 const nameFallbackFor = (language: string) =>
   language === "en" ? "Dear customer" : "عميلنا العزيز";
 
+/** Realistic sample name shown to Meta reviewers for {{1}} — never typed. */
+const SAMPLE_CUSTOMER_NAME = "عبدالله";
+
+/** Arabic display labels for the English variable keys the examples ship. */
+const VAR_LABELS_AR: Record<string, string> = {
+  customer_name: "اسم العميل",
+  discount_percent: "نسبة الخصم",
+  promo_code: "كود الخصم",
+  bonus_offer: "العرض الإضافي",
+  order_number: "رقم الطلب",
+  status_text: "حالة الطلب",
+  event_name: "اسم المناسبة",
+  event_date: "تاريخ المناسبة",
+  visit_day: "يوم الزيارة",
+  booking_time: "موعد الحجز",
+  party_size: "عدد الأشخاص",
+};
+
+const varLabel = (key: string) =>
+  VAR_LABELS_AR[key] ?? key.replace(/_/g, " ");
+
 const AR_DIGITS = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
 const arNum = (n: number) =>
   String(n)
@@ -201,7 +222,15 @@ export default function CampaignNewEditScreen() {
         footerText: ex.preview.footer_text ?? "",
         buttons: (ex.preview.buttons as unknown as Record<string, unknown>[]) ?? null,
         variables: ex.variables ?? null,
-        sampleValues: ex.sampleValues ?? null,
+        // {{1}} is always the customer name — auto-seed its review sample so
+        // the owner is never asked to type a customer name.
+        sampleValues:
+          ex.variables && ex.variables.length > 0
+            ? ex.variables.map(
+                (_, i) =>
+                  ex.sampleValues?.[i] ?? (i === 0 ? SAMPLE_CUSTOMER_NAME : "")
+              )
+            : (ex.sampleValues ?? null),
         language: ex.language,
         category: ex.category,
         example: ex,
@@ -607,41 +636,62 @@ export default function CampaignNewEditScreen() {
 
               {draft.variables && draft.variables.length > 0 ? (
                 <ManagerCard className="mb-3">
-                  <Text className="text-right text-xs font-bold text-gray-500">
-                    قيم الرسالة
-                  </Text>
-                  <Text className="mt-1 text-right text-[10px] leading-4 text-gray-400">
-                    {
-                      "هذه القيم تظهر في رسالتك وتُعرض على مراجع واتساب أثناء الاعتماد. اسم العميل يُستبدل تلقائياً باسم كل مستلم عند الإرسال."
-                    }
-                  </Text>
-                  <View className="mt-2 gap-2">
-                    {draft.variables.map((label, idx) => {
-                      const missing = !(draft.sampleValues?.[idx] ?? "").trim();
-                      return (
-                        <View key={`${label}-${idx}`}>
-                          <Text className="text-right text-[11px] font-semibold text-gray-600">
-                            {`${label} (مطلوب)`}
-                          </Text>
-                          <TextInput
-                            value={draft.sampleValues?.[idx] ?? ""}
-                            onChangeText={(v) => {
-                              const next = [...(draft.sampleValues ?? [])];
-                              while (next.length < (draft.variables?.length ?? 0)) {
-                                next.push("");
-                              }
-                              next[idx] = v;
-                              setDraft({ ...draft, sampleValues: next });
-                            }}
-                            textAlign="right"
-                            className={`mt-1 rounded-md border bg-white px-3 py-2 text-sm text-gray-950 ${
-                              missing ? "border-amber-300" : "border-gray-200"
-                            }`}
-                          />
-                        </View>
-                      );
-                    })}
+                  {/* {{1}} — auto-personalized per recipient; the owner never
+                      types a customer name anywhere in this flow. */}
+                  <View className="flex-row-reverse items-center gap-2 rounded-xl border border-[#D6DDF8] bg-[#F5F7FF] p-3">
+                    <View className="h-8 w-8 items-center justify-center rounded-full bg-[#011F91]">
+                      <Ionicons name="person" size={14} color="#FCBD05" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-right text-xs font-bold text-[#16245C]">
+                        اسم العميل — يُملأ تلقائياً
+                      </Text>
+                      <Text className="mt-0.5 text-right text-[10px] leading-4 text-[#5E6A99]">
+                        كل عميل يستلم الرسالة باسمه المحفوظ لديك، ومن لا اسم له
+                        نحييه بـ«{nameFallbackFor(draft.language)}».
+                      </Text>
+                    </View>
                   </View>
+
+                  {draft.variables.length > 1 ? (
+                    <>
+                      <Text className="mt-4 text-right text-xs font-bold text-gray-500">
+                        قيم الرسالة
+                      </Text>
+                      <Text className="mt-1 text-right text-[10px] leading-4 text-gray-400">
+                        تظهر في رسالتك لجميع العملاء ويراها مراجع واتساب أثناء
+                        الاعتماد.
+                      </Text>
+                      <View className="mt-2 gap-2">
+                        {draft.variables.map((label, idx) => {
+                          if (idx === 0) return null;
+                          const missing = !(draft.sampleValues?.[idx] ?? "").trim();
+                          return (
+                            <View key={`${label}-${idx}`}>
+                              <Text className="text-right text-[11px] font-semibold text-gray-600">
+                                {`${varLabel(label)} (مطلوب)`}
+                              </Text>
+                              <TextInput
+                                value={draft.sampleValues?.[idx] ?? ""}
+                                onChangeText={(v) => {
+                                  const next = [...(draft.sampleValues ?? [])];
+                                  while (next.length < (draft.variables?.length ?? 0)) {
+                                    next.push("");
+                                  }
+                                  next[idx] = v;
+                                  setDraft({ ...draft, sampleValues: next });
+                                }}
+                                textAlign="right"
+                                className={`mt-1 rounded-md border bg-white px-3 py-2 text-sm text-gray-950 ${
+                                  missing ? "border-amber-300" : "border-gray-200"
+                                }`}
+                              />
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </>
+                  ) : null}
                 </ManagerCard>
               ) : null}
             </>
@@ -808,7 +858,7 @@ export default function CampaignNewEditScreen() {
                           return (
                             <View key={`var-${idx}`}>
                               <Text className="text-right text-[11px] font-semibold text-gray-600">
-                                {`${label} (مطلوب)`}
+                                {`${varLabel(label)} (مطلوب)`}
                               </Text>
                               <TextInput
                                 value={reuseVarValues[idx] ?? ""}
