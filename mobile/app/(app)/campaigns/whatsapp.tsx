@@ -329,6 +329,11 @@ function statusLabel(s: CampaignStatus): { label: string; tone: string } {
   switch (s) {
     case "draft":
       return { label: "مسودة", tone: "bg-gray-100 text-gray-700" };
+    case "pending_template_approval":
+      return {
+        label: "بانتظار اعتماد القالب",
+        tone: "bg-amber-50 text-amber-900",
+      };
     case "scheduled":
       return { label: "مجدولة", tone: "bg-indigo-50 text-indigo-900" };
     case "sending":

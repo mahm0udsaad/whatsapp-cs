@@ -730,6 +730,7 @@ export interface MarketingCustomersResponse {
 
 export type CampaignStatus =
   | "draft"
+  | "pending_template_approval"
   | "scheduled"
   | "queued"
   | "sending"

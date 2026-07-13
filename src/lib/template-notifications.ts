@@ -44,6 +44,8 @@ export interface TemplateDecisionNotification {
   templateName: string;
   status: "approved" | "rejected" | "paused" | "disabled";
   rejectionReason?: string | null;
+  /** Campaigns auto-launched from `pending_template_approval` on approval. */
+  launchedCampaigns?: number;
 }
 
 export async function notifyManagersOfTemplateDecision(
@@ -62,7 +64,9 @@ export async function notifyManagersOfTemplateDecision(
 
     const body =
       input.status === "approved"
-        ? "أصبح بالإمكان إنشاء حملة تستخدم هذا القالب."
+        ? (input.launchedCampaigns ?? 0) > 0
+          ? "انطلقت حملتك تلقائياً 🎉 تابع نتائج الإرسال من شاشة الحملات."
+          : "أصبح بالإمكان إنشاء حملة تستخدم هذا القالب."
         : input.status === "rejected"
           ? input.rejectionReason?.slice(0, 140) ||
             "تم رفض القالب من واتساب. يمكن التعديل وإعادة الإرسال."

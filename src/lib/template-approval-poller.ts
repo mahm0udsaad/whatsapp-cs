@@ -1,6 +1,7 @@
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 import { getApprovalStatus } from "@/lib/twilio-content";
 import { notifyManagersOfTemplateDecision } from "@/lib/template-notifications";
+import { enqueueCampaign } from "@/lib/campaign-send-jobs";
 
 const TERMINAL_STATUSES = ["approved", "rejected", "paused", "disabled"];
 
@@ -86,6 +87,54 @@ async function reviveAbandonedPolls(): Promise<number> {
   return error ? 0 : toRevive.length;
 }
 
+/**
+ * Launch campaigns that were parked as `pending_template_approval` while
+ * their template sat in WhatsApp review. Called the moment a template flips
+ * to approved, so the user's full campaign intent (audience + schedule)
+ * captured in the wizard executes without any re-entry.
+ *
+ * A schedule that expired during review degrades to "send now" — the user
+ * asked for the earliest possible send, and approval was the blocker.
+ */
+async function launchPendingCampaigns(templateId: string): Promise<number> {
+  const { data: campaigns } = await adminSupabaseClient
+    .from("marketing_campaigns")
+    .select("id, scheduled_at")
+    .eq("template_id", templateId)
+    .eq("status", "pending_template_approval");
+
+  if (!campaigns?.length) return 0;
+
+  let launched = 0;
+  for (const campaign of campaigns) {
+    try {
+      const scheduledAt =
+        campaign.scheduled_at &&
+        new Date(campaign.scheduled_at as string) > new Date()
+          ? (campaign.scheduled_at as string)
+          : null;
+
+      const result = await enqueueCampaign(campaign.id, scheduledAt);
+      await adminSupabaseClient
+        .from("marketing_campaigns")
+        .update({
+          status: scheduledAt ? "scheduled" : "queued",
+          ...(scheduledAt ? {} : { scheduled_at: null }),
+          total_recipients: result.enqueued,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", campaign.id);
+      launched++;
+    } catch (err) {
+      console.error(
+        `[template-poller] failed to launch campaign ${campaign.id}:`,
+        err
+      );
+    }
+  }
+  return launched;
+}
+
 export async function processPendingTemplateApprovalPolls(
   limit = 50
 ): Promise<PollRunResult> {
@@ -150,6 +199,19 @@ export async function processPendingTemplateApprovalPolls(
         if (normalizedStatus === "approved") result.approved++;
         else result.rejected++;
 
+        let launchedCampaigns = 0;
+        if (normalizedStatus === "approved") {
+          launchedCampaigns = await launchPendingCampaigns(poll.template_id);
+        } else {
+          // Rejected/paused/disabled: release parked campaigns back to draft
+          // so they don't wait forever on a template that will never approve.
+          await adminSupabaseClient
+            .from("marketing_campaigns")
+            .update({ status: "draft", updated_at: new Date().toISOString() })
+            .eq("template_id", poll.template_id)
+            .eq("status", "pending_template_approval");
+        }
+
         if (updatedTemplate) {
           // Fire-and-forget — notification failures must not block polling.
           notifyManagersOfTemplateDecision({
@@ -163,6 +225,7 @@ export async function processPendingTemplateApprovalPolls(
               | "disabled",
             rejectionReason:
               normalizedStatus === "rejected" ? rejectionReason : null,
+            launchedCampaigns,
           }).catch((e) =>
             console.error("[template-poller] notify failed:", e)
           );

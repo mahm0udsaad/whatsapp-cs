@@ -72,8 +72,8 @@ interface StepDef {
 const NEW_TEMPLATE_STEPS: StepDef[] = [
   {
     id: "content",
-    title: "محتوى القالب",
-    subtitle: "اسم القالب وبيانات الاعتماد التي يراها مراجع واتساب",
+    title: "محتوى الحملة",
+    subtitle: "اسم الحملة وقيم الرسالة التي ستصل لعملائك",
   },
   {
     id: "image",
@@ -81,9 +81,19 @@ const NEW_TEMPLATE_STEPS: StepDef[] = [
     subtitle: "ارفع صورة أو ولّدها بالذكاء الاصطناعي",
   },
   {
+    id: "audience",
+    title: "الجمهور",
+    subtitle: "اختر من سيستلم هذه الحملة",
+  },
+  {
+    id: "schedule",
+    title: "التوقيت",
+    subtitle: "تنطلق الحملة تلقائياً فور اعتماد القالب",
+  },
+  {
     id: "review",
     title: "المراجعة والإرسال",
-    subtitle: "هكذا ستظهر الرسالة لمراجع واتساب",
+    subtitle: "يُرسل القالب للاعتماد وتنطلق الحملة تلقائياً بعده",
   },
 ];
 
@@ -312,17 +322,17 @@ export default function CampaignNewEditScreen() {
     mutationFn: async () => {
       if (!draft) throw new Error("لا توجد بيانات");
 
+      if (!draft.campaignName.trim()) throw new Error("اسم الحملة مطلوب");
+
       let templateId = draft.reuseTemplateId;
+      let awaitingApproval = false;
 
       if (!templateId) {
         if (draft.headerType === "image" && !draft.headerImageUrl) {
           throw new Error("يجب إضافة صورة للرأس أولاً");
         }
-        if (!draft.templateName.trim()) {
-          throw new Error("اسم القالب مطلوب");
-        }
         const { template } = await createMarketingTemplate({
-          name: draft.templateName.trim(),
+          name: draft.templateName.trim() || draft.campaignName.trim(),
           body_template: draft.body,
           language: draft.language,
           category: draft.category === "UTILITY" ? "UTILITY" : "MARKETING",
@@ -336,27 +346,14 @@ export default function CampaignNewEditScreen() {
           sample_values: draft.sampleValues,
           submit: true,
         });
-        // A fresh template is `submitted` — can't create a campaign until Meta
-        // approves. Tell the user and land them on the templates screen so
-        // they see the pending state and get a push when it flips.
         qc.invalidateQueries({ queryKey: qk.marketingTemplates(restaurantId) });
-        Alert.alert(
-          "تم إرسال القالب للاعتماد",
-          "ستصل إشعار عند اعتماده من واتساب. بعدها يمكنك إنشاء الحملة بنقرة واحدة.",
-          [
-            {
-              text: "فتح القوالب",
-              onPress: () =>
-                router.replace({ pathname: "/campaigns/templates" }),
-            },
-          ]
-        );
-        return { pendingTemplateId: template.id };
+        // The campaign is created below as `pending_template_approval` and
+        // the approval poller launches it automatically when Meta approves —
+        // the user never re-enters this flow.
+        templateId = template.id;
+        awaitingApproval = true;
       }
 
-      if (!draft.campaignName.trim()) throw new Error("اسم الحملة مطلوب");
-
-      // Reuse path → create the campaign (with optional schedule)
       const scheduledAt =
         scheduleKind === "now"
           ? null
@@ -372,9 +369,16 @@ export default function CampaignNewEditScreen() {
         scheduled_at: scheduledAt,
       });
 
+      // Shared variable values for the send. {{1}} stays per-recipient (name
+      // with fallback); on the new-template path the sample values double as
+      // the real values for {{2}}+.
+      const sourceValues = awaitingApproval
+        ? (draft.sampleValues ?? [])
+        : reuseVarValues;
       const variableValues: Record<string, string> = {};
       (draft.variables ?? []).forEach((_, idx) => {
-        const v = reuseVarValues[idx]?.trim();
+        if (awaitingApproval && idx === 0) return;
+        const v = sourceValues[idx]?.trim();
         if (v) variableValues[String(idx + 1)] = v;
       });
 
@@ -389,27 +393,33 @@ export default function CampaignNewEditScreen() {
 
       const aud = await setCampaignAudience(campaign.id, selection);
 
-      // Commit the send: enqueue per-recipient jobs now. For a scheduled
-      // campaign the worker drains them at `scheduled_at`; for "now" it sends on
-      // the next worker tick. Without this the campaign would just sit unsent.
-      if (aud.total_recipients > 0) {
+      // Commit the send for approved templates: enqueue per-recipient jobs
+      // now. For a scheduled campaign the worker drains them at
+      // `scheduled_at`; for "now" it sends on the next worker tick. A
+      // pending-approval campaign is enqueued by the poller on approval.
+      if (!awaitingApproval && aud.total_recipients > 0) {
         await sendMarketingCampaign(campaign.id);
       }
-      return { campaign, aud, scheduledAt };
+      return { campaign, aud, scheduledAt, awaitingApproval };
     },
     onSuccess: (result) => {
       delete (globalThis as unknown as Record<string, unknown>)[
         SELECTED_PHONES_KEY
       ];
       qc.invalidateQueries({ queryKey: qk.marketingCampaigns(restaurantId) });
-      if ("pendingTemplateId" in result) return;
-      const { campaign, aud, scheduledAt } = result;
-      const title = scheduledAt ? "تم جدولة الحملة" : "بدأ إرسال الحملة";
-      const body = scheduledAt
-        ? `ستُرسل تلقائيًا في الموعد المحدد إلى ${aud.total_recipients} جهة اتصال.`
-        : aud.total_recipients > 0
-          ? `جارٍ الإرسال إلى ${aud.total_recipients} جهة اتصال.`
-          : "لا توجد جهات اتصال في هذا الجمهور.";
+      const { campaign, aud, scheduledAt, awaitingApproval } = result;
+      const title = awaitingApproval
+        ? "تم إرسال القالب للاعتماد ✅"
+        : scheduledAt
+          ? "تم جدولة الحملة"
+          : "بدأ إرسال الحملة";
+      const body = awaitingApproval
+        ? `حملتك جاهزة وستنطلق تلقائياً إلى ${aud.total_recipients} جهة اتصال فور اعتماد واتساب للقالب (عادةً خلال دقائق إلى ٤٨ ساعة). سيصلك إشعار عندها.`
+        : scheduledAt
+          ? `ستُرسل تلقائيًا في الموعد المحدد إلى ${aud.total_recipients} جهة اتصال.`
+          : aud.total_recipients > 0
+            ? `جارٍ الإرسال إلى ${aud.total_recipients} جهة اتصال.`
+            : "لا توجد جهات اتصال في هذا الجمهور.";
       Alert.alert(title, body, [
         {
           text: "فتح الحملة",
@@ -463,7 +473,7 @@ export default function CampaignNewEditScreen() {
         // Meta reviewers judge the realized sample message — empty or
         // placeholder-looking samples are a documented rejection cause.
         return (
-          !!draft.templateName.trim() &&
+          !!draft.campaignName.trim() &&
           Array.from({ length: varCount }).every((_, i) =>
             (draft.sampleValues?.[i] ?? "").trim()
           )
@@ -513,7 +523,7 @@ export default function CampaignNewEditScreen() {
 
   const primaryLabel = isLastStep
     ? isNewTemplate
-      ? "إرسال القالب للاعتماد"
+      ? "إرسال للاعتماد والإطلاق تلقائياً"
       : scheduleKind === "now"
         ? `إطلاق الحملة (${audienceCount.toLocaleString("ar")})`
         : "جدولة الحملة"
@@ -582,49 +592,55 @@ export default function CampaignNewEditScreen() {
             <>
               <ManagerCard className="mb-3">
                 <Text className="text-right text-xs font-bold text-gray-500">
-                  اسم القالب (داخلي)
+                  اسم الحملة
                 </Text>
                 <TextInput
-                  value={draft.templateName}
-                  onChangeText={(v) => setDraft({ ...draft, templateName: v })}
+                  value={draft.campaignName}
+                  onChangeText={(v) => setDraft({ ...draft, campaignName: v })}
                   textAlign="right"
                   className="mt-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-950"
                 />
                 <Text className="mt-1 text-right text-[10px] text-gray-400">
-                  يُستخدم لدى واتساب للاعتماد. أحرف ورقم فقط.
+                  اسم داخلي يظهر لك فقط في قائمة الحملات.
                 </Text>
               </ManagerCard>
 
               {draft.variables && draft.variables.length > 0 ? (
                 <ManagerCard className="mb-3">
                   <Text className="text-right text-xs font-bold text-gray-500">
-                    بيانات الاعتماد (مثال حقيقي)
+                    قيم الرسالة
                   </Text>
-                  <Text className="mt-1 text-right text-[10px] text-gray-400">
-                    قيم واقعية يراها مراجع واتساب أثناء الاعتماد. لا تؤثر على ما
-                    سيُرسل لعملائك لاحقاً.
+                  <Text className="mt-1 text-right text-[10px] leading-4 text-gray-400">
+                    {
+                      "هذه القيم تظهر في رسالتك وتُعرض على مراجع واتساب أثناء الاعتماد. اسم العميل يُستبدل تلقائياً باسم كل مستلم عند الإرسال."
+                    }
                   </Text>
                   <View className="mt-2 gap-2">
-                    {draft.variables.map((label, idx) => (
-                      <View key={`${label}-${idx}`}>
-                        <Text className="text-right text-[11px] font-semibold text-gray-600">
-                          {`{{${idx + 1}}} — ${label}`}
-                        </Text>
-                        <TextInput
-                          value={draft.sampleValues?.[idx] ?? ""}
-                          onChangeText={(v) => {
-                            const next = [...(draft.sampleValues ?? [])];
-                            while (next.length < (draft.variables?.length ?? 0)) {
-                              next.push("");
-                            }
-                            next[idx] = v;
-                            setDraft({ ...draft, sampleValues: next });
-                          }}
-                          textAlign="right"
-                          className="mt-1 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-950"
-                        />
-                      </View>
-                    ))}
+                    {draft.variables.map((label, idx) => {
+                      const missing = !(draft.sampleValues?.[idx] ?? "").trim();
+                      return (
+                        <View key={`${label}-${idx}`}>
+                          <Text className="text-right text-[11px] font-semibold text-gray-600">
+                            {`${label} (مطلوب)`}
+                          </Text>
+                          <TextInput
+                            value={draft.sampleValues?.[idx] ?? ""}
+                            onChangeText={(v) => {
+                              const next = [...(draft.sampleValues ?? [])];
+                              while (next.length < (draft.variables?.length ?? 0)) {
+                                next.push("");
+                              }
+                              next[idx] = v;
+                              setDraft({ ...draft, sampleValues: next });
+                            }}
+                            textAlign="right"
+                            className={`mt-1 rounded-md border bg-white px-3 py-2 text-sm text-gray-950 ${
+                              missing ? "border-amber-300" : "border-gray-200"
+                            }`}
+                          />
+                        </View>
+                      );
+                    })}
                   </View>
                 </ManagerCard>
               ) : null}
@@ -889,8 +905,12 @@ export default function CampaignNewEditScreen() {
             <View className="gap-2">
               <AudienceOption
                 icon="flash"
-                label="أرسل الآن"
-                hint="تبدأ الحملة فور التأكيد"
+                label={isNewTemplate ? "أرسل فور الاعتماد" : "أرسل الآن"}
+                hint={
+                  isNewTemplate
+                    ? "تنطلق الحملة تلقائياً لحظة اعتماد واتساب للقالب"
+                    : "تبدأ الحملة فور التأكيد"
+                }
                 active={scheduleKind === "now"}
                 onPress={() => setScheduleKind("now")}
               />
@@ -923,6 +943,29 @@ export default function CampaignNewEditScreen() {
             <>
               <MessagePreview draft={draft} samples={previewSamples} />
 
+              <ManagerCard className="mb-3">
+                <SummaryRow
+                  icon="megaphone-outline"
+                  label="الحملة"
+                  value={draft.campaignName}
+                />
+                <SummaryRow
+                  icon="people-outline"
+                  label="الجمهور"
+                  value={`${audienceLabel} — ${audienceCount.toLocaleString("ar")} جهة`}
+                />
+                <SummaryRow
+                  icon="alarm-outline"
+                  label="التوقيت"
+                  value={
+                    isNewTemplate && scheduleKind === "now"
+                      ? "فور اعتماد القالب"
+                      : scheduleLabel
+                  }
+                  last
+                />
+              </ManagerCard>
+
               {isNewTemplate ? (
                 <ManagerCard className="mb-3">
                   <View className="flex-row-reverse items-center gap-2">
@@ -932,32 +975,13 @@ export default function CampaignNewEditScreen() {
                       color={managerColors.warning}
                     />
                     <Text className="flex-1 text-right text-[11px] leading-5 text-[#8A5E00]">
-                      سيُرسل القالب لواتساب للاعتماد — يستغرق عادة من دقائق إلى
-                      ساعات. سيصلك إشعار فور صدور النتيجة، وبعدها تُنشئ الحملة
-                      بنقرة واحدة.
+                      يُرسل القالب لواتساب للاعتماد (عادةً من دقائق إلى ٤٨
+                      ساعة)، وتنطلق حملتك تلقائياً فور اعتماده — لا تحتاج لأي
+                      خطوة إضافية. سيصلك إشعار عند الإطلاق.
                     </Text>
                   </View>
                 </ManagerCard>
-              ) : (
-                <ManagerCard className="mb-3">
-                  <SummaryRow
-                    icon="megaphone-outline"
-                    label="الحملة"
-                    value={draft.campaignName}
-                  />
-                  <SummaryRow
-                    icon="people-outline"
-                    label="الجمهور"
-                    value={`${audienceLabel} — ${audienceCount.toLocaleString("ar")} جهة`}
-                  />
-                  <SummaryRow
-                    icon="alarm-outline"
-                    label="التوقيت"
-                    value={scheduleLabel}
-                    last
-                  />
-                </ManagerCard>
-              )}
+              ) : null}
             </>
           ) : null}
         </ScrollView>

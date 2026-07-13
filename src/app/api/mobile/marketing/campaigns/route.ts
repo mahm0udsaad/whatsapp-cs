@@ -72,14 +72,25 @@ export async function POST(request: NextRequest) {
   if (!template) {
     return NextResponse.json({ error: "Template not found" }, { status: 404 });
   }
-  if (template.approval_status !== "approved") {
+  // A campaign may be created against a template that is still under
+  // WhatsApp review: it parks as `pending_template_approval` and the
+  // approval poller auto-launches it the moment the template is approved.
+  // Only terminally-unusable templates are rejected outright.
+  const awaitingApproval = ["submitted", "pending", "received", "draft"].includes(
+    template.approval_status
+  );
+  if (template.approval_status !== "approved" && !awaitingApproval) {
     return NextResponse.json(
-      { error: "Template must be approved before creating a campaign" },
+      { error: "Template was rejected or disabled — create a new template first" },
       { status: 400 }
     );
   }
 
-  const status = body.scheduled_at ? "scheduled" : "draft";
+  const status = awaitingApproval
+    ? "pending_template_approval"
+    : body.scheduled_at
+      ? "scheduled"
+      : "draft";
   const now = new Date().toISOString();
 
   const { data, error } = await adminSupabaseClient

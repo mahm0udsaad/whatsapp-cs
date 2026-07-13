@@ -252,6 +252,10 @@ export default function CampaignDetailScreen() {
 function StatusBadge({ status }: { status: CampaignStatus }) {
   const styles: Record<CampaignStatus, { label: string; cls: string }> = {
     draft: { label: "مسودة", cls: "bg-gray-100 text-gray-700" },
+    pending_template_approval: {
+      label: "بانتظار اعتماد القالب",
+      cls: "bg-amber-50 text-amber-900",
+    },
     scheduled: { label: "مجدولة", cls: "bg-indigo-50 text-indigo-900" },
     queued: { label: "في قائمة الإرسال", cls: "bg-indigo-50 text-indigo-900" },
     sending: { label: "قيد الإرسال", cls: "bg-amber-50 text-amber-900" },

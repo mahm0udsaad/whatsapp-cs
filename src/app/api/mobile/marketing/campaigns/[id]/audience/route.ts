@@ -65,7 +65,11 @@ export async function POST(
   if (!campaign) {
     return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
   }
-  if (campaign.status !== "draft" && campaign.status !== "scheduled") {
+  if (
+    campaign.status !== "draft" &&
+    campaign.status !== "scheduled" &&
+    campaign.status !== "pending_template_approval"
+  ) {
     return NextResponse.json(
       { error: "Recipients can only be changed while the campaign is in draft or scheduled" },
       { status: 400 }
