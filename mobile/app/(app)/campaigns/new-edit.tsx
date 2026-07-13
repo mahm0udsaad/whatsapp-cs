@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Animated, Easing } from "react-native";
+import { Alert, Animated, Easing, Platform } from "react-native";
+import DateTimePicker, {
+  type DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -38,7 +41,14 @@ import {
 const SELECTED_PHONES_KEY = "whatsapp-cs:campaign-prefill-phones";
 
 type AudienceKind = "all" | "30d" | "90d" | "selected";
-type ScheduleKind = "now" | "+1h" | "+3h" | "+24h";
+type ScheduleKind = "now" | "+1h" | "+3h" | "+24h" | "custom";
+
+/** Default custom send time: tomorrow at the next full hour. */
+function defaultCustomDate(): Date {
+  const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  d.setMinutes(0, 0, 0);
+  return d;
+}
 
 interface Draft {
   // Campaign-level
@@ -173,6 +183,10 @@ export default function CampaignNewEditScreen() {
     return phones && phones.length > 0 ? "selected" : "all";
   });
   const [scheduleKind, setScheduleKind] = useState<ScheduleKind>("now");
+  const [customDate, setCustomDate] = useState<Date>(defaultCustomDate);
+  const [androidPicker, setAndroidPicker] = useState<"date" | "time" | null>(
+    null
+  );
   const [reuseVarValues, setReuseVarValues] = useState<string[]>([]);
   const [stepIndex, setStepIndex] = useState(0);
 
@@ -390,7 +404,9 @@ export default function CampaignNewEditScreen() {
             ? new Date(Date.now() + 60 * 60 * 1000).toISOString()
             : scheduleKind === "+3h"
               ? new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()
-              : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+              : scheduleKind === "+24h"
+                ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+                : customDate.toISOString();
 
       const campaign = await createMarketingCampaign({
         name: draft.campaignName.trim(),
@@ -520,6 +536,8 @@ export default function CampaignNewEditScreen() {
         );
       case "audience":
         return audienceCount > 0;
+      case "schedule":
+        return scheduleKind !== "custom" || customDate.getTime() > Date.now();
       default:
         return true;
     }
@@ -532,6 +550,14 @@ export default function CampaignNewEditScreen() {
         ...reuseVarValues.slice(1),
       ];
 
+  const customDateLabel = customDate.toLocaleString("ar", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
   const scheduleLabel =
     scheduleKind === "now"
       ? "الآن"
@@ -539,7 +565,9 @@ export default function CampaignNewEditScreen() {
         ? "بعد ساعة"
         : scheduleKind === "+3h"
           ? "بعد ٣ ساعات"
-          : "غداً";
+          : scheduleKind === "+24h"
+            ? "غداً"
+            : customDateLabel;
 
   const audienceLabel =
     audienceKind === "all"
@@ -985,6 +1013,81 @@ export default function CampaignNewEditScreen() {
                 active={scheduleKind === "+24h"}
                 onPress={() => setScheduleKind("+24h")}
               />
+              <AudienceOption
+                icon="calendar-number"
+                label="موعد مخصص"
+                hint={
+                  scheduleKind === "custom"
+                    ? customDateLabel
+                    : "اختر اليوم والساعة بدقة"
+                }
+                active={scheduleKind === "custom"}
+                onPress={() => setScheduleKind("custom")}
+              />
+
+              {scheduleKind === "custom" ? (
+                <ManagerCard>
+                  {Platform.OS === "ios" ? (
+                    <View className="items-center">
+                      <DateTimePicker
+                        value={customDate}
+                        mode="datetime"
+                        display="compact"
+                        minuteInterval={5}
+                        minimumDate={new Date()}
+                        themeVariant="light"
+                        onChange={(_: DateTimePickerEvent, date?: Date) => {
+                          if (date) setCustomDate(date);
+                        }}
+                      />
+                    </View>
+                  ) : (
+                    <View className="flex-row-reverse gap-2">
+                      <Pressable
+                        onPress={() => setAndroidPicker("date")}
+                        className="flex-1 items-center rounded-lg border border-[#D6DDF8] bg-white py-2.5"
+                      >
+                        <Text className="text-xs font-bold text-[#16245C]">
+                          {customDate.toLocaleDateString("ar", {
+                            weekday: "long",
+                            day: "numeric",
+                            month: "long",
+                          })}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setAndroidPicker("time")}
+                        className="flex-1 items-center rounded-lg border border-[#D6DDF8] bg-white py-2.5"
+                      >
+                        <Text className="text-xs font-bold text-[#16245C]">
+                          {customDate.toLocaleTimeString("ar", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  )}
+                  {Platform.OS === "android" && androidPicker ? (
+                    <DateTimePicker
+                      value={customDate}
+                      mode={androidPicker}
+                      display="default"
+                      minuteInterval={5}
+                      minimumDate={new Date()}
+                      onChange={(event: DateTimePickerEvent, date?: Date) => {
+                        setAndroidPicker(null);
+                        if (event.type === "set" && date) setCustomDate(date);
+                      }}
+                    />
+                  ) : null}
+                  {customDate.getTime() <= Date.now() ? (
+                    <Text className="mt-2 text-right text-[11px] text-red-600">
+                      اختر موعداً في المستقبل.
+                    </Text>
+                  ) : null}
+                </ManagerCard>
+              ) : null}
             </View>
           ) : null}
 
