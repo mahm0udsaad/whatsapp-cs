@@ -14,6 +14,7 @@ import {
   createMarketingCampaign,
   createMarketingTemplate,
   generateTemplateImage,
+  listAllMarketingTemplates,
   listMarketingCustomers,
   listMarketingTemplates,
   sendMarketingCampaign,
@@ -69,6 +70,8 @@ interface Draft {
   category: "MARKETING" | "UTILITY" | "AUTHENTICATION";
   reuseTemplateId?: string;
   example?: TemplateExample;
+  /** Set on the duplicate-and-fix path: why the previous copy was rejected. */
+  rejectionReason?: string | null;
 }
 
 type StepId = "content" | "image" | "message" | "audience" | "schedule" | "review";
@@ -168,7 +171,11 @@ const arNum = (n: number) =>
     .join("");
 
 export default function CampaignNewEditScreen() {
-  const params = useLocalSearchParams<{ example?: string; from?: string }>();
+  const params = useLocalSearchParams<{
+    example?: string;
+    from?: string;
+    fix?: string;
+  }>();
   const member = useSessionStore((s) => s.activeMember);
   const restaurantId = member?.restaurant_id ?? "";
   const qc = useQueryClient();
@@ -216,6 +223,13 @@ export default function CampaignNewEditScreen() {
     queryFn: listMarketingTemplates,
   });
 
+  // Duplicate-and-fix needs non-approved templates too.
+  const allTemplatesQuery = useQuery({
+    queryKey: qk.marketingTemplatesAll(restaurantId),
+    enabled: !!params.fix && !!restaurantId,
+    queryFn: listAllMarketingTemplates,
+  });
+
   useEffect(() => {
     if (params.example) {
       const ex = findTemplateExample(params.example);
@@ -251,6 +265,38 @@ export default function CampaignNewEditScreen() {
       });
       return;
     }
+    if (params.fix && allTemplatesQuery.data) {
+      const t = allTemplatesQuery.data.find(
+        (x: MarketingTemplate) => x.id === params.fix
+      );
+      if (!t) {
+        setBootstrapError("القالب غير موجود");
+        return;
+      }
+      // Rejected Twilio content can't be resubmitted — this drafts a fresh
+      // template with the same content on the new-template wizard path.
+      setDraft({
+        campaignName: `${t.name} — ${new Date().toLocaleDateString("ar")}`,
+        templateName: t.name,
+        body: t.body_template ?? "",
+        headerType: (t.header_type as "none" | "text" | "image") ?? "none",
+        headerText: t.header_text ?? "",
+        headerImageUrl: t.header_image_url ?? null,
+        footerText: t.footer_text ?? "",
+        buttons: (t.buttons as Array<Record<string, unknown>>) ?? null,
+        variables: t.variables ?? null,
+        sampleValues:
+          t.variables && t.variables.length > 0
+            ? t.variables.map((_, i) => (i === 0 ? SAMPLE_CUSTOMER_NAME : ""))
+            : null,
+        language: t.language ?? "ar",
+        category:
+          (t.category as "MARKETING" | "UTILITY" | "AUTHENTICATION") ||
+          "MARKETING",
+        rejectionReason: t.rejection_reason ?? null,
+      });
+      return;
+    }
     if (params.from && templatesQuery.data) {
       const t = templatesQuery.data.find(
         (x: MarketingTemplate) => x.id === params.from
@@ -283,7 +329,7 @@ export default function CampaignNewEditScreen() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.example, params.from, templatesQuery.data]);
+  }, [params.example, params.from, params.fix, templatesQuery.data, allTemplatesQuery.data]);
 
   const since =
     audienceKind === "30d"
@@ -647,6 +693,23 @@ export default function CampaignNewEditScreen() {
           {/* ================= NEW TEMPLATE: content ======================= */}
           {step.id === "content" ? (
             <>
+              {draft.rejectionReason ? (
+                <View className="mb-3 flex-row-reverse items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3">
+                  <Ionicons name="alert-circle" size={16} color="#DC2626" />
+                  <View className="flex-1">
+                    <Text className="text-right text-xs font-bold text-red-800">
+                      رفض واتساب النسخة السابقة
+                    </Text>
+                    <Text className="mt-0.5 text-right text-[11px] leading-4 text-red-700">
+                      {draft.rejectionReason}
+                    </Text>
+                    <Text className="mt-1 text-right text-[10px] text-red-500">
+                      عدّل القيم أدناه ثم أعد الإرسال — يُنشأ قالب جديد
+                      تلقائياً.
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
               <ManagerCard className="mb-3">
                 <Text className="text-right text-xs font-bold text-gray-500">
                   اسم الحملة

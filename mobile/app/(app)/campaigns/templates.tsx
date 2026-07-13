@@ -141,6 +141,15 @@ export default function TemplatesLibraryScreen() {
                       })
                   : undefined
               }
+              onFix={
+                item.approval_status === "rejected"
+                  ? () =>
+                      router.push({
+                        pathname: "/campaigns/new-edit",
+                        params: { fix: item.id },
+                      })
+                  : undefined
+              }
             />
           )}
         />
@@ -152,9 +161,11 @@ export default function TemplatesLibraryScreen() {
 function TemplateCard({
   template,
   onUse,
+  onFix,
 }: {
   template: MarketingTemplate;
   onUse?: () => void;
+  onFix?: () => void;
 }) {
   const status = template.approval_status;
   const badge =
@@ -225,6 +236,18 @@ function TemplateCard({
           <Ionicons name="arrow-back" size={14} color="#fff" />
           <Text className="text-xs font-bold text-white">
             استخدم في حملة
+          </Text>
+        </Pressable>
+      ) : null}
+
+      {onFix ? (
+        <Pressable
+          onPress={onFix}
+          className="mt-3 flex-row-reverse items-center justify-center gap-1.5 rounded-full bg-[#011F91] py-2"
+        >
+          <Ionicons name="build" size={14} color="#FCBD05" />
+          <Text className="text-xs font-bold text-white">
+            عدّل وأعد الإرسال
           </Text>
         </Pressable>
       ) : null}
