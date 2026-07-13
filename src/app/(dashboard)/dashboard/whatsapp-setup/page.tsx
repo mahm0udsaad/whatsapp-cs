@@ -24,15 +24,16 @@ export default async function WhatsAppSetupPage() {
     .maybeSingle();
 
   return (
-    <div className="flex-1 p-4 sm:p-6 lg:p-6">
+    <div className="dashboard-page">
       <div className="mx-auto max-w-2xl space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-950">
-            ربط رقم واتساب
-          </h1>
-          <p className="mt-2 text-slate-600">
+        <div className="dashboard-page-header">
+          <div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-[#20339a]">قناة التواصل</p>
+          <h1>ربط رقم واتساب</h1>
+          <p>
             سجّل الرقم الذي سيستقبل رسائل عملائك على واتساب ويرد عليها.
           </p>
+          </div>
         </div>
 
         <WhatsAppSetupForm

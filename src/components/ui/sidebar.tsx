@@ -5,18 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Bot,
-  BookOpen,
-  Brain,
   CalendarClock,
-  ClipboardList,
-  Inbox,
   LayoutDashboard,
   LogOut,
   Megaphone,
   Menu,
   MessageSquare,
-  Package,
-  QrCode,
   Store,
   Users,
   X,
@@ -81,7 +75,6 @@ export function Sidebar({
         .from("orders")
         .select("id", { head: true, count: "exact" })
         .eq("restaurant_id", restaurantId!)
-        .eq("type", "escalation")
         .is("assigned_to", null)
         .eq("status", "pending");
       if (isMounted) setUnclaimedCount(count || 0);
@@ -116,23 +109,11 @@ export function Sidebar({
       title: "العمليات",
       items: [
         {
-          href: "/dashboard/inbox",
-          label: "صندوق التصعيدات",
-          description: "طلبات تحتاج تدخلاً بشرياً",
-          icon: Inbox,
-          badge: unclaimedCount,
-        },
-        {
-          href: "/dashboard/orders",
-          label: "الطلبات",
-          description: "الحجوزات والحالات المفتوحة",
-          icon: ClipboardList,
-        },
-        {
           href: "/dashboard/conversations",
           label: t("nav.conversations"),
-          description: "سجل جميع المحادثات",
+          description: "المحادثات والطلبات والمتابعة",
           icon: MessageSquare,
+          badge: unclaimedCount,
         },
       ],
     },
@@ -149,7 +130,7 @@ export function Sidebar({
         {
           href: "/dashboard/restaurant",
           label: t("nav.restaurant"),
-          description: "بيانات وإعدادات المطعم",
+          description: "بيانات النشاط والمنتجات والأسعار",
           icon: Store,
         },
         {
@@ -157,33 +138,6 @@ export function Sidebar({
           label: t("nav.aiAgent"),
           description: "إعدادات المساعد الذكي",
           icon: Bot,
-        },
-        ...(isOwner
-          ? [
-              {
-                href: "/dashboard/ai-manager",
-                label: "مدرب الذكاء",
-                description: "درّب المساعد بتعليمات جديدة",
-                icon: Brain,
-              },
-            ]
-          : []),
-      ],
-    },
-    {
-      title: "المحتوى",
-      items: [
-        {
-          href: "/dashboard/knowledge-base",
-          label: t("nav.knowledgeBase"),
-          description: "الأسئلة الشائعة والمعلومات",
-          icon: BookOpen,
-        },
-        {
-          href: "/dashboard/menu",
-          label: t("nav.menu"),
-          description: "الأصناف والأسعار",
-          icon: Package,
         },
       ],
     },
@@ -193,14 +147,8 @@ export function Sidebar({
         {
           href: "/dashboard/customers",
           label: "العملاء",
-          description: "قاعدة بيانات العملاء",
+          description: "البيانات وتصدير المحادثات",
           icon: Users,
-        },
-        {
-          href: "/dashboard/export",
-          label: "تصدير محادثات العميل",
-          description: "سحب سجل واتساب عبر رمز QR",
-          icon: QrCode,
         },
         {
           href: "/dashboard/marketing",
@@ -248,7 +196,7 @@ export function Sidebar({
     <>
       <button
         onClick={() => setIsOpen((open) => !open)}
-        className="fixed start-4 top-4 z-50 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/70 bg-white/80 text-slate-900 shadow-lg backdrop-blur-xl transition-colors hover:bg-white lg:hidden"
+        className="fixed start-4 top-4 z-50 inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-[var(--radius-md)] border border-[#20339a]/15 bg-white text-[#172777] shadow-sm transition-colors hover:bg-[#edf0ff] lg:hidden"
         aria-label={isOpen ? "إغلاق التنقل" : "فتح التنقل"}
       >
         {isOpen ? <X size={20} /> : <Menu size={20} />}
@@ -256,7 +204,7 @@ export function Sidebar({
 
       <aside
         className={cn(
-          "fixed inset-y-0 start-0 z-40 w-60 border-e border-white/10 bg-[#0e1713] text-white shadow-[0_24px_80px_-40px_rgba(0,0,0,0.65)] transition-transform duration-300 lg:translate-x-0",
+          "fixed inset-y-0 start-0 z-40 w-60 border-e border-white/10 bg-[#20339a] text-white shadow-[0_24px_80px_-40px_rgba(17,29,87,0.65)] transition-transform duration-300 lg:translate-x-0",
           isOpen
             ? "translate-x-0"
             : "max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full"
@@ -273,7 +221,7 @@ export function Sidebar({
                   className="h-9 w-9 rounded-xl object-cover"
                 />
               ) : (
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-200">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[#ffc400] text-[#172777]">
                   <Store size={16} />
                 </div>
               )}
@@ -282,8 +230,8 @@ export function Sidebar({
                   {restaurantName}
                 </p>
                 <div className="mt-0.5 inline-flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  <span className="text-[10px] text-emerald-400/80">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#ffc400]" />
+                  <span className="text-[10px] text-white/70">
                     {t("sidebar.liveOps")}
                   </span>
                 </div>
@@ -310,18 +258,18 @@ export function Sidebar({
                             href={item.href}
                             onClick={() => setIsOpen(false)}
                             className={cn(
-                              "group relative flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-all duration-200",
+                              "group relative flex items-center gap-3 rounded-[var(--radius-md)] px-3 py-2.5 transition-colors duration-200",
                               active
-                                ? "bg-white text-slate-950 shadow-[0_8px_24px_-8px_rgba(255,255,255,0.4)]"
-                                : "text-white/70 hover:bg-white/6 hover:text-white"
+                                ? "bg-[#ffc400] text-[#172777]"
+                                : "text-white/75 hover:bg-white/10 hover:text-white"
                             )}
                           >
                             <div
                               className={cn(
-                                "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border transition-colors",
+                                "flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border transition-colors",
                                 active
-                                  ? "border-slate-200 bg-emerald-50 text-emerald-700"
-                                  : "border-white/10 bg-white/6 text-white/75 group-hover:border-white/20"
+                                  ? "border-[#172777]/10 bg-[#172777]/8 text-[#172777]"
+                                  : "border-white/10 bg-white/5 text-white/80 group-hover:border-white/20"
                               )}
                             >
                               <Icon size={16} />
@@ -347,7 +295,7 @@ export function Sidebar({
                               <p
                                 className={cn(
                                   "mt-0.5 truncate text-[11px] leading-none transition-colors",
-                                  active ? "text-slate-500" : "text-white/40 group-hover:text-white/55"
+                                  active ? "text-[#172777]/70" : "text-white/45 group-hover:text-white/65"
                                 )}
                               >
                                 {item.description}
@@ -369,7 +317,7 @@ export function Sidebar({
               <div className="flex items-center gap-3">
                 <Avatar className="h-9 w-9 border border-white/10">
                   <AvatarImage src={undefined} />
-                  <AvatarFallback className="bg-emerald-400/15 text-sm text-emerald-100">
+                  <AvatarFallback className="bg-[#ffc400] text-sm font-bold text-[#172777]">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>

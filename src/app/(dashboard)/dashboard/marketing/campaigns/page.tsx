@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
-  ArrowRight,
   CheckCircle2,
   Clock,
   Loader2,
@@ -13,9 +12,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -90,7 +86,7 @@ export default async function CampaignsPage() {
   const completedCount = allCampaigns.filter((c) => c.status === "completed").length;
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-6">
+    <div className="dashboard-page space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

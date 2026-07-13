@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    revalidatePath("/dashboard/knowledge-base");
+    revalidatePath("/dashboard/ai-agent");
 
     return NextResponse.json({
       entries: data,

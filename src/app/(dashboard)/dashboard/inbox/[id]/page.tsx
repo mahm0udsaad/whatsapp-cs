@@ -46,7 +46,7 @@ export default async function InspectorPage({ params }: InspectorPageProps) {
 
   const isOwner = restaurant.owner_id === user.id;
   if (!isOwner && !member) {
-    redirect("/dashboard/inbox");
+    redirect("/dashboard/conversations");
   }
 
   const { data: messages } = await adminSupabaseClient
@@ -82,7 +82,7 @@ export default async function InspectorPage({ params }: InspectorPageProps) {
     <div className="flex-1 p-4 sm:p-6 lg:p-6" dir="rtl">
       <div className="mb-4 flex items-center justify-between">
         <Link
-          href="/dashboard/inbox"
+          href="/dashboard/conversations"
           className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"
         >
           <ArrowRight size={16} />

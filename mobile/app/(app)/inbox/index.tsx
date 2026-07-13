@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   Modal,
   Pressable,
   RefreshControl,
@@ -141,6 +142,7 @@ export default function InboxScreen() {
       raw === "mine" ||
       raw === "bot" ||
       raw === "expired" ||
+      raw === "archived" ||
       raw === "all"
     ) {
       return raw;
@@ -149,6 +151,8 @@ export default function InboxScreen() {
   }, [searchParams.filter]);
   const [filter, setFilter] = useState<Filter>(initialFilter);
   const [dateRange, setDateRange] = useState<DateRange>("any");
+  const [labelFilterId, setLabelFilterId] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [inboxLimit, setInboxLimit] = useState(INBOX_PAGE_SIZE);
   useEffect(() => {
@@ -496,6 +500,7 @@ export default function InboxScreen() {
       // still guard here so a stale cache doesn't leak rows.
       if (filter === "archived" && !item.archived_at) return false;
       if (filter !== "archived" && item.archived_at) return false;
+      if (labelFilterId && !item.label_ids.includes(labelFilterId)) return false;
       // Date range — apply only when not 'any'.
       if (minTs > 0) {
         const ts = new Date(item.last_message_at).getTime();
@@ -510,7 +515,7 @@ export default function InboxScreen() {
       }
       return true;
     });
-  }, [allItems, filter, dateRange, search]);
+  }, [allItems, filter, dateRange, labelFilterId, search]);
 
   const canLoadMore = allItems.length >= inboxLimit;
   const loadMore = useCallback(() => {
@@ -530,6 +535,18 @@ export default function InboxScreen() {
         ]}
       >
         <View style={styles.headerInner}>
+          <View style={styles.compactBrandHeader}>
+            <Image
+              source={require("../../../assets/logo.png")}
+              style={styles.compactBrandLogo}
+              resizeMode="contain"
+            />
+            <View style={styles.compactBrandCopy}>
+              <Text style={styles.compactBrandTitle}>نِحجز بوت</Text>
+              <Text style={styles.compactBrandSubtitle}>مركز المحادثات</Text>
+            </View>
+            <Ionicons name="chatbubbles" size={22} color="#FFFFFF" />
+          </View>
           <View
             style={[
               styles.heroCard,
@@ -543,6 +560,14 @@ export default function InboxScreen() {
             <View style={styles.heroOrbSecondary} />
             <View style={styles.heroRow}>
               <View style={styles.heroContent}>
+                <View style={styles.heroBrandRow}>
+                  <Image
+                    source={require("../../../assets/logo.png")}
+                    style={styles.heroLogo}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.heroBrandText}>نِحجز بوت</Text>
+                </View>
                 <Text
                   style={styles.heroEyebrow}
                 >
@@ -590,6 +615,7 @@ export default function InboxScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
           className="pb-2"
+          style={{ display: "none" }}
           contentContainerStyle={{
             flexDirection: "row-reverse",
             gap: 8,
@@ -630,6 +656,7 @@ export default function InboxScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
           className="pb-2"
+          style={{ display: "none" }}
           contentContainerStyle={{
             flexDirection: "row-reverse",
             gap: 8,
@@ -661,6 +688,39 @@ export default function InboxScreen() {
         </ScrollView>
 
         {/* Search */}
+        <View style={styles.filtersAndStatsRow}>
+          <Pressable
+            onPress={() => setFiltersOpen(true)}
+            style={styles.filterButton}
+          >
+            <Ionicons name="options-outline" size={17} color={managerColors.brand} />
+            <Text style={styles.filterButtonText}>الفلاتر</Text>
+            {filter !== "all" || dateRange !== "any" || labelFilterId ? (
+              <View style={styles.filterActiveDot} />
+            ) : null}
+          </Pressable>
+          <View style={styles.quickStatsRow}>
+            {[
+              { key: "all" as Filter, label: "الكل", value: stats.total },
+              { key: "unassigned" as Filter, label: "غير مستلمة", value: stats.unassigned },
+              { key: "mine" as Filter, label: "محادثاتي", value: stats.mine },
+              { key: "bot" as Filter, label: "للبوت", value: stats.bot },
+            ].map((stat) => (
+              <Pressable
+                key={stat.key}
+                onPress={() => setFilter(stat.key)}
+                style={[styles.quickStat, filter === stat.key && styles.quickStatActive]}
+              >
+                <Text style={[styles.quickStatValue, filter === stat.key && styles.quickStatValueActive]}>
+                  {stat.value}
+                </Text>
+                <Text style={[styles.quickStatLabel, filter === stat.key && styles.quickStatLabelActive]} numberOfLines={1}>
+                  {stat.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
         <View style={styles.searchOuter}>
           <View style={styles.searchBox}>
             <Ionicons name="search" size={16} color={managerColors.muted} />
@@ -681,7 +741,7 @@ export default function InboxScreen() {
         </View>
       </View>
     ),
-    [attentionCount, filter, leadFilter, stats, dateRange, search]
+    [attentionCount, filter, leadFilter, stats, dateRange, labelFilterId, search]
   );
 
   const openConversation = useCallback((id: string) => {
@@ -878,6 +938,97 @@ export default function InboxScreen() {
           )}
         />
       )}
+
+      {/* Manager reassign sheet */}
+      <Modal
+        visible={filtersOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setFiltersOpen(false)}
+      >
+        <Pressable
+          style={styles.sheetBackdrop}
+          onPress={() => setFiltersOpen(false)}
+        >
+          <Pressable style={styles.filterSheet} onPress={(event) => event.stopPropagation()}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetTitleRow}>
+              <Pressable onPress={() => {
+                setFilter("all");
+                setDateRange("any");
+                setLabelFilterId(null);
+              }}>
+                <Text style={styles.sheetReset}>مسح الكل</Text>
+              </Pressable>
+              <Text style={styles.sheetTitle}>تصفية المحادثات</Text>
+            </View>
+
+            <Text style={styles.sheetSectionTitle}>الحالة</Text>
+            <View style={styles.sheetChipRow}>
+              {FILTERS.map((item) => {
+                const active = filter === item.key;
+                return (
+                  <Pressable
+                    key={item.key}
+                    onPress={() => setFilter(item.key)}
+                    style={[styles.sheetChip, active && styles.sheetChipActive]}
+                  >
+                    <Text style={[styles.sheetChipText, active && styles.sheetChipTextActive]}>
+                      {item.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Text style={styles.sheetSectionTitle}>الفترة</Text>
+            <View style={styles.sheetChipRow}>
+              {DATE_RANGES.map((item) => {
+                const active = dateRange === item.key;
+                return (
+                  <Pressable
+                    key={item.key}
+                    onPress={() => setDateRange(item.key)}
+                    style={[styles.sheetChip, active && styles.sheetChipActive]}
+                  >
+                    <Text style={[styles.sheetChipText, active && styles.sheetChipTextActive]}>
+                      {item.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Text style={styles.sheetSectionTitle}>الوسم</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sheetLabelRow}>
+              <Pressable
+                onPress={() => setLabelFilterId(null)}
+                style={[styles.sheetChip, !labelFilterId && styles.sheetChipActive]}
+              >
+                <Text style={[styles.sheetChipText, !labelFilterId && styles.sheetChipTextActive]}>كل الوسوم</Text>
+              </Pressable>
+              {(labelsQuery.data ?? []).map((label) => {
+                const active = labelFilterId === label.id;
+                return (
+                  <Pressable
+                    key={label.id}
+                    onPress={() => setLabelFilterId(label.id)}
+                    style={[styles.sheetChip, active && styles.sheetChipActive]}
+                  >
+                    <Text style={[styles.sheetChipText, active && styles.sheetChipTextActive]} numberOfLines={1}>
+                      {label.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            <Pressable onPress={() => setFiltersOpen(false)} style={styles.sheetDoneButton}>
+              <Text style={styles.sheetDoneText}>عرض المحادثات</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Manager reassign sheet */}
       <Modal
@@ -1208,6 +1359,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   heroCard: {
+    display: "none",
     overflow: "hidden",
     borderWidth: 1,
     borderRadius: 28,
@@ -1239,6 +1391,55 @@ const styles = StyleSheet.create({
   },
   heroContent: {
     flex: 1,
+  },
+  compactBrandHeader: {
+    minHeight: 68,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    borderRadius: 20,
+    backgroundColor: "#011F91",
+    paddingHorizontal: 16,
+    columnGap: 10,
+  },
+  compactBrandLogo: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    backgroundColor: "#FFFFFF",
+  },
+  compactBrandCopy: {
+    flex: 1,
+    alignItems: "flex-end",
+  },
+  compactBrandTitle: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "800",
+    textAlign: "right",
+  },
+  compactBrandSubtitle: {
+    color: "rgba(255,255,255,0.72)",
+    fontSize: 12,
+    marginTop: 2,
+    textAlign: "right",
+  },
+  heroBrandRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 8,
+    marginBottom: 10,
+  },
+  heroLogo: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: "#FFFFFF",
+  },
+  heroBrandText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "800",
+    textAlign: "right",
   },
   heroEyebrow: {
     textAlign: "right",
@@ -1296,6 +1497,7 @@ const styles = StyleSheet.create({
     color: "#273B9A",
   },
   metricsRow: {
+    display: "none",
     flexDirection: "row-reverse",
     paddingHorizontal: 16,
     paddingBottom: 12,
@@ -1358,6 +1560,167 @@ const styles = StyleSheet.create({
   searchOuter: {
     paddingHorizontal: 16,
     paddingBottom: 12,
+  },
+  filterButton: {
+    width: 68,
+    minHeight: 66,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "column",
+    marginBottom: 0,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#D6DDF8",
+    backgroundColor: "#EDF2FF",
+    rowGap: 4,
+  },
+  filterButtonText: {
+    color: "#011F91",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  filterActiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#FCBD05",
+  },
+  quickStatsRow: {
+    flex: 1,
+    flexDirection: "row-reverse",
+    paddingBottom: 0,
+    columnGap: 8,
+  },
+  filtersAndStatsRow: {
+    flexDirection: "row-reverse",
+    alignItems: "stretch",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    columnGap: 8,
+  },
+  quickStat: {
+    flex: 1,
+    minHeight: 66,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#D6DDF8",
+    backgroundColor: "#FFFFFF",
+  },
+  quickStatActive: {
+    borderColor: "#011F91",
+    backgroundColor: "#EDF2FF",
+  },
+  quickStatValue: {
+    color: "#16245C",
+    fontSize: 22,
+    lineHeight: 26,
+    fontWeight: "800",
+  },
+  quickStatValueActive: {
+    color: "#011F91",
+  },
+  quickStatLabel: {
+    color: "#5E6A99",
+    fontSize: 10,
+    fontWeight: "700",
+    marginTop: 3,
+  },
+  quickStatLabelActive: {
+    color: "#273B9A",
+  },
+  sheetBackdrop: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(8, 16, 57, 0.42)",
+  },
+  filterSheet: {
+    maxHeight: "82%",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    backgroundColor: "#FCFEFC",
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 28,
+  },
+  sheetHandle: {
+    alignSelf: "center",
+    width: 38,
+    height: 4,
+    borderRadius: 4,
+    marginBottom: 18,
+    backgroundColor: "#C7D0EA",
+  },
+  sheetTitleRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 18,
+  },
+  sheetTitle: {
+    color: "#16245C",
+    fontSize: 20,
+    fontWeight: "800",
+    textAlign: "right",
+  },
+  sheetReset: {
+    color: "#273B9A",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  sheetSectionTitle: {
+    color: "#5E6A99",
+    fontSize: 12,
+    fontWeight: "800",
+    marginBottom: 9,
+    textAlign: "right",
+  },
+  sheetChipRow: {
+    flexDirection: "row-reverse",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 18,
+  },
+  sheetLabelRow: {
+    flexDirection: "row-reverse",
+    gap: 8,
+    paddingBottom: 2,
+    marginBottom: 18,
+  },
+  sheetChip: {
+    minHeight: 40,
+    justifyContent: "center",
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: "#D6DDF8",
+    backgroundColor: "#F5F7FF",
+    paddingHorizontal: 13,
+  },
+  sheetChipActive: {
+    borderColor: "#011F91",
+    backgroundColor: "#011F91",
+  },
+  sheetChipText: {
+    color: "#5E6A99",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  sheetChipTextActive: {
+    color: "#FFFFFF",
+  },
+  sheetDoneButton: {
+    minHeight: 52,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 15,
+    backgroundColor: "#011F91",
+  },
+  sheetDoneText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "800",
   },
   searchBox: {
     minHeight: 48,

@@ -1,14 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, MessageCircle, Settings } from "lucide-react";
+import {
+  AlertCircle,
+  Bot,
+  Check,
+  CheckCircle2,
+  Eye,
+  Languages,
+  Loader2,
+  ShieldAlert,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { buildCustomerServiceTemplate } from "@/lib/customer-service";
-import { AiAgent } from "@/lib/types";
+import type { AiAgent } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface AIAgentSettingsFormProps {
   aiAgent: AiAgent;
@@ -16,46 +33,33 @@ interface AIAgentSettingsFormProps {
 }
 
 const personalities = [
-  {
-    value: "friendly",
-    label: "ودود",
-    desc: "دافئ ومرحب وقريب من العميل",
-    sample: "أهلاً بك، يسعدني مساعدتك.",
-  },
-  {
-    value: "professional",
-    label: "احترافي",
-    desc: "رسمي ودقيق ومناسب للأعمال",
-    sample: "مرحباً، كيف يمكنني مساعدتك؟",
-  },
-  {
-    value: "creative",
-    label: "إبداعي",
-    desc: "مرح وجذاب وأكثر تعبيراً",
-    sample: "خلينا نوصل للإجابة المناسبة بسرعة.",
-  },
-  {
-    value: "strict",
-    label: "مباشر",
-    desc: "مختصر وفعال وواضح",
-    sample: "اكتب سؤالك وسأساعدك مباشرة.",
-  },
+  { value: "friendly", label: "ودود", desc: "دافئ وقريب من العميل", sample: "أهلاً بك، يسعدني مساعدتك." },
+  { value: "professional", label: "احترافي", desc: "رسمي ودقيق للأعمال", sample: "مرحباً، كيف يمكنني مساعدتك؟" },
+  { value: "creative", label: "إبداعي", desc: "مرح وأكثر تعبيراً", sample: "خلينا نوصل للإجابة المناسبة بسرعة." },
+  { value: "strict", label: "مباشر", desc: "مختصر وفعال وواضح", sample: "اكتب سؤالك وسأساعدك مباشرة." },
 ];
 
-export function AIAgentSettingsForm({
-  aiAgent,
-  businessName,
-}: AIAgentSettingsFormProps) {
-  const [isSaving, setIsSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
-  const [formData, setFormData] = useState({
+function previewReply(personality: string) {
+  if (personality === "friendly") return "أهلاً بك 🌟 يسعدني مساعدتك. ساعات العمل من 9 صباحاً حتى 10 مساءً.";
+  if (personality === "professional") return "مرحباً. ساعات العمل من 9 صباحاً حتى 10 مساءً. هل يمكنني مساعدتك بشيء آخر؟";
+  if (personality === "creative") return "أكيد! نحن معك يومياً من 9 صباحاً إلى 10 مساءً ✨";
+  return "ساعات العمل: يومياً من 9 صباحاً إلى 10 مساءً.";
+}
+
+export function AIAgentSettingsForm({ aiAgent, businessName }: AIAgentSettingsFormProps) {
+  const initialData = {
     name: aiAgent.name,
     personality: aiAgent.personality,
     systemInstructions: aiAgent.system_instructions,
     languagePreference: aiAgent.language_preference,
     offTopicResponse: aiAgent.off_topic_response,
-  });
+  };
+  const [savedFormData, setSavedFormData] = useState(initialData);
+  const [formData, setFormData] = useState(initialData);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const hasChanges = JSON.stringify(formData) !== JSON.stringify(savedFormData);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -65,9 +69,7 @@ export function AIAgentSettingsForm({
     try {
       const response = await fetch("/api/dashboard/ai-agent", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: formData.name,
           personality: formData.personality,
@@ -76,256 +78,163 @@ export function AIAgentSettingsForm({
           off_topic_response: formData.offTopicResponse,
         }),
       });
-
       const result = await response.json();
-
       if (!response.ok) {
         setError(result.error || "تعذر حفظ إعدادات المساعد.");
         return;
       }
-
+      setSavedFormData(formData);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (saveError) {
-      setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "تعذر حفظ إعدادات المساعد."
-      );
+      setError(saveError instanceof Error ? saveError.message : "تعذر حفظ إعدادات المساعد.");
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      <div className="space-y-6 lg:col-span-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>بيانات المساعد</CardTitle>
-            <CardDescription>
-              الهوية الأساسية ونبرة الرد لخدمة العملاء الخاصة بالمتجر.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                اسم المساعد
-              </label>
-              <Input
-                value={formData.name}
-                onChange={(event) =>
-                  setFormData({ ...formData, name: event.target.value })
-                }
-              />
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-gray-700">
-                أسلوب الشخصية
-              </label>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                {personalities.map((personality) => (
-                  <button
-                    key={personality.value}
-                    type="button"
-                    onClick={() =>
-                      setFormData({
-                        ...formData,
-                        personality: personality.value,
-                      })
-                    }
-                    className={`rounded-lg border-2 p-4 text-right transition-all ${
-                      formData.personality === personality.value
-                        ? "border-emerald-500 bg-emerald-50"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <div className="text-sm font-medium">{personality.label}</div>
-                    <div className="mt-1 text-xs text-gray-600">
-                      {personality.desc}
-                    </div>
-                    <div className="mt-2 text-xs italic text-gray-500">
-                      &quot;{personality.sample}&quot;
-                    </div>
-                  </button>
-                ))}
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
+      <div className="space-y-6">
+        <Card className="overflow-hidden">
+          <CardHeader className="border-b border-[var(--line)]">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--brand-soft)] text-[var(--brand)]"><Bot size={19} /></div>
+              <div>
+                <CardTitle>هوية المساعد ونبرة الرد</CardTitle>
+                <CardDescription className="mt-1">اختاري كيف يعرّف المساعد نفسه وكيف يبدو صوته أمام العملاء.</CardDescription>
               </div>
             </div>
+          </CardHeader>
+          <CardContent className="space-y-6 pt-6">
+            <div className="space-y-2">
+              <label htmlFor="agent-name" className="text-sm font-semibold text-[var(--foreground)]">اسم المساعد</label>
+              <Input id="agent-name" value={formData.name} onChange={(event) => setFormData({ ...formData, name: event.target.value })} placeholder="مثال: نوره" />
+              <p className="text-xs text-[var(--muted)]">يظهر هذا الاسم داخل فريقك وفي بعض رسائل التعريف.</p>
+            </div>
+
+            <fieldset className="space-y-3">
+              <legend className="text-sm font-semibold text-[var(--foreground)]">أسلوب الشخصية</legend>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {personalities.map((personality) => {
+                  const selected = formData.personality === personality.value;
+                  return (
+                    <button
+                      key={personality.value}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => setFormData({ ...formData, personality: personality.value })}
+                      className={cn(
+                        "relative cursor-pointer rounded-[var(--radius-md)] border p-4 text-right transition-colors",
+                        selected ? "border-[var(--brand)] bg-[var(--brand-soft)]" : "border-[var(--line)] bg-white hover:border-[#20339a]/35 hover:bg-[#f8f9fd]"
+                      )}
+                    >
+                      {selected ? <span className="absolute end-3 top-3 flex h-5 w-5 items-center justify-center rounded-[var(--radius-full)] bg-[var(--brand)] text-white"><Check size={12} /></span> : null}
+                      <p className="pe-7 text-sm font-bold text-[var(--foreground)]">{personality.label}</p>
+                      <p className="mt-1 text-xs text-[var(--muted)]">{personality.desc}</p>
+                      <p className="mt-3 border-t border-[var(--line)] pt-3 text-xs leading-5 text-[var(--brand-strong)]">“{personality.sample}”</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>تعليمات النظام</CardTitle>
-            <CardDescription>
-              هذه التعليمات تحدد طريقة رد المساعد على العملاء.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-              <div className="text-sm text-emerald-900">
-                استخدم قالب خدمة عملاء محايد يناسب أي نوع نشاط.
+        <Card className="overflow-hidden">
+          <CardHeader className="border-b border-[var(--line)]">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--brand-soft)] text-[var(--brand)]"><Sparkles size={19} /></div>
+                <div>
+                  <CardTitle>طريقة العمل والحدود</CardTitle>
+                  <CardDescription className="mt-1">التعليمات الأساسية التي يعود إليها المساعد قبل كل رد.</CardDescription>
+                </div>
               </div>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() =>
-                  setFormData({
-                    ...formData,
-                    systemInstructions: buildCustomerServiceTemplate(
-                      businessName,
-                      formData.languagePreference === "ar" ? "ar" : "en"
-                    ),
-                  })
-                }
+                onClick={() => setFormData({ ...formData, systemInstructions: buildCustomerServiceTemplate(businessName, formData.languagePreference === "ar" ? "ar" : "en") })}
               >
-                استخدام قالب خدمة العملاء
+                <Sparkles /> استخدام قالب جاهز
               </Button>
             </div>
-
-            <Textarea
-              rows={8}
-              value={formData.systemInstructions}
-              onChange={(event) =>
-                setFormData({
-                  ...formData,
-                  systemInstructions: event.target.value,
-                })
-              }
-            />
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                اللغة المفضلة
-              </label>
-              <select
-                value={formData.languagePreference}
-                onChange={(event) =>
-                  setFormData({
-                    ...formData,
-                    languagePreference: event.target.value as "ar" | "en" | "auto",
-                  })
-                }
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900"
-              >
-                <option value="auto">اكتشاف تلقائي</option>
-                <option value="en">الإنجليزية</option>
-                <option value="ar">العربية</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                رد خارج النطاق
-              </label>
-              <Textarea
-                rows={3}
-                value={formData.offTopicResponse}
-                onChange={(event) =>
-                  setFormData({
-                    ...formData,
-                    offTopicResponse: event.target.value,
-                  })
-                }
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Eye size={20} />
-              معاينة مباشرة
-            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {error ? (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                {error}
+          <CardContent className="space-y-6 pt-6">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <label htmlFor="system-instructions" className="text-sm font-semibold text-[var(--foreground)]">تعليمات النظام</label>
+                <span className="text-xs text-[var(--muted)]">{formData.systemInstructions.length.toLocaleString("ar")} حرف</span>
               </div>
-            ) : null}
+              <Textarea id="system-instructions" rows={10} value={formData.systemInstructions} onChange={(event) => setFormData({ ...formData, systemInstructions: event.target.value })} className="leading-7" />
+              <p className="text-xs leading-5 text-[var(--muted)]">اكتبي قواعد واضحة: ما الذي يجيب عنه، متى يصعّد للموظف، وما الذي يجب ألا يخمّنه.</p>
+            </div>
 
-            {saved ? (
-              <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
-                تم حفظ الإعدادات.
-              </div>
-            ) : null}
-
-            <div className="space-y-3 rounded-lg bg-gradient-to-br from-emerald-50 to-emerald-100 p-4">
-              <div className="flex items-center gap-2">
-                <MessageCircle size={16} className="text-emerald-600" />
-                <span className="text-sm font-medium text-emerald-900">
-                  {formData.name}
-                </span>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]"><Languages size={15} /> اللغة المفضلة</label>
+                <Select value={formData.languagePreference} onValueChange={(value) => setFormData({ ...formData, languagePreference: value as "ar" | "en" | "auto" })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">اكتشاف لغة العميل تلقائياً</SelectItem>
+                    <SelectItem value="ar">العربية</SelectItem>
+                    <SelectItem value="en">الإنجليزية</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <div className="rounded bg-white p-2 text-xs text-emerald-700">
-                  <p className="mb-1 font-medium">محادثة تجريبية:</p>
-                  <p className="text-emerald-900">
-                    العميل: ما هي ساعات العمل؟
-                  </p>
-                </div>
-                <div className="ml-6 rounded border-l-2 border-emerald-600 bg-emerald-100 p-2 text-xs">
-                  <p className="text-emerald-900">
-                    {formData.personality === "friendly"
-                      ? "يسعدنا مساعدتك في المنتجات والخدمات وساعات العمل وأسئلة الدعم."
-                      : formData.personality === "professional"
-                      ? "يمكنني المساعدة في التوفر والحجوزات ومعلومات النشاط."
-                      : formData.personality === "creative"
-                      ? "دعنا نصل للإجابة المناسبة بسرعة."
-                      : "يمكنني الرد مباشرة على الأسئلة المتعلقة بالنشاط."}
-                  </p>
-                </div>
+                <label htmlFor="off-topic" className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]"><ShieldAlert size={15} /> رد خارج النطاق</label>
+                <Textarea id="off-topic" rows={3} value={formData.offTopicResponse} onChange={(event) => setFormData({ ...formData, offTopicResponse: event.target.value })} placeholder="الرد عندما يكون السؤال خارج نشاطك" />
               </div>
-            </div>
-
-            <div className="space-y-1 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
-              <div>
-                <span className="font-medium">الشخصية:</span>{" "}
-                <Badge variant="default" className="ml-1">
-                  {formData.personality}
-                </Badge>
-              </div>
-              <div>
-                <span className="font-medium">اللغة:</span>{" "}
-                {formData.languagePreference}
-              </div>
-            </div>
-
-            <Button className="w-full" onClick={handleSave} disabled={isSaving}>
-              {isSaving ? "جارٍ الحفظ..." : "حفظ الإعدادات"}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Settings size={20} />
-              الحالة
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">حالة المساعد</span>
-              <Badge variant="default">نشط</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">
-                آخر تحديث
-              </span>
-              <span className="font-medium text-gray-900">
-                {new Date(aiAgent.updated_at).toLocaleString()}
-              </span>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      <aside className="space-y-4 xl:sticky xl:top-6">
+        <Card className="overflow-hidden">
+          <CardHeader className="border-b border-[var(--line)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <CardDescription>اختبار النبرة</CardDescription>
+                <CardTitle className="mt-1 flex items-center gap-2"><Eye size={18} /> معاينة مباشرة</CardTitle>
+              </div>
+              <span className="inline-flex items-center gap-1.5 rounded-[var(--radius-full)] bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"><span className="h-2 w-2 rounded-full bg-emerald-500" /> نشط</span>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4 p-4 sm:p-5">
+            <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[#f6f7fb]">
+              <div className="flex items-center gap-3 bg-[var(--brand)] px-4 py-3 text-white">
+                <div className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-full)] bg-white/15"><Bot size={17} /></div>
+                <div>
+                  <p className="text-sm font-bold">{formData.name || "المساعد"}</p>
+                  <p className="text-[10px] text-white/75">متصل الآن</p>
+                </div>
+              </div>
+              <div className="space-y-3 p-4">
+                <div className="ms-auto max-w-[85%] rounded-[var(--radius-md)] rounded-se-[4px] bg-white px-3 py-2.5 text-xs leading-5 text-[var(--foreground)] shadow-sm">ما هي ساعات العمل؟</div>
+                <div className="max-w-[92%] rounded-[var(--radius-md)] rounded-ss-[4px] bg-[var(--brand)] px-3 py-2.5 text-xs leading-5 text-white shadow-sm">{previewReply(formData.personality)}</div>
+              </div>
+            </div>
+
+            {error ? <div className="flex items-start gap-2 rounded-[var(--radius-md)] border border-red-200 bg-red-50 p-3 text-sm text-red-700"><AlertCircle className="mt-0.5 size-4 shrink-0" />{error}</div> : null}
+            {saved ? <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700"><CheckCircle2 className="size-4" />تم حفظ الإعدادات.</div> : null}
+
+            <div className="dashboard-surface-muted rounded-[var(--radius-md)] p-3 text-xs text-[var(--muted)]">
+              <div className="flex items-center justify-between gap-3"><span>الشخصية</span><strong className="text-[var(--foreground)]">{personalities.find((item) => item.value === formData.personality)?.label ?? formData.personality}</strong></div>
+              <div className="mt-2 flex items-center justify-between gap-3"><span>اللغة</span><strong className="text-[var(--foreground)]">{formData.languagePreference === "auto" ? "تلقائية" : formData.languagePreference === "ar" ? "العربية" : "الإنجليزية"}</strong></div>
+              <div className="mt-2 flex items-center justify-between gap-3"><span>آخر تحديث</span><strong className="text-[var(--foreground)]">{new Date(aiAgent.updated_at).toLocaleDateString("ar")}</strong></div>
+            </div>
+
+            <Button className="w-full" size="lg" onClick={handleSave} disabled={isSaving || !hasChanges || !formData.name.trim()}>
+              {isSaving ? <Loader2 className="animate-spin" /> : hasChanges ? <Sparkles /> : <CheckCircle2 />}
+              {isSaving ? "جارٍ الحفظ..." : hasChanges ? "حفظ التغييرات" : "الإعدادات محفوظة"}
+            </Button>
+            {hasChanges ? <p className="text-center text-xs font-medium text-amber-700">لديك تغييرات غير محفوظة</p> : null}
+          </CardContent>
+        </Card>
+      </aside>
     </div>
   );
 }

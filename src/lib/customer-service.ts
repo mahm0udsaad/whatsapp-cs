@@ -107,7 +107,10 @@ export function buildCustomerServiceSystemPrompt(
 ) {
   const ownerInstructionsBlock =
     input.agentInstructions && input.agentInstructions.length > 0
-      ? `Owner Instructions (priority rules authored by the business owner; override defaults if they conflict):\n${input.agentInstructions
+      ? `Owner Instructions from AI Manager (mandatory behavior rules):
+- Follow every applicable active rule below. These rules override the default Operating Rules and Business-Specific Instructions when they conflict.
+- These rules control HOW to respond; they must never be used to invent business facts, prices, availability, policies, or completed actions.
+${input.agentInstructions
           .map((i) => `- ${i.title}: ${i.body}`)
           .join("\n")}`
       : null;
@@ -130,6 +133,11 @@ export function buildCustomerServiceSystemPrompt(
     input.menuContext?.trim()
       ? `Menu Context:\n${input.menuContext.trim()}`
       : null,
+    `Instruction Precedence:
+1. Treat Owner Instructions from AI Manager as mandatory behavior rules.
+2. Treat Dashboard Knowledge Base, Retrieved Knowledge Documents, Menu Context, and Business Profile as the only sources of business facts.
+3. When factual sources conflict, prefer Dashboard Knowledge Base (owner-maintained), then Menu Context, then Retrieved Knowledge Documents, then Business Profile.
+4. Never contradict an applicable Owner Instruction. Never guess a missing fact; ask one focused question or mark the answer uncertain instead.`,
     input.language === "ar"
       ? `Response Format:\nاكتب الرد بالعربية باللهجة السعودية. استخدم أسلوباً طبيعياً ومباشراً ومختصراً. عند عرض خيارات متعددة يمكنك استخدام نقاط قصيرة.\n${SAUDI_ARABIC_STYLE_RULES.join("\n")}`
       : "Response Format:\nWrite the reply in English. Keep it natural, direct, and concise. Use short bullets only when listing choices.",

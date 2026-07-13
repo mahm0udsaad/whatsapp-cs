@@ -77,4 +77,21 @@ describe("customer-service helpers", () => {
     expect(prompt).toContain("Menu Context:");
     expect(prompt).toContain("Prioritize confirmed scheduling information.");
   });
+
+  it("makes AI Manager rules mandatory and defines factual precedence", () => {
+    const prompt = buildCustomerServiceSystemPrompt({
+      businessName: "Acme Studio",
+      language: "en",
+      agentInstructions: [
+        { title: "No discounts", body: "Do not offer unapproved discounts." },
+      ],
+      ragContext:
+        "Dashboard Knowledge Base (owner-maintained):\nConsultations cost 100 SAR.",
+    });
+
+    expect(prompt).toContain("mandatory behavior rules");
+    expect(prompt).toContain("No discounts: Do not offer unapproved discounts.");
+    expect(prompt).toContain("prefer Dashboard Knowledge Base");
+    expect(prompt).toContain("Never contradict an applicable Owner Instruction");
+  });
 });

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BarChart3 } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 import {
   getCurrentSessionContext,
@@ -29,7 +28,7 @@ export default async function TeamPage() {
 
   if (session.memberId) {
     return (
-      <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-6">
+      <div className="dashboard-page space-y-6">
         <Card>
           <CardHeader>
             <CardDescription>{t("team.title")}</CardDescription>
@@ -88,21 +87,20 @@ export default async function TeamPage() {
   }));
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-6" dir="rtl">
-      <Card>
-        <CardHeader className="flex-row items-start justify-between gap-4">
-          <div>
-            <CardDescription>{t("team.title")}</CardDescription>
-            <CardTitle>{t("team.subtitle")}</CardTitle>
-          </div>
-          <Link
-            href="/dashboard/team/performance"
-            className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <BarChart3 className="h-4 w-4" /> أداء الفريق
-          </Link>
-        </CardHeader>
-      </Card>
+    <div className="dashboard-page space-y-6" dir="rtl">
+      <div className="dashboard-page-header">
+        <div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-[#20339a]">إدارة الفريق</p>
+          <h1>{t("team.title")}</h1>
+          <p>{t("team.subtitle")}</p>
+        </div>
+        <Link
+          href="/dashboard/team/performance"
+          className="inline-flex shrink-0 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--brand-strong)] shadow-sm transition-colors hover:bg-[var(--brand-soft)]"
+        >
+          <BarChart3 className="h-4 w-4" /> أداء الفريق
+        </Link>
+      </div>
 
       <TeamMembersManager initialMembers={teamMembers} />
 

@@ -28,46 +28,36 @@ export function StatsCard({
 }: StatsCardProps) {
   const tones = {
     emerald: {
-      glow:
-        "from-emerald-500/10 via-emerald-300/6 to-transparent",
+      surface: "bg-[#edf0ff]",
       icon:
-        "border-emerald-200 bg-emerald-500 text-white shadow-emerald-500/30",
+        "border-[#20339a]/20 bg-[#20339a] text-white",
     },
     sky: {
-      glow:
-        "from-sky-500/10 via-sky-300/6 to-transparent",
+      surface: "bg-sky-50",
       icon:
         "border-sky-200 bg-sky-500 text-white shadow-sky-500/30",
     },
     amber: {
-      glow:
-        "from-amber-500/10 via-amber-300/6 to-transparent",
+      surface: "bg-[#fff8d9]",
       icon:
         "border-amber-200 bg-amber-500 text-white shadow-amber-500/30",
     },
     rose: {
-      glow:
-        "from-rose-500/10 via-rose-300/6 to-transparent",
+      surface: "bg-rose-50",
       icon:
         "border-rose-200 bg-rose-500 text-white shadow-rose-500/30",
     },
   }[tone];
 
   return (
-    <Card className={cn("relative overflow-hidden bg-white", className)}>
-      <div
-        className={cn(
-          "pointer-events-none absolute inset-0 bg-gradient-to-br opacity-100",
-          tones.glow
-        )}
-      />
-      <CardContent className="relative p-6">
+    <Card className={cn("relative overflow-hidden", tones.surface, className)}>
+      <CardContent className="relative p-5 sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+            <p className="text-xs font-semibold text-slate-600">
               {title}
             </p>
-            <p className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-slate-950">
+            <p className="mt-3 text-3xl font-bold tracking-[-0.04em] text-slate-950">
               {value}
             </p>
             {description ? (
@@ -95,7 +85,7 @@ export function StatsCard({
                 className={cn(
                   "inline-flex items-center rounded-full px-3 py-1 font-medium",
                   trend.direction === "up"
-                    ? "bg-emerald-500/12 text-emerald-700"
+                    ? "bg-[#edf0ff] text-[#20339a]"
                     : "bg-rose-500/12 text-rose-700"
                 )}
               >

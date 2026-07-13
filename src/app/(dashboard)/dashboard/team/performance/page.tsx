@@ -23,7 +23,7 @@ export default async function TeamPerformancePage() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-6" dir="rtl">
+    <div className="dashboard-page space-y-6" dir="rtl">
       <TeamPerformanceDashboard />
     </div>
   );

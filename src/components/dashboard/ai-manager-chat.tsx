@@ -64,9 +64,8 @@ interface Toast {
   tone: "success" | "error";
 }
 
-const OWNER_COLOR =
-  "bg-gradient-to-br from-emerald-500/95 to-emerald-600/95 text-white";
-const ASSISTANT_COLOR = "bg-white text-slate-900 border border-slate-200";
+const OWNER_COLOR = "bg-[#20339a] text-white";
+const ASSISTANT_COLOR = "bg-white text-[var(--foreground)] border border-[var(--line)]";
 
 function formatRelative(iso: string | null): string {
   if (!iso) return "";
@@ -390,15 +389,13 @@ export function AiManagerChat({
   return (
     <div className="relative">
       {/* Top banner: active instructions counter */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-emerald-200/70 bg-emerald-50/60 px-5 py-3 text-sm text-emerald-900">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[#20339a]/15 bg-[var(--brand-soft)] px-5 py-4 text-sm text-[var(--brand-strong)]">
         <div className="flex items-center gap-2">
-          <Sparkles size={18} className="text-emerald-600" aria-hidden="true" />
+          <Sparkles size={18} className="text-[#20339a]" aria-hidden="true" />
           <span className="font-semibold">
             التعليمات النشطة: {activeCount}
           </span>
-          <span className="text-emerald-700/70">
-            — تسري فوراً على كل المحادثات الجديدة لـ {businessName}
-          </span>
+          <span className="text-[var(--muted)]">تسري فوراً على المحادثات الجديدة لـ {businessName}</span>
         </div>
         <Button
           type="button"
@@ -410,17 +407,17 @@ export function AiManagerChat({
         </Button>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
         {/* LEFT (chat pane) — on RTL this sits on the left, thread list on the right */}
-        <div className="order-2 flex min-h-[640px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-sm lg:order-1">
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div className="order-2 flex min-h-[680px] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-white shadow-[0_16px_38px_-32px_rgba(17,29,87,0.45)] xl:order-1">
+          <div className="flex items-center justify-between border-b border-[var(--line)] px-5 py-4">
             <div>
-              <p className="text-sm font-semibold text-slate-900">
+              <p className="text-sm font-bold text-[var(--foreground)]">
                 {selectedThread?.title ??
                   (selectedThreadId ? "محادثة جديدة" : "ابدئي محادثة")}
               </p>
               {selectedThread?.last_message_at ? (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[var(--muted)]">
                   آخر نشاط: {formatRelative(selectedThread.last_message_at)}
                 </p>
               ) : null}
@@ -429,13 +426,13 @@ export function AiManagerChat({
 
           <div
             ref={scrollRef}
-            className="flex-1 overflow-y-auto px-4 py-5"
+            className="flex-1 overflow-y-auto bg-[#f8f9fc] px-4 py-5 sm:px-6"
             style={{ maxHeight: "62vh" }}
           >
             {selectedThreadId === null ? (
               <EmptyState />
             ) : messagesLoading ? (
-              <p className="text-center text-sm text-slate-400">
+              <p className="text-center text-sm text-[var(--muted)]">
                 يتم تحميل الرسائل…
               </p>
             ) : messages.length === 0 ? (
@@ -451,12 +448,12 @@ export function AiManagerChat({
 
           <form
             onSubmit={sendMessage}
-            className="border-t border-slate-100 bg-slate-50/60 px-4 py-3"
+            className="border-t border-[var(--line)] bg-white px-4 py-3"
           >
             <label htmlFor="ai-manager-composer" className="sr-only">
               رسالة إلى مدرب الذكاء
             </label>
-            <div className="flex items-end gap-2">
+            <div className="flex items-end gap-2 rounded-[var(--radius-lg)] border border-[var(--line)] bg-[#f8f9fc] p-2 focus-within:border-[var(--brand)] focus-within:ring-2 focus-within:ring-[#20339a]/10">
               <Textarea
                 id="ai-manager-composer"
                 value={composer}
@@ -471,18 +468,17 @@ export function AiManagerChat({
                     sendMessage(e as unknown as FormEvent);
                   }
                 }}
-                className="flex-1"
+                className="min-h-12 flex-1 resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
               />
-              <Button type="submit" disabled={sending || !composer.trim()}>
+              <Button type="submit" size="icon" className="shrink-0" disabled={sending || !composer.trim()} aria-label="إرسال">
                 <Send size={16} aria-hidden="true" />
-                {sending ? "يرسل…" : "إرسال"}
               </Button>
             </div>
           </form>
         </div>
 
         {/* RIGHT (thread list) */}
-        <aside className="order-1 flex flex-col gap-3 lg:order-2">
+        <aside className="order-1 flex flex-col gap-3 xl:order-2">
           <Button
             type="button"
             variant="default"
@@ -492,9 +488,9 @@ export function AiManagerChat({
             <MessageSquarePlus size={16} aria-hidden="true" />
             محادثة جديدة +
           </Button>
-          <div className="flex flex-col gap-2 overflow-y-auto rounded-3xl border border-slate-200 bg-white/85 p-2 shadow-sm">
+          <div className="flex max-h-[680px] flex-col gap-1 overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--line)] bg-white p-2 shadow-[0_16px_38px_-32px_rgba(17,29,87,0.45)]">
             {threads.length === 0 ? (
-              <p className="p-4 text-center text-sm text-slate-500">
+              <p className="p-4 text-center text-sm text-[var(--muted)]">
                 لا توجد محادثات بعد.
               </p>
             ) : (
@@ -509,10 +505,10 @@ export function AiManagerChat({
                     type="button"
                     onClick={() => setSelectedThreadId(t.id)}
                     className={cn(
-                      "rounded-2xl px-3 py-3 text-right transition-colors",
+                      "cursor-pointer rounded-[var(--radius-md)] px-3 py-3 text-right transition-colors",
                       active
-                        ? "bg-emerald-600 text-white shadow-md"
-                        : "bg-white text-slate-800 hover:bg-slate-50 border border-slate-100"
+                        ? "bg-[#20339a] text-white"
+                        : "bg-white text-[var(--foreground)] hover:bg-[var(--brand-soft)]"
                     )}
                   >
                     <p className="line-clamp-1 text-sm font-semibold">
@@ -521,7 +517,7 @@ export function AiManagerChat({
                     <p
                       className={cn(
                         "mt-1 text-xs",
-                        active ? "text-white/80" : "text-slate-500"
+                        active ? "text-white/80" : "text-[var(--muted)]"
                       )}
                     >
                       {formatRelative(t.last_message_at ?? t.created_at)}
@@ -615,7 +611,7 @@ export function AiManagerChat({
                       className={cn(
                         "rounded-2xl border p-4 transition-colors",
                         rule.status === "active"
-                          ? "border-emerald-200 bg-emerald-50/40"
+                          ? "border-[#20339a]/20 bg-[#edf0ff]"
                           : "border-slate-200 bg-slate-50/70 opacity-80"
                       )}
                     >
@@ -772,11 +768,12 @@ export function AiManagerChat({
 
 function EmptyState() {
   return (
-    <div className="mx-auto max-w-lg rounded-3xl border border-dashed border-slate-300 bg-slate-50/60 px-6 py-10 text-center">
-      <p className="text-base font-semibold text-slate-800">
-        اكتبي أي قاعدة تبين موظفة الذكاء تتبعها —
+    <div className="mx-auto max-w-lg rounded-[var(--radius-lg)] border border-dashed border-[var(--line)] bg-white px-6 py-10 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[var(--radius-full)] bg-[var(--brand-soft)] text-[var(--brand)]"><Sparkles size={20} /></div>
+      <p className="mt-4 text-base font-bold text-[var(--foreground)]">
+        علّمي المساعد قاعدة جديدة
       </p>
-      <p className="mt-2 text-sm text-slate-600">
+      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
         مثلاً: &quot;إذا الزبونة طلبت حجز بعد الإفطار، قدّمي لها فترات المساء
         فقط.&quot;
       </p>
@@ -804,7 +801,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
       <div className="flex max-w-[80%] flex-col gap-1">
         <div
           className={cn(
-            "rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm",
+            "rounded-[var(--radius-lg)] px-4 py-2.5 text-sm leading-relaxed shadow-sm",
             isOwner ? OWNER_COLOR : ASSISTANT_COLOR
           )}
         >
@@ -831,7 +828,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
         ) : null}
         <p
           className={cn(
-            "text-[10px] text-slate-400",
+            "text-[10px] text-[var(--subtle)]",
             isOwner ? "text-start" : "text-end"
           )}
         >

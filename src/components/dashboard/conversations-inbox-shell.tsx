@@ -2,6 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  Bot,
+  Inbox,
+  Loader2,
+  MessageCircleMore,
+  Search,
+  Send,
+  UserRound,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeAuth } from "@/lib/supabase/use-realtime-auth";
 import { Badge } from "@/components/ui/badge";
@@ -305,41 +314,56 @@ export function ConversationsInboxShell({
   );
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-[320px_minmax(0,1fr)]" dir="rtl">
+    <div className="grid min-h-[680px] grid-cols-1 gap-4 lg:grid-cols-[340px_minmax(0,1fr)]" dir="rtl">
       {/* Left — conversation list */}
-      <aside className="rounded-2xl border border-slate-200 bg-white">
-        <div className="border-b border-slate-100 p-3 space-y-2">
-          <div className="flex flex-wrap gap-1">
+      <aside className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-white shadow-[0_16px_38px_-32px_rgba(17,29,87,0.45)]">
+        <div className="border-b border-[var(--line)] p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold text-[var(--foreground)]">قائمة المحادثات</h2>
+              <p className="mt-0.5 text-xs text-[var(--muted)]">{rows.length} محادثة في العرض الحالي</p>
+            </div>
+            {loading ? <Loader2 className="size-4 animate-spin text-[var(--brand)]" /> : null}
+          </div>
+          <div className="relative">
+            <Search className="pointer-events-none absolute end-3 top-1/2 size-4 -translate-y-1/2 text-[var(--subtle)]" />
+            <label htmlFor="inbox-search" className="sr-only">بحث بالاسم أو الرقم</label>
+            <Input
+              id="inbox-search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="بحث بالاسم أو الرقم"
+              name="conversation_search"
+              autoComplete="off"
+              className="pe-9"
+            />
+          </div>
+          <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
             {FILTERS.map((f) => (
               <button
                 key={f.key}
                 onClick={() => setFilter(f.key)}
                 aria-pressed={filter === f.key}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                className={`shrink-0 rounded-[var(--radius-full)] border px-3 py-1.5 text-xs font-semibold transition-colors ${
                   filter === f.key
-                    ? "bg-slate-900 text-white"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    ? "border-[var(--brand)] bg-[var(--brand)] text-white"
+                    : "border-[var(--line)] bg-white text-[var(--muted)] hover:bg-[var(--brand-soft)]"
                 }`}
               >
                 {f.label}
               </button>
             ))}
           </div>
-          <label htmlFor="inbox-search" className="sr-only">بحث بالاسم أو الرقم</label>
-          <Input
-            id="inbox-search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="بحث بالاسم أو الرقم"
-            name="conversation_search"
-            autoComplete="off"
-          />
         </div>
-        <ul className="max-h-[70vh] overflow-y-auto">
+        <ul className="max-h-[680px] overflow-y-auto">
           {loading ? (
-            <li className="p-6 text-center text-sm text-slate-500">جارٍ التحميل…</li>
+            <li className="p-8 text-center text-sm text-[var(--muted)]">جارٍ تحميل المحادثات…</li>
           ) : rows.length === 0 ? (
-            <li className="p-6 text-center text-sm text-slate-500">لا توجد محادثات</li>
+            <li className="p-10 text-center">
+              <Inbox className="mx-auto size-6 text-[var(--subtle)]" />
+              <p className="mt-3 text-sm font-semibold text-[var(--foreground)]">لا توجد محادثات</p>
+              <p className="mt-1 text-xs leading-5 text-[var(--muted)]">جرّب تغيير الفلتر أو عبارة البحث.</p>
+            </li>
           ) : (
             rows.map((r) => {
               const mb = modeBadge(r.handler_mode);
@@ -349,38 +373,34 @@ export function ConversationsInboxShell({
                   <button
                     onClick={() => setSelectedId(r.id)}
                     aria-pressed={active}
-                    className={`w-full border-b border-slate-100 p-3 text-right transition ${
-                      active ? "bg-slate-50" : "hover:bg-slate-50/60"
+                    className={`relative w-full border-b border-[var(--line)] p-4 text-right transition-colors ${
+                      active ? "bg-[var(--brand-soft)]" : "hover:bg-[#f8f9fd]"
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="truncate text-sm font-semibold text-slate-900">
-                        {r.customer_name || r.customer_phone}
+                    {active ? <span className="absolute inset-y-0 start-0 w-1 bg-[var(--brand)]" /> : null}
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-full)] bg-white text-sm font-bold text-[var(--brand)] shadow-sm">
+                        {(r.customer_name || r.customer_phone || "ع").slice(0, 1).toUpperCase()}
                       </div>
-                      <span className="shrink-0 text-[10px] text-slate-500">
-                        {formatTime(r.last_message_at)}
-                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="truncate text-sm font-bold text-[var(--foreground)]">{r.customer_name || r.customer_phone}</p>
+                          <span className="shrink-0 text-[10px] font-medium text-[var(--muted)]">{formatTime(r.last_message_at)}</span>
+                        </div>
+                        {r.preview ? (
+                          <p className="mt-1 line-clamp-1 text-xs leading-5 text-[var(--muted)]">
+                            {r.preview_role === "agent" ? <span className="me-1 font-semibold text-[var(--brand)]">{r.handler_mode === "bot" ? "البوت:" : "أنت:"}</span> : null}
+                            {r.preview_role === "system" ? <span className="me-1 font-semibold">النظام:</span> : null}
+                            {r.preview}
+                          </p>
+                        ) : null}
+                        <div className="mt-2 flex min-w-0 items-center gap-2">
+                          <Badge variant={mb.variant} className="px-2 py-0.5 text-[10px]">{mb.text}</Badge>
+                          {r.is_expired ? <Badge variant="outline" className="px-2 py-0.5 text-[10px]">منتهية</Badge> : null}
+                          {r.assignee_name ? <span className="truncate text-[10px] text-[var(--muted)]">{r.assignee_name}</span> : null}
+                        </div>
+                      </div>
                     </div>
-                    <div className="mt-1 flex items-center gap-2">
-                      <Badge variant={mb.variant}>{mb.text}</Badge>
-                      {r.is_expired && <Badge variant="outline">منتهية</Badge>}
-                      {r.assignee_name && (
-                        <span className="truncate text-[11px] text-slate-500">{r.assignee_name}</span>
-                      )}
-                    </div>
-                    {r.preview && (
-                      <p className="mt-1 line-clamp-1 text-xs text-slate-500">
-                        {r.preview_role === "agent" && (
-                          <span className="ml-1 font-medium text-emerald-600">
-                            {r.handler_mode === "bot" ? "البوت:" : "أنت:"}
-                          </span>
-                        )}
-                        {r.preview_role === "system" && (
-                          <span className="ml-1 font-medium text-slate-400">النظام:</span>
-                        )}
-                        {r.preview}
-                      </p>
-                    )}
                   </button>
                 </li>
               );
@@ -390,37 +410,44 @@ export function ConversationsInboxShell({
       </aside>
 
       {/* Right — detail panel */}
-      <section className="flex flex-col rounded-2xl border border-slate-200 bg-white overflow-hidden" style={{ maxHeight: "calc(100vh - 10rem)" }}>
+      <section className="flex min-h-[680px] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-white shadow-[0_16px_38px_-32px_rgba(17,29,87,0.45)] lg:max-h-[760px]">
         {!selected ? (
-          <div className="flex flex-1 items-center justify-center p-8 text-sm text-slate-500">
-            اختر محادثة من القائمة
+          <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-[var(--radius-full)] bg-[var(--brand-soft)] text-[var(--brand)]">
+              <MessageCircleMore size={24} />
+            </div>
+            <p className="mt-4 text-sm font-bold text-[var(--foreground)]">اختر محادثة للبدء</p>
+            <p className="mt-1 text-sm text-[var(--muted)]">ستظهر الرسائل وإجراءات الاستلام هنا.</p>
           </div>
         ) : (
           <>
             {/* Header */}
-            <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 p-4 shrink-0">
-              <div>
-                <div className="text-base font-semibold text-slate-900">
-                  {selected.customer_name || selected.customer_phone}
+            <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] bg-white p-4 sm:px-5">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-full)] bg-[var(--brand-soft)] font-bold text-[var(--brand)]">
+                  {(selected.customer_name || selected.customer_phone || "ع").slice(0, 1).toUpperCase()}
                 </div>
-                <div className="text-xs text-slate-500">{selected.customer_phone}</div>
+                <div className="min-w-0">
+                  <h2 className="truncate text-base font-bold text-[var(--foreground)]">{selected.customer_name || selected.customer_phone}</h2>
+                  <p className="text-xs text-[var(--muted)]" dir="ltr">{selected.customer_phone}</p>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={modeBadge(selected.handler_mode).variant}>
                   {modeBadge(selected.handler_mode).text}
                 </Badge>
                 {selected.is_expired && <Badge variant="outline">خارج نافذة 24س</Badge>}
                 {selected.assignee_name && (
-                  <span className="text-xs text-slate-600">{selected.assignee_name}</span>
+                  <span className="inline-flex items-center gap-1 text-xs text-[var(--muted)]"><UserRound size={12} />{selected.assignee_name}</span>
                 )}
               </div>
             </header>
 
             {/* Message thread */}
-            <div className="flex-1 overflow-y-auto p-4">
-              <ul className="space-y-2">
+            <div className="flex-1 overflow-y-auto bg-[#f8f9fc] p-4 sm:p-6">
+              <ul className="space-y-3">
                 {messages.length === 0 && (
-                  <li className="mt-8 text-center text-sm text-slate-400">لا توجد رسائل بعد</li>
+                  <li className="mt-8 text-center text-sm text-[var(--muted)]">لا توجد رسائل بعد</li>
                 )}
                 {messages.map((m) => (
                   <li
@@ -428,12 +455,12 @@ export function ConversationsInboxShell({
                     className={`flex ${m.role === "customer" ? "justify-start" : "justify-end"}`}
                   >
                     <div
-                      className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
+                      className={`max-w-[84%] rounded-[var(--radius-lg)] px-4 py-3 text-sm leading-6 shadow-sm sm:max-w-[72%] ${
                         m.role === "customer"
-                          ? "bg-slate-100 text-slate-900"
+                          ? "rounded-se-[4px] border border-[var(--line)] bg-white text-[var(--foreground)]"
                           : m.role === "system"
-                          ? "bg-amber-50 text-amber-900"
-                          : "bg-emerald-600 text-white"
+                          ? "border border-amber-200 bg-amber-50 text-amber-900"
+                          : "rounded-ss-[4px] bg-[var(--brand)] text-white"
                       }`}
                     >
                       <p className="whitespace-pre-wrap break-words">{m.content}</p>
@@ -446,7 +473,7 @@ export function ConversationsInboxShell({
             </div>
 
             {/* Footer — actions */}
-            <footer className="border-t border-slate-100 p-4 shrink-0 space-y-3">
+            <footer className="shrink-0 space-y-3 border-t border-[var(--line)] bg-white p-4 sm:px-5">
               {/* Unassigned: claim buttons */}
               {selected.handler_mode === "unassigned" && (
                 <div className="flex flex-col gap-2 sm:flex-row">
@@ -455,6 +482,7 @@ export function ConversationsInboxShell({
                     disabled={claiming !== null}
                     onClick={() => onClaim("human")}
                   >
+                    <UserRound />
                     {claiming === "human" ? "جارٍ…" : "استلام ورد العميل"}
                   </Button>
                   <Button
@@ -463,6 +491,7 @@ export function ConversationsInboxShell({
                     disabled={claiming !== null}
                     onClick={() => onClaim("bot")}
                   >
+                    <Bot />
                     {claiming === "bot" ? "جارٍ…" : "استلام وتوكيل البوت"}
                   </Button>
                 </div>
@@ -476,6 +505,7 @@ export function ConversationsInboxShell({
                     disabled={handingOff !== null}
                     onClick={() => onHandoff("human")}
                   >
+                    <UserRound />
                     {handingOff === "human" ? "جارٍ…" : "إيقاف البوت والرد بنفسي"}
                   </Button>
                   <Button
@@ -492,25 +522,28 @@ export function ConversationsInboxShell({
               {/* Human mode: reply composer (if this is my conversation) */}
               {selected.handler_mode === "human" && isMyConversation && (
                 <>
-                  <div className="flex gap-2 items-end">
+                  <div className="flex items-end gap-2 rounded-[var(--radius-lg)] border border-[var(--line)] bg-[#f8f9fc] p-2 focus-within:border-[var(--brand)] focus-within:ring-2 focus-within:ring-[#20339a]/10">
                     <textarea
                       ref={textareaRef}
                       value={replyText}
                       onChange={(e) => setReplyText(e.target.value)}
                       onKeyDown={onKeyDown}
-                      placeholder="اكتب ردك هنا… (Enter للإرسال، Shift+Enter لسطر جديد)"
+                      placeholder="اكتب ردك هنا…"
                       rows={2}
                       disabled={sending}
-                      className="flex-1 resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
+                      className="min-h-12 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--subtle)] focus:outline-none disabled:opacity-60"
                     />
                     <Button
                       onClick={() => void onSend()}
                       disabled={sending || !replyText.trim()}
-                      className="shrink-0"
+                      size="icon"
+                      className="shrink-0 rounded-[var(--radius-md)]"
+                      aria-label="إرسال الرد"
                     >
-                      {sending ? "…" : "إرسال"}
+                      {sending ? <Loader2 className="animate-spin" /> : <Send />}
                     </Button>
                   </div>
+                  <p className="px-1 text-[10px] text-[var(--muted)]">Enter للإرسال · Shift + Enter لسطر جديد</p>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
@@ -519,12 +552,13 @@ export function ConversationsInboxShell({
                       disabled={handingOff !== null}
                       onClick={() => onHandoff("bot")}
                     >
+                      <Bot />
                       {handingOff === "bot" ? "جارٍ…" : "تسليم للبوت"}
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="flex-1 text-xs text-slate-500"
+                      className="flex-1 text-xs text-[var(--muted)]"
                       disabled={handingOff !== null}
                       onClick={() => onHandoff("unassigned")}
                     >
@@ -537,7 +571,7 @@ export function ConversationsInboxShell({
               {/* Human mode: read-only info if assigned to someone else */}
               {selected.handler_mode === "human" && !isMyConversation && (
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-[var(--muted)]">
                     مستلمة من {selected.assignee_name ?? "موظف"} — الرد يدوي
                   </p>
                   <Button
@@ -557,7 +591,7 @@ export function ConversationsInboxShell({
 
       {toast && (
         <div
-          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-slate-900 px-4 py-2 text-sm text-white shadow-lg"
+          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-[var(--radius-md)] bg-[var(--foreground)] px-4 py-2 text-sm text-white shadow-lg"
           role="status"
           aria-live="polite"
         >

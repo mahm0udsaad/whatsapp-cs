@@ -151,20 +151,20 @@ export default async function MarketingHubPage() {
   ];
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-6">
+    <div className="dashboard-page space-y-6" dir="rtl">
       {/* Hero card */}
-      <Card className="relative overflow-hidden border-0 bg-[#10221a] text-white shadow-[0_40px_120px_-56px_rgba(5,10,8,0.85)]">
+      <Card className="dashboard-hero relative overflow-hidden border-0 text-white shadow-[0_30px_80px_-48px_rgba(32,51,154,0.8)]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(66,196,140,0.28),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.12),transparent_34%)]" />
         <CardContent className="relative p-7 sm:p-8 lg:p-10">
           <div className="flex flex-wrap items-center gap-3">
-            <Badge className="rounded-full border border-white/10 bg-white/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-50">
+            <Badge className="rounded-full border border-white/10 bg-white/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-white">
               مركز التسويق
             </Badge>
           </div>
 
           <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_280px] lg:items-end">
             <div>
-              <p className="text-sm uppercase tracking-[0.32em] text-white/48">
+              <p className="text-sm uppercase tracking-[0.32em] text-white/70">
                 حملات واتساب
               </p>
               <h1 className="mt-4 max-w-2xl text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">

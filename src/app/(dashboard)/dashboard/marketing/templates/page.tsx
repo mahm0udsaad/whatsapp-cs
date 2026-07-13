@@ -73,7 +73,7 @@ export default async function TemplatesPage({
   const rejectedCount = allTemplates.filter((t) => t.approval_status === "rejected").length;
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-6">
+    <div className="dashboard-page space-y-6">
       {justSubmitted ? (
         <div className="flex items-start gap-2 rounded-[20px] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
           <Clock size={18} className="mt-0.5 shrink-0" />

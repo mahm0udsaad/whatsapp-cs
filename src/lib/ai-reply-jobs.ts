@@ -339,11 +339,34 @@ async function queryKnowledgeBase(
   // empty-bucket result for 5 min so a freshly ingested tenant starts
   // using RAG soon after backfill.
   const hasChunks = await restaurantHasKnowledgeChunks(restaurantId);
-  const { context, chunks } = hasChunks
-    ? await retrieveKnowledgeChunks(restaurantId, expandedQuery, 5)
-    : { context: "", chunks: [] as RetrievedChunk[] };
-  if (chunks.length > 0) {
-    return summarizeRagResult(context, chunks, expandedQuery);
+
+  // The dashboard Knowledge Base writes to `knowledge_base`, while bulk/file
+  // ingestion writes embedded rows to `knowledge_chunks`. Always query both:
+  // previously, the presence of any vector chunks made fresh dashboard edits
+  // invisible whenever vector search returned a hit.
+  const [vectorResult, dashboardContext] = await Promise.all([
+    hasChunks
+      ? retrieveKnowledgeChunks(restaurantId, expandedQuery, 5)
+      : Promise.resolve({ context: "", chunks: [] as RetrievedChunk[] }),
+    fallbackKeywordKB(restaurantId, expandedQuery),
+  ]);
+
+  if (vectorResult.chunks.length > 0) {
+    const combinedContext = [
+      dashboardContext.trim()
+        ? `Dashboard Knowledge Base (owner-maintained):\n${dashboardContext.trim()}`
+        : "",
+      vectorResult.context.trim()
+        ? `Retrieved Knowledge Documents:\n${vectorResult.context.trim()}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    return summarizeRagResult(
+      combinedContext,
+      vectorResult.chunks,
+      expandedQuery
+    );
   }
 
   // Fallback: legacy keyword search over the older `knowledge_base` table
@@ -351,7 +374,7 @@ async function queryKnowledgeBase(
   // still has grounding for tenants that haven't run chunk ingestion. No
   // similarity signal here, so topScore stays null and the classifier's
   // weak-hit rule is skipped for this path.
-  const fallback = await fallbackKeywordKB(restaurantId, expandedQuery);
+  const fallback = dashboardContext;
   const chunkCount = fallback.trim()
     ? fallback.split(/\n\n+/).filter((s) => s.trim()).length
     : 0;

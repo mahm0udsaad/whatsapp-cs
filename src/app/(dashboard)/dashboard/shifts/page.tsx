@@ -67,13 +67,16 @@ export default async function ShiftsPage() {
   const shifts = (shiftsRes.data ?? []) as ShiftRow[];
 
   return (
-    <div className="flex-1 p-4 sm:p-6 lg:p-6">
-      <div className="mb-5">
-        <h1 className="text-3xl font-bold text-slate-950">الجدول</h1>
-        <p className="mt-1 text-slate-600">
+    <div className="dashboard-page">
+      <div className="dashboard-page-header">
+        <div>
+        <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-[#20339a]">إدارة الفريق</p>
+        <h1>الجدول</h1>
+        <p>
           جدول الموظفات ومن على الدوام الآن. سحبي لإنشاء دوام، وانقري على دوام
           لتعديله.
         </p>
+        </div>
       </div>
 
       <ShiftsCalendar

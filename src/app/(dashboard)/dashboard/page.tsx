@@ -6,14 +6,10 @@ import {
   Bot,
   BookOpen,
   CheckCircle2,
-  Clock,
-  Inbox,
   MessageSquare,
   Phone,
   Send,
-  Sparkles,
   TrendingUp,
-  Users,
   Workflow,
 } from "lucide-react";
 import { StatsCard } from "@/components/ui/stats-card";
@@ -50,13 +46,6 @@ function formatRelativeTimestamp(value: string | null, t: (k: string) => string)
   return `${diffDays}${t("time.dAgo")}`;
 }
 
-function formatTimestamp(value: string | null, formatter: Intl.DateTimeFormat, t: (k: string) => string) {
-  if (!value) return t("dashboard.noTimestamp");
-  const timestamp = new Date(value);
-  if (Number.isNaN(timestamp.getTime())) return t("dashboard.unknownTime");
-  return formatter.format(timestamp);
-}
-
 export default async function DashboardPage() {
   const locale = await getLocale();
   const t = createTranslator(locale);
@@ -66,13 +55,6 @@ export default async function DashboardPage() {
 
   const restaurant = await getRestaurantForUserId(user.id);
   if (!restaurant) redirect("/onboarding");
-
-  const dateFormatter = new Intl.DateTimeFormat(locale, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 
   const aiAgent = await getActiveAgentForRestaurant(restaurant.id);
   const todayStart = new Date();
@@ -204,23 +186,29 @@ export default async function DashboardPage() {
     (readinessItems.filter((item) => item.ready).length / readinessItems.length) * 100
   );
   const focusItem = readinessItems.find((item) => !item.ready);
+  const completedReadinessItems = readinessItems.filter((item) => item.ready).length;
+  const todayLabel = new Intl.DateTimeFormat(locale, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(new Date());
 
   const actionLinks = [
     { label: t("dashboard.refineAI"), description: t("dashboard.refineAIDesc"), href: "/dashboard/ai-agent", icon: Bot },
     { label: t("dashboard.reviewConversations"), description: t("dashboard.reviewConversationsDesc"), href: "/dashboard/conversations", icon: MessageSquare },
-    { label: t("dashboard.expandKB"), description: t("dashboard.expandKBDesc"), href: "/dashboard/knowledge-base", icon: BookOpen },
+    { label: t("dashboard.expandKB"), description: t("dashboard.expandKBDesc"), href: "/dashboard/ai-agent?tab=knowledge", icon: BookOpen },
     { label: t("dashboard.verifyPhone"), description: t("dashboard.verifyPhoneDesc"), href: "/dashboard/restaurant", icon: Phone },
   ];
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
+    <div className="dashboard-page space-y-7" dir="rtl">
       <HomeRealtimeRefresh restaurantId={restaurant.id} />
 
       {/* WhatsApp setup alert */}
       {needsWhatsAppSetup ? (
-        <div className="flex flex-col gap-4 rounded-[28px] border border-amber-300/70 bg-amber-50/80 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-amber-300 bg-amber-50 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-700">
+            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-amber-100 text-amber-800">
               <AlertCircle size={20} />
             </div>
             <div>
@@ -236,7 +224,7 @@ export default async function DashboardPage() {
           </div>
           <Link
             href="/dashboard/whatsapp-setup"
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-amber-900 px-5 py-3 text-sm font-semibold text-amber-50 transition-transform hover:-translate-y-0.5 sm:self-center"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-amber-900 px-5 py-3 text-sm font-semibold text-amber-50 transition-colors hover:bg-amber-950 sm:self-center"
           >
             {t("dashboard.whatsappAlertCta", "Set up WhatsApp")}
             <ArrowRight size={16} className="rtl:rotate-180" />
@@ -245,33 +233,62 @@ export default async function DashboardPage() {
       ) : null}
 
       {/* Page header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="dashboard-page-header">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-950">{restaurant.name}</h1>
-          <p className="mt-0.5 text-sm text-slate-500">مركز خدمة العملاء — واتساب</p>
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-[#20339a]">لوحة التشغيل</p>
+          <h1>{restaurant.name}</h1>
+          <p>ملخص مباشر للمحادثات، نشاط اليوم، وجاهزية خدمة العملاء.</p>
         </div>
-        <Badge
-          className={cn(
-            "rounded-full border px-3 py-1 text-xs font-medium",
-            setupStatus === "draft" || setupStatus === "failed"
-              ? "border-amber-300 bg-amber-50 text-amber-700"
-              : "border-emerald-300 bg-emerald-50 text-emerald-700"
-          )}
-        >
-          {setupStatus}
-        </Badge>
+        <div className="text-start sm:text-end">
+          <p className="text-sm font-semibold text-[var(--foreground)]">{todayLabel}</p>
+          <Badge
+            className={cn(
+              "mt-2 rounded-[var(--radius-full)] border px-3 py-1 text-xs font-semibold",
+              setupStatus === "draft" || setupStatus === "failed"
+                ? "border-amber-300 bg-amber-50 text-amber-800"
+                : "border-[#20339a]/20 bg-[#edf0ff] text-[#20339a]"
+            )}
+          >
+            {setupStatus === "active" ? "النظام يعمل" : setupStatus}
+          </Badge>
+        </div>
       </div>
 
+      <Link
+        href="/dashboard/conversations?tab=requests"
+        className={cn(
+          "group flex flex-col gap-4 rounded-[var(--radius-lg)] border p-5 transition-colors sm:flex-row sm:items-center sm:justify-between",
+          unclaimedEscalations > 0
+            ? "border-rose-200 bg-rose-50 hover:bg-rose-100/70"
+            : "border-emerald-200 bg-emerald-50 hover:bg-emerald-100/60"
+        )}
+      >
+        <div className="flex items-start gap-3">
+          <div className={cn(
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)]",
+            unclaimedEscalations > 0 ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"
+          )}>
+            {unclaimedEscalations > 0 ? <AlertCircle size={19} /> : <CheckCircle2 size={19} />}
+          </div>
+          <div>
+            <p className="text-sm font-bold text-[var(--foreground)]">
+              {unclaimedEscalations > 0
+                ? `${unclaimedEscalations} تصعيدات تنتظر تدخلك`
+                : "لا توجد تصعيدات مفتوحة الآن"}
+            </p>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              {unclaimedEscalations > 0 ? "راجعي الطلبات وحددي الإجراء المناسب لكل عميل." : "فريقك والمساعد الذكي يتعاملان مع المحادثات بصورة طبيعية."}
+            </p>
+          </div>
+        </div>
+        <span className="inline-flex items-center gap-2 text-sm font-bold text-[var(--brand)]">
+          {unclaimedEscalations > 0 ? "مراجعة الآن" : "عرض الطلبات"}
+          <ArrowRight size={16} className="transition-transform group-hover:ltr:translate-x-0.5 group-hover:rtl:-translate-x-0.5 rtl:rotate-180" />
+        </span>
+      </Link>
+
       {/* Overview cards grid */}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <StatsCard
-          title="تصعيدات مفتوحة"
-          value={unclaimedEscalations}
-          icon={<Inbox size={22} />}
-          description={unclaimedEscalations > 0 ? "تحتاج تدخلاً بشرياً الآن" : "لا تصعيدات مفتوحة"}
-          footnote="صندوق التصعيدات"
-          tone="rose"
-        />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatsCard
           title={t("stats.activeConversations")}
           value={activeConversations}
@@ -279,6 +296,7 @@ export default async function DashboardPage() {
           description={`${activeShare}% من إجمالي المحادثات`}
           footnote={`${totalConversations} ${t("stats.activeConversationsNote")}`}
           tone="emerald"
+          className="bg-white"
         />
         <StatsCard
           title={t("stats.messagesToday")}
@@ -287,6 +305,7 @@ export default async function DashboardPage() {
           description={t("stats.messagesTodayDesc")}
           footnote={`${totalAIMessages} ${t("stats.messagesTodayNote")}`}
           tone="sky"
+          className="bg-white"
         />
         <StatsCard
           title={t("stats.responseRate")}
@@ -295,6 +314,7 @@ export default async function DashboardPage() {
           description={t("stats.responseRateDesc")}
           footnote={t("stats.responseRateNote")}
           tone="amber"
+          className="bg-white"
         />
         <StatsCard
           title={t("stats.knowledgeBase")}
@@ -303,84 +323,68 @@ export default async function DashboardPage() {
           description={t("stats.knowledgeBaseDesc")}
           footnote={knowledgeBaseItems > 0 ? t("stats.knowledgeBaseNoteFull") : t("stats.knowledgeBaseNoteEmpty")}
           tone="sky"
-        />
-        <StatsCard
-          title="جاهزية النظام"
-          value={`${readinessScore}%`}
-          icon={<Sparkles size={22} />}
-          description={focusItem ? `التركيز: ${focusItem.label}` : "النظام جاهز بالكامل"}
-          footnote={`${readinessItems.filter((i) => i.ready).length} / ${readinessItems.length} مكتمل`}
-          tone="emerald"
+          className="bg-white"
         />
       </div>
 
       {/* Main panels */}
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.95fr)] xl:items-start">
         {/* Recent conversations */}
-        <Card>
-          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <Card className="overflow-hidden">
+          <CardHeader className="flex flex-col gap-3 border-b border-[var(--line)] sm:flex-row sm:items-end sm:justify-between">
             <div>
               <CardDescription>{t("dashboard.liveQueue")}</CardDescription>
               <CardTitle>{t("dashboard.recentConversations")}</CardTitle>
             </div>
             <Link
               href="/dashboard/conversations"
-              className="inline-flex items-center gap-2 text-sm font-medium text-emerald-700 transition-colors hover:text-emerald-800"
+              className="inline-flex items-center gap-2 text-sm font-medium text-[#20339a] transition-colors hover:text-[#172777]"
             >
               {t("dashboard.openInboxLink")}
               <ArrowRight size={16} className="rtl:rotate-180" />
             </Link>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="p-0">
             {recentConversations.length === 0 ? (
-              <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50/80 p-6 text-sm text-slate-600">
-                {t("dashboard.noConversations")}
+              <div className="p-10 text-center">
+                <MessageSquare className="mx-auto size-6 text-[var(--subtle)]" />
+                <p className="mt-3 text-sm font-semibold text-[var(--foreground)]">{t("dashboard.noConversations")}</p>
               </div>
             ) : null}
             {recentConversations.map((conversation) => {
               const latestMessage = latestMessageByConversation.get(conversation.id);
               const active = conversation.status === "active";
               return (
-                <div
+                <Link
                   key={conversation.id}
-                  className="rounded-[26px] border border-slate-200/75 bg-white/70 p-4 transition-colors hover:border-emerald-200 hover:bg-emerald-50/50"
+                  href="/dashboard/conversations"
+                  className="group block border-b border-[var(--line)] p-4 transition-colors last:border-b-0 hover:bg-[#f8f9fd] sm:px-6"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-sm font-semibold text-slate-700">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-full)] bg-[var(--brand-soft)] text-sm font-bold text-[var(--brand)]">
                       {(conversation.customer_name || conversation.customer_phone || "C").slice(0, 1).toUpperCase()}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-sm font-semibold text-slate-950">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="text-sm font-bold text-[var(--foreground)]">
                           {conversation.customer_name || conversation.customer_phone}
                         </h3>
-                        <Badge
-                          variant={active ? "default" : "secondary"}
-                          className={cn(
-                            "rounded-full px-2.5 py-1 text-[11px] font-medium",
-                            active ? "bg-emerald-500/12 text-emerald-700" : "bg-slate-200/70 text-slate-700"
-                          )}
-                        >
-                          {conversation.status}
-                        </Badge>
+                        <span className="text-xs font-medium text-[var(--muted)]">{formatRelativeTimestamp(conversation.last_message_at, t)}</span>
                       </div>
-                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
+                      <p className="mt-1 line-clamp-1 text-sm leading-6 text-[var(--muted)]">
                         {latestMessage?.content || t("dashboard.noPreview")}
                       </p>
-                      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                        <span className="inline-flex items-center gap-1.5">
-                          <Clock size={13} />
-                          {formatRelativeTimestamp(conversation.last_message_at, t)}
-                        </span>
-                        <span>{t("dashboard.lastUpdate")} {formatTimestamp(conversation.last_message_at, dateFormatter, t)}</span>
-                        <span className="inline-flex items-center gap-1.5">
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[var(--muted)]">
+                        <Badge className={cn("px-2 py-0.5 text-[10px]", active ? "bg-[var(--brand-soft)] text-[var(--brand)]" : "bg-slate-100 text-slate-700")}>{active ? "نشطة" : "مغلقة"}</Badge>
+                        <span className="inline-flex items-center gap-1">
                           <Workflow size={13} />
                           {latestMessage?.role === "agent" ? t("dashboard.lastReplyAI") : t("dashboard.awaitingFollowup")}
                         </span>
+                        <ArrowRight size={14} className="ms-auto text-[var(--subtle)] transition-transform group-hover:ltr:translate-x-0.5 group-hover:rtl:-translate-x-0.5 rtl:rotate-180" />
                       </div>
                     </div>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </CardContent>
@@ -388,96 +392,85 @@ export default async function DashboardPage() {
 
         {/* Right column */}
         <div className="grid gap-6">
-          {/* AI agent card */}
-          <Card className="overflow-hidden border-0 bg-[#173126] text-white shadow-[0_30px_90px_-54px_rgba(8,18,13,0.78)]">
-            <CardHeader>
-              <CardDescription className="text-emerald-50/70">{t("dashboard.activeAgent")}</CardDescription>
-              <CardTitle className="text-white">{aiAgent?.name || t("dashboard.configMissing")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-[24px] border border-white/10 bg-white/8 p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-white/62">{t("dashboard.personality")}</span>
-                  <span className="text-sm font-medium capitalize text-white">{aiAgent?.personality || t("dashboard.na")}</span>
-                </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <span className="text-sm text-white/62">{t("dashboard.language")}</span>
-                  <span className="text-sm font-medium text-white">{aiAgent?.language_preference || t("dashboard.na")}</span>
-                </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <span className="text-sm text-white/62">{t("dashboard.whatsappNumber")}</span>
-                  <span className="text-sm font-medium text-white">{restaurant.twilio_phone_number || t("dashboard.pending")}</span>
-                </div>
-              </div>
-              <Link
-                href="/dashboard/ai-agent"
-                className="inline-flex items-center gap-2 text-sm font-medium text-emerald-100 transition-colors hover:text-white"
-              >
-                {t("dashboard.tuneAgent")}
-                <ArrowRight size={16} className="rtl:rotate-180" />
-              </Link>
-            </CardContent>
-          </Card>
-
           {/* Readiness checklist */}
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader>
-              <CardDescription>{t("dashboard.launchReadiness")}</CardDescription>
-              <CardTitle>{t("dashboard.operationalChecklist")}</CardTitle>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <CardDescription>{t("dashboard.launchReadiness")}</CardDescription>
+                  <CardTitle>{t("dashboard.operationalChecklist")}</CardTitle>
+                </div>
+                <span className="text-2xl font-bold tracking-tight text-[var(--brand)]">{readinessScore}%</span>
+              </div>
+              <div className="mt-3 h-2 overflow-hidden rounded-[var(--radius-full)] bg-[var(--brand-soft)]">
+                <div className="h-full rounded-[var(--radius-full)] bg-[var(--brand)]" style={{ width: `${readinessScore}%` }} />
+              </div>
+              <p className="text-xs text-[var(--muted)]">{completedReadinessItems} من {readinessItems.length} مكتملة{focusItem ? ` · التالي: ${focusItem.label}` : ""}</p>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="divide-y divide-[var(--line)] pt-0">
               {readinessItems.map((item) => (
                 <div
                   key={item.label}
-                  className="flex items-start gap-3 rounded-[24px] border border-slate-200/75 bg-white/70 p-4"
+                  className="flex items-start gap-3 py-3 first:pt-0 last:pb-0"
                 >
                   <div
                     className={cn(
-                      "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl",
-                      item.ready ? "bg-emerald-500/12 text-emerald-700" : "bg-amber-500/12 text-amber-700"
+                      "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)]",
+                      item.ready ? "bg-[#edf0ff] text-[#20339a]" : "bg-amber-100 text-amber-800"
                     )}
                   >
-                    {item.ready ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+                    {item.ready ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-slate-950">{item.label}</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">{item.description}</p>
+                    <p className="text-sm font-semibold text-[var(--foreground)]">{item.label}</p>
+                    <p className="mt-0.5 text-xs leading-5 text-[var(--muted)]">{item.description}</p>
                   </div>
                 </div>
               ))}
             </CardContent>
           </Card>
 
-          {/* Quick actions */}
-          <Card>
-            <CardHeader>
-              <CardDescription>{t("dashboard.fastActions")}</CardDescription>
-              <CardTitle>{t("dashboard.fastActionsDesc")}</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-3">
-              {actionLinks.map((link) => {
-                const Icon = link.icon;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="group flex items-center gap-3 rounded-[20px] border border-slate-200/70 bg-white/70 px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50/70"
-                  >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                      <Icon size={16} />
-                    </div>
-                    <p className="text-sm font-medium text-slate-950">{link.label}</p>
-                    <ArrowRight
-                      size={15}
-                      className="ms-auto text-slate-400 transition-transform group-hover:ltr:translate-x-0.5 group-hover:rtl:-translate-x-0.5 rtl:rotate-180"
-                    />
-                  </Link>
-                );
-              })}
+          {/* AI agent card */}
+          <Card className="overflow-hidden border-0 bg-[#20339a] text-white shadow-[0_24px_60px_-40px_rgba(17,29,87,0.8)]">
+            <CardContent className="p-5 sm:p-6">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-white/10 text-[#ffc400]"><Bot size={19} /></div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-white/70">{t("dashboard.activeAgent")}</p>
+                  <p className="mt-1 text-lg font-bold text-white">{aiAgent?.name || t("dashboard.configMissing")}</p>
+                  <p className="mt-1 text-xs text-white/70">{aiAgent?.personality || t("dashboard.na")} · {aiAgent?.language_preference || t("dashboard.na")}</p>
+                </div>
+                <span className="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_0_4px_rgba(52,211,153,0.15)]" aria-label="نشط" />
+              </div>
+              <Link href="/dashboard/ai-agent" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#fff3bf] hover:text-white">
+                {t("dashboard.tuneAgent")}<ArrowRight size={15} className="rtl:rotate-180" />
+              </Link>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      <section>
+        <div className="mb-4">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--brand)]">{t("dashboard.fastActions")}</p>
+          <h2 className="mt-1 text-lg font-bold text-[var(--foreground)]">{t("dashboard.fastActionsDesc")}</h2>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {actionLinks.map((link) => {
+            const Icon = link.icon;
+            return (
+              <Link key={link.href} href={link.href} className="group flex items-start gap-3 rounded-[var(--radius-lg)] border border-[var(--line)] bg-white p-4 transition-colors hover:border-[#20339a]/25 hover:bg-[var(--brand-soft)]">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--brand-soft)] text-[var(--brand)] group-hover:bg-white"><Icon size={17} /></div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-[var(--foreground)]">{link.label}</p>
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--muted)]">{link.description}</p>
+                </div>
+                <ArrowRight size={15} className="mt-1 text-[var(--subtle)] transition-transform group-hover:ltr:translate-x-0.5 group-hover:rtl:-translate-x-0.5 rtl:rotate-180" />
+              </Link>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }
