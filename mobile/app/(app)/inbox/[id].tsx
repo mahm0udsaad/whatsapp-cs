@@ -17,6 +17,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import {
   asArray,
+  analyzeCustomerSatisfaction,
   claimConversation,
   createLabel,
   getTeamRoster,
@@ -26,11 +27,14 @@ import {
   setConversationArchived,
   setConversationLabels,
   uploadConversationMedia,
+  getApiErrorMessage,
+  type SatisfactionAnalysisResponse,
   type ConversationLabel,
   type LabelColor,
   type ReplyAttachment,
   type TeamMemberRosterRow,
 } from "../../../lib/api";
+import { CustomerSatisfactionModal } from "../../../components/customer-satisfaction-modal";
 import { labelChipClasses, labelColorOrder } from "../../../lib/label-colors";
 import { supabase } from "../../../lib/supabase";
 import { useSessionStore } from "../../../lib/session-store";
@@ -209,6 +213,9 @@ export default function ConversationDetail() {
   const [claiming, setClaiming] = useState<"human" | "bot" | null>(null);
   const [reassignOpen, setReassignOpen] = useState(false);
   const [labelsOpen, setLabelsOpen] = useState(false);
+  const [satisfactionOpen, setSatisfactionOpen] = useState(false);
+  const [satisfactionResponse, setSatisfactionResponse] =
+    useState<SatisfactionAnalysisResponse | null>(null);
   const [pendingFile, setPendingFile] = useState<
     | { uri: string; name: string; type: string; sizeBytes?: number }
     | null
@@ -220,6 +227,18 @@ export default function ConversationDetail() {
     enabled: manager && !!restaurantId && reassignOpen,
     queryFn: getTeamRoster,
   });
+
+  const satisfactionMutation = useMutation({
+    mutationFn: (force: boolean) =>
+      analyzeCustomerSatisfaction(id as string, force),
+    onSuccess: (result) => setSatisfactionResponse(result),
+  });
+
+  const openSatisfaction = useCallback(() => {
+    if (!id) return;
+    setSatisfactionOpen(true);
+    satisfactionMutation.mutate(false);
+  }, [id, satisfactionMutation]);
 
   const reassignMutation = useMutation({
     mutationFn: (input: {
@@ -989,6 +1008,17 @@ export default function ConversationDetail() {
           </View>
           {manager ? (
             <Pressable
+              onPress={openSatisfaction}
+              hitSlop={10}
+              style={styles.headerIconButton}
+              accessibilityRole="button"
+              accessibilityLabel="تحليل رضا العميل"
+            >
+              <Ionicons name="sparkles-outline" size={19} color="#FFFFFF" />
+            </Pressable>
+          ) : null}
+          {manager ? (
+            <Pressable
               onPress={openManageActionSheet}
               hitSlop={12}
               style={styles.headerIconButton}
@@ -1275,6 +1305,23 @@ export default function ConversationDetail() {
         conversationId={id as string}
         restaurantId={restaurantId}
         onClose={() => setLabelsOpen(false)}
+      />
+      <CustomerSatisfactionModal
+        visible={satisfactionOpen}
+        customerName={conv.customer_name || conv.customer_phone}
+        response={satisfactionResponse}
+        loading={satisfactionMutation.isPending}
+        error={
+          satisfactionMutation.error
+            ? getApiErrorMessage(
+                satisfactionMutation.error,
+                "تعذّر تحليل رضا العميل."
+              )
+            : null
+        }
+        onClose={() => setSatisfactionOpen(false)}
+        onRetry={() => satisfactionMutation.mutate(false)}
+        onReanalyze={() => satisfactionMutation.mutate(true)}
       />
     </SafeAreaView>
   );

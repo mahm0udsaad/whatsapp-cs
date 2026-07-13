@@ -9,6 +9,7 @@ import {
   MessageCircleMore,
   Search,
   Send,
+  Sparkles,
   UserRound,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -16,6 +17,7 @@ import { useRealtimeAuth } from "@/lib/supabase/use-realtime-auth";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { CustomerSatisfactionModal } from "@/components/dashboard/customer-satisfaction-modal";
 
 type Filter = "open" | "expired" | "mine" | "unassigned" | "all";
 
@@ -69,9 +71,11 @@ function formatTime(iso: string | null): string {
 export function ConversationsInboxShell({
   restaurantId,
   currentMemberId,
+  canAnalyze = false,
 }: {
   restaurantId: string;
   currentMemberId: string | null;
+  canAnalyze?: boolean;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const { ready: realtimeReady } = useRealtimeAuth(supabase);
@@ -98,6 +102,10 @@ export function ConversationsInboxShell({
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [analysisTarget, setAnalysisTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -433,6 +441,21 @@ export function ConversationsInboxShell({
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                {canAnalyze ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setAnalysisTarget({
+                        id: selected.id,
+                        name: selected.customer_name || selected.customer_phone,
+                      })
+                    }
+                  >
+                    <Sparkles />
+                    تحليل رضا العميل
+                  </Button>
+                ) : null}
                 <Badge variant={modeBadge(selected.handler_mode).variant}>
                   {modeBadge(selected.handler_mode).text}
                 </Badge>
@@ -598,6 +621,13 @@ export function ConversationsInboxShell({
           {toast}
         </div>
       )}
+
+      <CustomerSatisfactionModal
+        open={analysisTarget !== null}
+        conversationId={analysisTarget?.id ?? null}
+        customerName={analysisTarget?.name ?? "العميل"}
+        onClose={() => setAnalysisTarget(null)}
+      />
     </div>
   );
 }

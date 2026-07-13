@@ -221,6 +221,61 @@ export async function getInboxConversation(conversationId: string) {
   return apiFetch(`/api/mobile/inbox/conversations/${conversationId}/messages`);
 }
 
+export interface CustomerSatisfactionAnalysis {
+  id: string;
+  conversation_id: string;
+  customer_phone: string;
+  customer_name: string | null;
+  score: number;
+  sentiment: "positive" | "neutral" | "negative" | "mixed";
+  risk_level: "low" | "medium" | "high";
+  confidence: number;
+  summary: string;
+  strengths: string[];
+  concerns: string[];
+  unanswered_questions: string[];
+  recommended_actions: string[];
+  metrics: {
+    customer_messages: number;
+    business_messages: number;
+    received_media: number;
+    median_response_minutes: number | null;
+    last_customer_message_unanswered: boolean;
+    pending_escalations: number;
+    pending_reservations: number;
+    sla_breaches: number;
+    nehgz_bookings: number;
+    nehgz_cancellations: number;
+    nehgz_completions: number;
+    payment_updates: number;
+  };
+  analysis_mode: "fresh" | "reanalysis";
+  source_message_count: number;
+  new_message_count: number;
+  latest_message_at: string | null;
+  whatsapp_status: string;
+  nehgz_status: string;
+  created_at: string;
+}
+
+export interface SatisfactionAnalysisResponse {
+  analysis: CustomerSatisfactionAnalysis;
+  cached: boolean;
+  has_new_messages: boolean;
+  new_messages_since_analysis: number;
+}
+
+export async function analyzeCustomerSatisfaction(
+  conversationId: string,
+  force = false
+): Promise<SatisfactionAnalysisResponse> {
+  return apiFetch(`/api/satisfaction/conversations/${conversationId}`, {
+    method: "POST",
+    body: JSON.stringify({ force }),
+    timeoutMs: 60_000,
+  }) as Promise<SatisfactionAnalysisResponse>;
+}
+
 export async function claimConversation(
   conversationId: string,
   mode: "human" | "bot"

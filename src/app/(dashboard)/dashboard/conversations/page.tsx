@@ -72,6 +72,9 @@ export default async function ConversationsPage({
           <ConversationsInboxShell
             restaurantId={restaurant.id}
             currentMemberId={memberRes.data?.id ?? null}
+            canAnalyze={
+              restaurant.owner_id === user.id || memberRes.data?.role === "admin"
+            }
           />
         }
         requests={<OrdersList orders={orders} />}
