@@ -20,6 +20,7 @@ import { adminSupabaseClient } from "@/lib/supabase/admin";
 import { resolveCurrentRestaurantForAdmin } from "@/lib/mobile-auth";
 import { createContentTemplate, submitForApproval } from "@/lib/twilio-content";
 import { processPendingTemplateApprovalPolls } from "@/lib/template-approval-poller";
+import { validateTemplateContent } from "@/lib/template-validation";
 import type {
   TemplateCategory,
   TemplateHeaderType,
@@ -214,6 +215,21 @@ export async function POST(request: NextRequest) {
   const buttonError = validateButtons(body.buttons);
   if (buttonError) {
     return NextResponse.json({ error: buttonError }, { status: 400 });
+  }
+
+  // Catch documented Meta rejection causes before paying the 48h review
+  // round-trip. Messages are user-facing Arabic.
+  const contentError = validateTemplateContent({
+    bodyTemplate: body.body_template,
+    headerType,
+    headerText: body.header_text,
+    footerText: body.footer_text,
+    buttons: body.buttons,
+    variables: body.variables,
+    sampleValues: body.sample_values ?? body.variables,
+  });
+  if (contentError) {
+    return NextResponse.json({ error: contentError }, { status: 400 });
   }
 
   // Twilio's `variables` map must carry realistic filled-in values for Meta

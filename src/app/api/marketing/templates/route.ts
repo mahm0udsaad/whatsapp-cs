@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 import { getCurrentUser, getRestaurantForUserId } from "@/lib/tenant";
 import { createContentTemplate } from "@/lib/twilio-content";
+import { validateTemplateContent } from "@/lib/template-validation";
 import { processPendingTemplateApprovalPolls } from "@/lib/template-approval-poller";
 import type { TemplateCategory, TemplateHeaderType, TwilioContentTypes } from "@/lib/types";
 
@@ -133,6 +134,22 @@ export async function POST(request: NextRequest) {
     const language = body.language || "en";
     const category = body.category || "MARKETING";
     const headerType = body.header_type || "none";
+
+    // Catch documented Meta rejection causes before creating the Twilio
+    // content resource. This route has no sample_values field — the variable
+    // labels stand in as samples (legacy behavior).
+    const contentError = validateTemplateContent({
+      bodyTemplate: body.body_template,
+      headerType,
+      headerText: body.header_text,
+      footerText: body.footer_text,
+      buttons: body.buttons,
+      variables: body.variables,
+      sampleValues: body.variables,
+    });
+    if (contentError) {
+      return NextResponse.json({ error: contentError }, { status: 400 });
+    }
 
     // Build variables map for Twilio Content API
     const variablesMap: Record<string, string> = {};
