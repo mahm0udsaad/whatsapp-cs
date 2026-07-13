@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Animated, Easing, Platform } from "react-native";
 import DateTimePicker, {
   type DateTimePickerEvent,
@@ -196,6 +196,7 @@ export default function CampaignNewEditScreen() {
   );
   const [reuseVarValues, setReuseVarValues] = useState<string[]>([]);
   const [stepIndex, setStepIndex] = useState(0);
+  const [customerSearch, setCustomerSearch] = useState("");
 
   // Step transition: quick fade + slide, onboarding-style.
   const stepAnim = useRef(new Animated.Value(1)).current;
@@ -210,12 +211,20 @@ export default function CampaignNewEditScreen() {
     }).start();
   };
 
-  const selectedPhones = useMemo<string[]>(() => {
+  // Seeded from the customers-screen prefill, then fully editable in-wizard.
+  const [selectedPhones, setSelectedPhones] = useState<string[]>(() => {
     const arr = (globalThis as unknown as Record<string, unknown>)[
       SELECTED_PHONES_KEY
     ];
     return Array.isArray(arr) ? (arr as string[]).slice() : [];
-  }, []);
+  });
+
+  const togglePhone = (phone: string) =>
+    setSelectedPhones((prev) =>
+      prev.includes(phone)
+        ? prev.filter((p) => p !== phone)
+        : [...prev, phone]
+    );
 
   const templatesQuery = useQuery({
     queryKey: qk.marketingTemplates(restaurantId),
@@ -351,6 +360,22 @@ export default function CampaignNewEditScreen() {
     audienceKind === "selected"
       ? selectedPhones.length
       : (audienceQuery.data?.total ?? 0);
+
+  // Full customer list for the in-wizard picker (opted-out already excluded
+  // server-side). Fetched only when the user opens "عملاء محددون".
+  const customersQuery = useQuery({
+    queryKey: qk.marketingCustomersCount(restaurantId, "picker"),
+    enabled: !!restaurantId && audienceKind === "selected",
+    queryFn: () => listMarketingCustomers({ limit: 2000 }),
+  });
+
+  const searchNeedle = customerSearch.trim();
+  const pickerRows = (customersQuery.data?.rows ?? []).filter(
+    (c) =>
+      !searchNeedle ||
+      (c.full_name ?? "").includes(searchNeedle) ||
+      c.phone_number.includes(searchNeedle)
+  );
 
   // ---- Image handling (upload / AI gen) -----------------------------------
 
@@ -1003,16 +1028,76 @@ export default function CampaignNewEditScreen() {
                   active={audienceKind === "90d"}
                   onPress={() => setAudienceKind("90d")}
                 />
-                {selectedPhones.length > 0 ? (
-                  <AudienceOption
-                    icon="checkmark-circle"
-                    label={`المحددون (${arNum(selectedPhones.length)})`}
-                    hint="جهات الاتصال التي اخترتها من قائمة العملاء"
-                    active={audienceKind === "selected"}
-                    onPress={() => setAudienceKind("selected")}
-                  />
-                ) : null}
+                <AudienceOption
+                  icon="checkmark-circle"
+                  label={
+                    selectedPhones.length > 0
+                      ? `عملاء محددون (${arNum(selectedPhones.length)})`
+                      : "عملاء محددون"
+                  }
+                  hint="اختر بنفسك من قائمة عملائك"
+                  active={audienceKind === "selected"}
+                  onPress={() => setAudienceKind("selected")}
+                />
               </View>
+
+              {audienceKind === "selected" ? (
+                <ManagerCard className="mb-3">
+                  <TextInput
+                    value={customerSearch}
+                    onChangeText={setCustomerSearch}
+                    placeholder="ابحث بالاسم أو الرقم…"
+                    placeholderTextColor="#9CA3AF"
+                    textAlign="right"
+                    className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-950"
+                  />
+                  {customersQuery.isLoading ? (
+                    <View className="items-center py-6">
+                      <ActivityIndicator />
+                    </View>
+                  ) : pickerRows.length === 0 ? (
+                    <Text className="py-6 text-center text-xs text-gray-500">
+                      {searchNeedle
+                        ? "لا نتائج لهذا البحث."
+                        : "لا يوجد عملاء بعد."}
+                    </Text>
+                  ) : (
+                    <View className="mt-2">
+                      {pickerRows.slice(0, 50).map((c) => {
+                        const checked = selectedPhones.includes(c.phone_number);
+                        return (
+                          <Pressable
+                            key={c.phone_number}
+                            onPress={() => togglePhone(c.phone_number)}
+                            className="flex-row-reverse items-center gap-2 border-b border-[#F0F2FA] py-2.5"
+                          >
+                            <Ionicons
+                              name={
+                                checked ? "checkmark-circle" : "ellipse-outline"
+                              }
+                              size={20}
+                              color={checked ? managerColors.brand : "#C7D0F0"}
+                            />
+                            <View className="flex-1">
+                              <Text className="text-right text-sm font-semibold text-[#16245C]">
+                                {c.full_name?.trim() || "بدون اسم"}
+                              </Text>
+                              <Text className="text-right text-[11px] text-[#5E6A99]">
+                                {c.phone_number}
+                              </Text>
+                            </View>
+                          </Pressable>
+                        );
+                      })}
+                      {pickerRows.length > 50 ? (
+                        <Text className="pt-2 text-center text-[10px] text-gray-400">
+                          يظهر أول ٥٠ — استخدم البحث للوصول للبقية.
+                        </Text>
+                      ) : null}
+                    </View>
+                  )}
+                </ManagerCard>
+              ) : null}
 
               <ManagerCard>
                 <View className="flex-row-reverse items-center justify-between">
