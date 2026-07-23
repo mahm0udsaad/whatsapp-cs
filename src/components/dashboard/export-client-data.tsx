@@ -68,6 +68,7 @@ export function ExportClientData() {
   const [disconnecting, setDisconnecting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<IngestResult | null>(null);
+  const [savedLinked, setSavedLinked] = useState(false);
 
   const statusRef = useRef<Status>("idle");
   statusRef.current = status;
@@ -81,6 +82,7 @@ export function ExportClientData() {
     setProgress(null);
     setNumber(null);
     setSaved(null);
+    setSavedLinked(false);
     try {
       const res = await fetch("/api/dashboard/export/start", { method: "POST" });
       const data = await res.json();
@@ -172,6 +174,30 @@ export function ExportClientData() {
     }
   }, [exportId]);
 
+  // Save & KEEP the WhatsApp companion linked (no disconnect). The archive lands
+  // in our DB while the session stays live. Note: re-pulling newer messages later
+  // still needs a fresh QR scan (the export service pulls once per link), and the
+  // service auto-unlinks an idle session after its TTL (~6h) regardless.
+  const saveKeepLinked = useCallback(async () => {
+    if (!exportId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/dashboard/export/${exportId}/ingest`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "فشل حفظ المحادثات");
+      setSaved(data.result as IngestResult);
+      setSavedLinked(true);
+      // Intentionally NOT calling /disconnect — the device stays linked.
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "فشل حفظ المحادثات");
+    } finally {
+      setSaving(false);
+    }
+  }, [exportId]);
+
   const isActive = ACTIVE.includes(status);
 
   return (
@@ -183,7 +209,8 @@ export function ExportClientData() {
         </CardTitle>
         <CardDescription>
           اربط رقم واتساب العميل عبر مسح رمز QR لسحب سجل المحادثات والوسائط
-          والرسائل الصوتية، ثم اعتمد التصدير وافصل الاتصال.
+          والرسائل الصوتية، ثم اعتمد التصدير لحفظه في النظام. يبقى الجهاز مرتبطًا
+          بعد الحفظ ما لم تفصله يدويًا.
         </CardDescription>
       </CardHeader>
 
@@ -293,7 +320,7 @@ export function ExportClientData() {
           </div>
         )}
 
-        {/* Ready: summary + approve/download/disconnect */}
+        {/* Ready: summary + save (keeps the device linked by default) */}
         {status === "ready" && (
           <div className="space-y-5">
             <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
@@ -303,39 +330,83 @@ export function ExportClientData() {
               </span>
             </div>
             <ProgressGrid progress={progress} />
-            <div className="flex flex-wrap gap-3">
-              <Button onClick={approveAndSave} disabled={saving || disconnecting}>
-                {saving ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="size-4" />
-                )}
-                اعتماد وحفظ المحادثات في النظام
-              </Button>
-              <a
-                href={`/api/dashboard/export/${exportId}/download`}
-                className={buttonVariants({ variant: "outline" })}
-              >
-                <Download className="size-4" /> تنزيل نسخة (ZIP)
-              </a>
-              <Button
-                onClick={disconnect}
-                variant="ghost"
-                disabled={disconnecting || saving}
-              >
-                {disconnecting ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Power className="size-4" />
-                )}
-                فصل بدون حفظ
-              </Button>
-            </div>
-            <p className="text-xs text-slate-400">
-              «اعتماد وحفظ» يخزّن المحادثات الفردية (بدون المجموعات) والوسائط في
-              قاعدة بياناتنا لتظهر في صفحتَي المحادثات والعملاء، ثم يفصل الاتصال
-              ويحذف البيانات المؤقتة من الخادم.
-            </p>
+
+            {savedLinked ? (
+              <>
+                <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-blue-800">
+                  <Smartphone className="mt-0.5 size-4 shrink-0" />
+                  <p className="text-xs">
+                    تم الحفظ والجهاز ما زال مرتبطًا. لإعادة سحب رسائل أحدث لاحقًا،
+                    ابدأ تصديرًا جديدًا وامسح رمز QR من جديد. سيُلغى الربط تلقائيًا
+                    بعد عدة ساعات إن تُرك دون فصل.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <a
+                    href={`/api/dashboard/export/${exportId}/download`}
+                    className={buttonVariants({ variant: "outline" })}
+                  >
+                    <Download className="size-4" /> تنزيل نسخة (ZIP)
+                  </a>
+                  <Button
+                    onClick={disconnect}
+                    variant="ghost"
+                    disabled={disconnecting}
+                  >
+                    {disconnecting ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Power className="size-4" />
+                    )}
+                    فصل الاتصال الآن
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-3">
+                  <Button onClick={saveKeepLinked} disabled={saving || disconnecting}>
+                    {saving ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="size-4" />
+                    )}
+                    اعتماد وحفظ (يبقى مرتبطًا)
+                  </Button>
+                  <a
+                    href={`/api/dashboard/export/${exportId}/download`}
+                    className={buttonVariants({ variant: "outline" })}
+                  >
+                    <Download className="size-4" /> تنزيل نسخة (ZIP)
+                  </a>
+                  <Button
+                    onClick={approveAndSave}
+                    variant="outline"
+                    disabled={saving || disconnecting}
+                  >
+                    {saving ? <Loader2 className="size-4 animate-spin" /> : null}
+                    حفظ ثم فصل
+                  </Button>
+                  <Button
+                    onClick={disconnect}
+                    variant="ghost"
+                    disabled={disconnecting || saving}
+                  >
+                    {disconnecting ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Power className="size-4" />
+                    )}
+                    فصل بدون حفظ
+                  </Button>
+                </div>
+                <p className="text-xs text-slate-400">
+                  «اعتماد وحفظ» يخزّن المحادثات الفردية (بدون المجموعات) والوسائط
+                  في قاعدة بياناتنا لتظهر في صفحتَي المحادثات والعملاء، مع إبقاء
+                  الجهاز مرتبطًا. استخدم «حفظ ثم فصل» للحفظ وإلغاء الربط فورًا.
+                </p>
+              </>
+            )}
           </div>
         )}
 
