@@ -13,6 +13,7 @@ import { router } from "expo-router";
 import { createCustomer } from "../../../lib/api";
 import { ManagerCard, managerColors } from "../../../components/manager-ui";
 
+import { toUserMessage } from "../../../lib/errors";
 const E164 = /^\+[1-9]\d{1,14}$/;
 
 export default function NewCustomerScreen() {
@@ -33,7 +34,7 @@ export default function NewCustomerScreen() {
       router.back();
     },
     onError: (e: unknown) =>
-      Alert.alert("خطأ", e instanceof Error ? e.message : "خطأ غير معروف"),
+      Alert.alert("خطأ", toUserMessage(e, "خطأ غير معروف")),
   });
 
   return (

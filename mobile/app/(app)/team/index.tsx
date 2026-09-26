@@ -53,6 +53,7 @@ import {
   managerColors,
 } from "../../../components/manager-ui";
 
+import { toUserMessage } from "../../../lib/errors";
 type Segment = "people" | "schedule" | "performance";
 
 function initialsOf(name: string | null) {
@@ -99,7 +100,7 @@ export default function TeamScreen() {
       setSelectedMember(null);
     },
     onError: (e: unknown) => {
-      Alert.alert("خطأ", e instanceof Error ? e.message : "تعذر التحديث");
+      Alert.alert("خطأ", toUserMessage(e, "تعذر التحديث"));
     },
   });
 
@@ -1770,14 +1771,14 @@ function AgentDetailModal({
       qc.invalidateQueries({ queryKey: qk.teamMemberNotes(tmId) });
     },
     onError: (e: unknown) =>
-      Alert.alert("خطأ", e instanceof Error ? e.message : "تعذّر حفظ الملاحظة"),
+      Alert.alert("خطأ", toUserMessage(e, "تعذّر حفظ الملاحظة")),
   });
   const deleteNoteMutation = useMutation({
     mutationFn: (noteId: string) => deleteTeamMemberNote(tmId, noteId),
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: qk.teamMemberNotes(tmId) }),
     onError: (e: unknown) =>
-      Alert.alert("خطأ", e instanceof Error ? e.message : "تعذّر الحذف"),
+      Alert.alert("خطأ", toUserMessage(e, "تعذّر الحذف")),
   });
 
   // Goals editor state — seeded from query, persisted on blur.
@@ -1808,7 +1809,7 @@ function AgentDetailModal({
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: qk.teamMemberGoals(tmId) }),
     onError: (e: unknown) =>
-      Alert.alert("خطأ", e instanceof Error ? e.message : "تعذّر الحفظ"),
+      Alert.alert("خطأ", toUserMessage(e, "تعذّر الحفظ")),
   });
 
   if (!row) return null;

@@ -30,8 +30,9 @@ import { SkeletonBlock } from "../../components/manager-ui";
 import { AiScheduleSheet } from "../../components/ai-schedule-sheet";
 import { captureException } from "../../lib/observability";
 
+import { toUserMessage } from "../../lib/errors";
 function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
+  return toUserMessage(error, fallback);
 }
 
 export default function ProfileScreen() {

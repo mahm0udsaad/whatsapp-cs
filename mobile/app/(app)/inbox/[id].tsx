@@ -65,6 +65,7 @@ import {
   View,
 } from "../../../components/tw";
 
+import { toUserMessage } from "../../../lib/errors";
 type TwilioStatus =
   | "queued"
   | "sending"
@@ -322,7 +323,7 @@ export default function ConversationDetail() {
           ctx.prevList
         );
       }
-      Alert.alert("خطأ", e instanceof Error ? e.message : "تعذّر التحويل");
+      Alert.alert("خطأ", toUserMessage(e, "تعذّر التحويل"));
     },
     onSettled: () => {
       // Leave KPIs to the standard 20s cadence — the specific row patches
@@ -932,7 +933,7 @@ export default function ConversationDetail() {
     } catch (e: unknown) {
       Alert.alert(
         "تعذّر اختيار الصورة",
-        e instanceof Error ? e.message : "حاول مرة أخرى"
+        toUserMessage(e, "حاول مرة أخرى")
       );
     }
   }, []);
@@ -955,7 +956,7 @@ export default function ConversationDetail() {
     } catch (e: unknown) {
       Alert.alert(
         "تعذّر اختيار الملف",
-        e instanceof Error ? e.message : "حاول مرة أخرى"
+        toUserMessage(e, "حاول مرة أخرى")
       );
     }
   }, []);
@@ -2337,7 +2338,7 @@ function ChatArchiveToggle({
     onError: (e: unknown) => {
       Alert.alert(
         "خطأ",
-        e instanceof Error ? e.message : "تعذّر تحديث الأرشيف"
+        toUserMessage(e, "تعذّر تحديث الأرشيف")
       );
     },
   });
@@ -2432,7 +2433,7 @@ function LabelsPickerModal({
     onError: (e: unknown) => {
       Alert.alert(
         "تعذّر إنشاء التسمية",
-        e instanceof Error ? e.message : "حدث خطأ"
+        toUserMessage(e, "حدث خطأ")
       );
     },
   });
@@ -2450,7 +2451,7 @@ function LabelsPickerModal({
       onClose();
     },
     onError: (e: unknown) => {
-      Alert.alert("خطأ", e instanceof Error ? e.message : "تعذّر الحفظ");
+      Alert.alert("خطأ", toUserMessage(e, "تعذّر الحفظ"));
     },
   });
 

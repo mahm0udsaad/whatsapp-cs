@@ -25,6 +25,7 @@ import {
 } from "../../../components/manager-ui";
 import { Pressable, SafeAreaView, Text, View } from "../../../components/tw";
 
+import { toUserMessage } from "../../../lib/errors";
 export default function CampaignDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -61,7 +62,7 @@ export default function CampaignDetailScreen() {
       qc.invalidateQueries({ queryKey: qk.marketingCampaigns(restaurantId) });
     },
     onError: (e: unknown) =>
-      Alert.alert("خطأ", e instanceof Error ? e.message : "تعذّر الإرسال"),
+      Alert.alert("خطأ", toUserMessage(e, "تعذّر الإرسال")),
   });
 
   function confirmSend() {

@@ -39,6 +39,7 @@ import {
   View,
 } from "../../../components/tw";
 
+import { toUserMessage } from "../../../lib/errors";
 const SELECTED_PHONES_KEY = "whatsapp-cs:campaign-prefill-phones";
 
 type AudienceKind = "all" | "30d" | "90d" | "selected";
@@ -408,7 +409,7 @@ export default function CampaignNewEditScreen() {
       if (r && draft) setDraft({ ...draft, headerImageUrl: r.url });
     },
     onError: (e: unknown) =>
-      Alert.alert("خطأ", e instanceof Error ? e.message : "فشل رفع الصورة"),
+      Alert.alert("خطأ", toUserMessage(e, "فشل رفع الصورة")),
   });
 
   const generateMutation = useMutation({
@@ -426,7 +427,7 @@ export default function CampaignNewEditScreen() {
     onError: (e: unknown) =>
       Alert.alert(
         "خطأ",
-        e instanceof Error ? e.message : "فشل توليد الصورة"
+        toUserMessage(e, "فشل توليد الصورة")
       ),
   });
 
@@ -548,7 +549,7 @@ export default function CampaignNewEditScreen() {
       ]);
     },
     onError: (e: unknown) =>
-      Alert.alert("خطأ", e instanceof Error ? e.message : "خطأ غير معروف"),
+      Alert.alert("خطأ", toUserMessage(e, "خطأ غير معروف")),
   });
 
   if (bootstrapError) {

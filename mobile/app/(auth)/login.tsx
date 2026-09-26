@@ -23,6 +23,7 @@ import type { TeamMemberRow } from "../../lib/supabase";
 import { captureException, captureMessage } from "../../lib/observability";
 import { managerColors, softShadow } from "../../components/manager-ui";
 
+import { toUserMessage } from "../../lib/errors";
 const colors = {
   ink: managerColors.ink,
   muted: managerColors.muted,
@@ -61,7 +62,8 @@ export default function LoginScreen() {
         setMemberships(ms);
       }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "فشل تسجيل الدخول");
+      captureException(e, { source: "login" });
+      setErr(toUserMessage(e, "فشل تسجيل الدخول. حاول مرة أخرى."));
     } finally {
       setLoading(false);
     }

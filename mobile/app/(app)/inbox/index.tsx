@@ -39,6 +39,7 @@ import {
   managerColors,
 } from "../../../components/manager-ui";
 
+import { toUserMessage } from "../../../lib/errors";
 type Filter = "all" | "unassigned" | "mine" | "bot" | "expired" | "archived";
 type DateRange = "any" | "today" | "week" | "month";
 
@@ -228,7 +229,7 @@ export default function InboxScreen() {
           ctx.prevList
         );
       }
-      Alert.alert("خطأ", e instanceof Error ? e.message : "تعذّر التحويل");
+      Alert.alert("خطأ", toUserMessage(e, "تعذّر التحويل"));
     },
   });
 
@@ -1322,7 +1323,7 @@ function ArchiveToggleButton({
       if (ctx?.prevArchived) qc.setQueryData(archivedKey, ctx.prevArchived);
       Alert.alert(
         "خطأ",
-        e instanceof Error ? e.message : "تعذّر تحديث الأرشيف"
+        toUserMessage(e, "تعذّر تحديث الأرشيف")
       );
     },
   });

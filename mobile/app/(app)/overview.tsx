@@ -50,6 +50,7 @@ import {
 } from "../../components/manager-ui";
 import { ExtractedIntentCard } from "../../components/extracted-intent-card";
 
+import { toUserMessage } from "../../lib/errors";
 export default function OverviewScreen() {
   const member = useSessionStore((s) => s.activeMember);
   const restaurantId = member?.restaurant_id ?? "";
@@ -145,7 +146,7 @@ export default function OverviewScreen() {
         );
         return;
       }
-      const msg = e instanceof Error ? e.message : "تعذر التحديث";
+      const msg = toUserMessage(e, "تعذر التحديث");
       Alert.alert("خطأ", msg);
     },
   });

@@ -23,6 +23,7 @@ import {
 } from "../../../lib/api";
 import { ManagerCard, managerColors } from "../../../components/manager-ui";
 
+import { toUserMessage } from "../../../lib/errors";
 /**
  * Mobile customer detail screen.
  *
@@ -84,7 +85,7 @@ export default function CustomerDetailScreen() {
       Alert.alert("تم الحفظ");
     },
     onError: (e: unknown) =>
-      Alert.alert("خطأ", e instanceof Error ? e.message : "خطأ غير معروف"),
+      Alert.alert("خطأ", toUserMessage(e, "خطأ غير معروف")),
   });
 
   const deleteMutation = useMutation({
@@ -94,7 +95,7 @@ export default function CustomerDetailScreen() {
       router.back();
     },
     onError: (e: unknown) =>
-      Alert.alert("خطأ", e instanceof Error ? e.message : "خطأ غير معروف"),
+      Alert.alert("خطأ", toUserMessage(e, "خطأ غير معروف")),
   });
 
   const sendMutation = useMutation({
@@ -106,7 +107,7 @@ export default function CustomerDetailScreen() {
     onError: (e: unknown) =>
       Alert.alert(
         "تعذر فتح المحادثة",
-        e instanceof Error ? e.message : "خطأ غير معروف"
+        toUserMessage(e, "خطأ غير معروف")
       ),
   });
 

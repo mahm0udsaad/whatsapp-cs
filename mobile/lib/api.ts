@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { captureMessage } from "./observability";
+import { MSG_TIMEOUT, toUserMessage } from "./errors";
 
 const BASE = process.env.EXPO_PUBLIC_APP_BASE_URL ?? "";
 
@@ -64,7 +65,7 @@ export async function apiFetch(
         elapsedMs: elapsed,
         limitMs: effectiveTimeout,
       });
-      throw new Error("انتهت مهلة الاتصال. حاول مرة أخرى.");
+      throw new Error(MSG_TIMEOUT);
     }
     throw e;
   }
@@ -137,22 +138,17 @@ export function getApiErrorMessage(
     return "حجم الصورة كبير جدًا. اختر صورة أصغر أو أزل الصورة المرجعية.";
   }
 
-  if (apiError.message.includes("429")) {
-    return "تم تجاوز الحد المسموح حاليًا. حاول لاحقًا.";
-  }
-
-  if (typeof apiError.body === "object" && apiError.body) {
+  if (typeof apiError.body === "object" && apiError.body && (apiError.status ?? 0) < 500) {
     const body = apiError.body as {
       error?: string;
       message?: string;
       detail?: string;
     };
     const bodyMessage = body.error ?? body.message ?? body.detail;
-    if (bodyMessage) return bodyMessage;
+    if (bodyMessage) return toUserMessage(bodyMessage, fallback);
   }
 
-  const cleaned = apiError.message.replace(/^\[\d+\]\s*/, "").trim();
-  return cleaned || fallback;
+  return toUserMessage(apiError, fallback);
 }
 
 /**

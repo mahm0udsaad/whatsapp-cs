@@ -24,6 +24,7 @@ import { qk } from "../../../lib/query-keys";
 import { useSessionStore } from "../../../lib/session-store";
 import { managerColors } from "../../../components/manager-ui";
 
+import { toUserMessage } from "../../../lib/errors";
 const PAGE_SIZE = 30;
 const SELECTED_PHONES_STORAGE_KEY =
   "whatsapp-cs:campaign-prefill-phones";
@@ -77,7 +78,7 @@ export default function CustomersListScreen() {
     onError: (e: unknown) =>
       Alert.alert(
         "تعذر فتح المحادثة",
-        e instanceof Error ? e.message : "خطأ غير معروف"
+        toUserMessage(e, "خطأ غير معروف")
       ),
   });
 

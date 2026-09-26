@@ -34,7 +34,24 @@ console.log(
   anonKey?.slice(-12) ?? "(missing)"
 );
 
+// React Native fetch has no timeout. When the Supabase auth server hangs
+// (e.g. 504 from an exhausted DB pool) the login button would spin forever.
+// Abort auth requests after a bounded time so the UI always resolves.
+const AUTH_TIMEOUT_MS = 20_000;
+
+const fetchWithAuthTimeout: typeof fetch = (input, init) => {
+  const target =
+    typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+  if (!target.includes("/auth/v1/") || init?.signal) return fetch(input, init);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
+  return fetch(input, { ...init, signal: controller.signal }).finally(() =>
+    clearTimeout(timer)
+  );
+};
+
 export const supabase = createClient(url ?? "", anonKey ?? "", {
+  global: { fetch: fetchWithAuthTimeout },
   auth: {
     storage: storage as never,
     autoRefreshToken: true,
