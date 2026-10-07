@@ -1211,6 +1211,7 @@ export default function ConversationDetail() {
         conversationId={id}
         restaurantId={restaurantId}
         customerName={conv.customer_name}
+        senderName={member?.full_name ?? null}
         onSent={() => {
           setTemplateOpen(false);
           qc.invalidateQueries({ queryKey });

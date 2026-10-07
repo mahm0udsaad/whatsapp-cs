@@ -11,6 +11,8 @@
  *     conversation (human mode) so the customer's reply lands with them.
  *
  * Body: { template_id, variables?: Record<"1"|"2"|..., string> }
+ * Unfilled variables are auto-filled from their labels (agent name, salon /
+ * customer name) — see resolveTemplateVariables.
  * Reply: { message, claimed }
  */
 
@@ -66,7 +68,7 @@ export async function POST(
 
     const { data: member } = await adminSupabaseClient
       .from("team_members")
-      .select("id, role")
+      .select("id, role, full_name")
       .eq("user_id", user.id)
       .eq("restaurant_id", restaurantId)
       .eq("is_active", true)
@@ -98,7 +100,7 @@ export async function POST(
 
     const { data: template } = await adminSupabaseClient
       .from("marketing_templates")
-      .select("id, name, body_template, language, approval_status, twilio_content_sid")
+      .select("id, name, body_template, language, variables, approval_status, twilio_content_sid")
       .eq("id", templateId)
       .eq("restaurant_id", restaurantId)
       .maybeSingle();
@@ -128,6 +130,10 @@ export async function POST(
       language: template.language as string | null,
       provided: body?.variables ?? null,
       customerName,
+      labels: Array.isArray(template.variables)
+        ? (template.variables as string[])
+        : null,
+      senderName: (member.full_name as string | null) ?? null,
     });
     if (!resolved.ok) {
       return NextResponse.json(

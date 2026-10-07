@@ -30,8 +30,11 @@ import {
  * Templates are the only thing WhatsApp accepts for a new number or after the
  * 24h window closes. Pick → fill variables → preview → send.
  *
- * {{1}} is the customer name by convention (falls back server-side), so its
- * input is optional; every other variable is required.
+ * Variables auto-fill from their labels, mirroring the server resolver in
+ * src/lib/template-conversation.ts (keep in sync): agent_name → the sending
+ * agent, salon_name → the customer's stored name, otherwise {{1}} is the
+ * customer name with a generic greeting fallback. Auto-filled inputs are
+ * optional overrides; everything else is required.
  */
 
 const VAR_RE = /\{\{\s*(\d+)\s*\}\}/g;
@@ -43,17 +46,49 @@ function placeholderIndexes(body: string | null | undefined): number[] {
   return Array.from(set).sort((a, b) => a - b);
 }
 
-function renderPreview(
-  body: string,
-  values: Record<string, string>,
-  nameFallback: string
-): string {
-  return body.replace(VAR_RE, (match, g1: string) => {
-    const v = values[g1]?.trim();
-    if (v) return v;
-    if (g1 === "1") return nameFallback;
-    return match;
-  });
+const AGENT_LABELS = new Set(["agent_name", "sender_name", "employee_name"]);
+const BUSINESS_LABELS = new Set([
+  "salon_name",
+  "business_name",
+  "store_name",
+  "restaurant_name",
+]);
+const LABEL_AR: Record<string, string> = {
+  agent_name: "اسمك",
+  sender_name: "اسمك",
+  employee_name: "اسمك",
+  salon_name: "اسم الصالون",
+  business_name: "اسم النشاط",
+  store_name: "اسم المتجر",
+  restaurant_name: "اسم المطعم",
+  customer_name: "اسم العميل",
+  link: "الرابط",
+  url: "الرابط",
+};
+
+const norm = (l: string | null | undefined) => (l ?? "").trim().toLowerCase();
+
+/** Value the server will use when the input is left empty (null = required). */
+function autoValue(
+  idx: number,
+  labels: readonly string[],
+  customerName: string | null,
+  senderName: string | null,
+  language: string | null | undefined
+): string | null {
+  const label = norm(labels[idx - 1]);
+  if (AGENT_LABELS.has(label)) return senderName;
+  const business = labels.findIndex((l) => BUSINESS_LABELS.has(norm(l)));
+  const nameSlot =
+    business >= 0 ? business + 1 : AGENT_LABELS.has(norm(labels[0])) ? null : 1;
+  if (idx !== nameSlot) return null;
+  if (customerName) return customerName;
+  if (BUSINESS_LABELS.has(label)) return null;
+  return language === "en" ? "Dear customer" : "عميلنا العزيز";
+}
+
+function renderPreview(body: string, resolved: Record<string, string>): string {
+  return body.replace(VAR_RE, (match, g1: string) => resolved[g1] || match);
 }
 
 export function TemplateSheet({
@@ -62,6 +97,7 @@ export function TemplateSheet({
   conversationId,
   restaurantId,
   customerName,
+  senderName,
   onSent,
 }: {
   visible: boolean;
@@ -69,6 +105,7 @@ export function TemplateSheet({
   conversationId: string;
   restaurantId: string;
   customerName: string | null;
+  senderName: string | null;
   onSent: (result: { claimed: boolean }) => void;
 }) {
   const [templateId, setTemplateId] = useState<string | null>(null);
@@ -93,10 +130,22 @@ export function TemplateSheet({
   const template: ChatTemplate | null =
     templates.find((t) => t.id === templateId) ?? null;
   const indexes = placeholderIndexes(template?.body_template);
-  const nameFallback =
-    customerName?.trim() ||
-    (template?.language === "en" ? "Dear customer" : "عميلنا العزيز");
-  const missing = indexes.filter((i) => i !== 1 && !values[String(i)]?.trim());
+  const labels = template?.variables ?? [];
+  const autos: Record<string, string | null> = {};
+  const resolved: Record<string, string> = {};
+  for (const i of indexes) {
+    const auto = autoValue(
+      i,
+      labels,
+      customerName?.trim() || null,
+      senderName?.trim() || null,
+      template?.language
+    );
+    autos[String(i)] = auto;
+    const v = values[String(i)]?.trim() || auto;
+    if (v) resolved[String(i)] = v;
+  }
+  const missing = indexes.filter((i) => !resolved[String(i)]);
   const canSend = !!template && missing.length === 0;
 
   const sendMutation = useMutation({
@@ -222,12 +271,12 @@ export function TemplateSheet({
                           <View className="mt-2">
                             {indexes.map((i) => {
                               const label = t.variables?.[i - 1];
+                              const auto = autos[String(i)];
                               return (
                                 <View key={i} className="mt-1.5">
                                   <Text className="text-right text-xs text-[#5E6A99]">
-                                    {`{{${i}}}`}
-                                    {label ? ` · ${label}` : ""}
-                                    {i === 1 ? " (اختياري — اسم العميل)" : ""}
+                                    {LABEL_AR[norm(label)] ?? label ?? `{{${i}}}`}
+                                    {auto ? " (تلقائي — يمكنك تعديله)" : ""}
                                   </Text>
                                   <TextInput
                                     value={values[String(i)] ?? ""}
@@ -237,7 +286,7 @@ export function TemplateSheet({
                                         [String(i)]: v,
                                       }))
                                     }
-                                    placeholder={i === 1 ? nameFallback : "أدخل القيمة"}
+                                    placeholder={auto ?? "أدخل القيمة"}
                                     placeholderTextColor="#98A2B3"
                                     textAlign="right"
                                     className="mt-1 rounded-lg border border-[#D6DDF8] bg-white px-3 py-2 text-sm text-[#16245C]"
@@ -259,7 +308,7 @@ export function TemplateSheet({
                               </Text>
                             ) : null}
                             <Text className="text-right text-sm leading-6 text-white">
-                              {renderPreview(t.body_template ?? "", values, nameFallback)}
+                              {renderPreview(t.body_template ?? "", resolved)}
                             </Text>
                             {t.footer_text ? (
                               <Text className="mt-1 text-right text-[11px] text-[#D6DDF8]">
