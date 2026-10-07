@@ -358,11 +358,13 @@ That keeps crawl-imported menu items compatible with the live dashboard and the 
 
 ### 5.10 Template-Initiated Conversations (Mobile)
 
-Managers can start a WhatsApp conversation with any number (new or outside the 24h window) by sending an approved template:
+Every team member (agents and managers) can start a WhatsApp conversation with any number, or re-open one outside the 24h window, by sending an approved template:
 
-- `POST /api/mobile/conversations/start-with-template` (`src/app/api/mobile/conversations/start-with-template/route.ts`) — tenant-scoped, opt-out gated, upserts the number into `customers`, finds/creates the conversation, sends via Twilio Content API, persists the message as `message_type = 'template'`, and claims the conversation for the sender when unassigned.
-- Variable resolution lives in `src/lib/template-conversation.ts` (`{{1}}` = customer name with a generic fallback, same convention as campaigns).
-- Mobile entry points: inbox "محادثة جديدة" button, customer detail "إرسال قالب واتساب", and the closed-window banner inside a chat → `mobile/app/(app)/inbox/new.tsx`.
+- Flow: inbox "محادثة جديدة" → number + optional name → chat screen opens with the template bottom sheet (`mobile/components/new-chat-sheet.tsx`, `mobile/components/template-sheet.tsx`). The same sheet opens from the closed-window banner inside any chat and from customer detail.
+- `POST /api/mobile/inbox/conversations/start` — member-scoped, opt-out gated, upserts the number into `customers`, finds/creates the conversation.
+- `GET /api/mobile/inbox/templates` — approved templates for any member.
+- `POST /api/mobile/inbox/conversations/:id/template` — sends via Twilio Content API, persists the message as `message_type = 'template'`, un-archives, and hands the conversation to the sender when it was unassigned (claim RPC) or bot-handled. Blocked (409) when another agent owns it, unless the caller is a manager.
+- Variable resolution: `src/lib/template-conversation.ts` (`{{1}}` = customer name with a generic fallback, same convention as campaigns). Shared send helpers: `src/lib/template-send.ts`.
 
 ---
 

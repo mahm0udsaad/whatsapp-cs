@@ -35,6 +35,7 @@ import {
   type TeamMemberRosterRow,
 } from "../../../lib/api";
 import { CustomerSatisfactionModal } from "../../../components/customer-satisfaction-modal";
+import { TemplateSheet } from "../../../components/template-sheet";
 import { labelChipClasses, labelColorOrder } from "../../../lib/label-colors";
 import { supabase } from "../../../lib/supabase";
 import { useSessionStore } from "../../../lib/session-store";
@@ -195,7 +196,10 @@ function getOwnerLabel(conv: ConvPayload["conversation"]) {
 }
 
 export default function ConversationDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, template: templateParam } = useLocalSearchParams<{
+    id: string;
+    template?: string;
+  }>();
   const router = useRouter();
   const qc = useQueryClient();
   const member = useSessionStore((s) => s.activeMember);
@@ -221,6 +225,8 @@ export default function ConversationDetail() {
     | null
   >(null);
   const [uploading, setUploading] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const autoOpenedTemplateRef = useRef(false);
 
   const rosterQuery = useQuery({
     queryKey: qk.teamRoster(restaurantId),
@@ -960,6 +966,16 @@ export default function ConversationDetail() {
     }
   }, []);
 
+  // Arriving from "new chat" (?template=1): open the template picker once the
+  // conversation has loaded, as long as this agent is allowed to send.
+  useEffect(() => {
+    if (templateParam !== "1" || !conv || autoOpenedTemplateRef.current) return;
+    autoOpenedTemplateRef.current = true;
+    if (manager || conv.handler_mode !== "human" || conv.is_mine) {
+      setTemplateOpen(true);
+    }
+  }, [templateParam, conv, manager]);
+
   if (!id) return null;
 
   if (query.isLoading || !conv) {
@@ -968,6 +984,11 @@ export default function ConversationDetail() {
 
   const windowState = getWindowState(conv.last_inbound_at);
   const expired = windowState.expired;
+  // Templates are needed for a new number or once the 24h window closes. Any
+  // agent may send one unless another agent owns the conversation.
+  const windowClosed = expired || !conv.last_inbound_at;
+  const canSendTemplate =
+    manager || conv.handler_mode !== "human" || conv.is_mine;
 
   return (
     <SafeAreaView
@@ -1148,17 +1169,9 @@ export default function ConversationDetail() {
           }
         />
 
-        {manager && (expired || !conv.last_inbound_at) ? (
+        {windowClosed && canSendTemplate ? (
           <Pressable
-            onPress={() =>
-              router.push({
-                pathname: "/inbox/new",
-                params: {
-                  phone: conv.customer_phone,
-                  ...(conv.customer_name ? { name: conv.customer_name } : {}),
-                },
-              })
-            }
+            onPress={() => setTemplateOpen(true)}
             className="flex-row-reverse items-center gap-2 border-t px-3 py-2.5"
             style={{ borderColor: chatTheme.line, backgroundColor: chatTheme.subtleSurface }}
             accessibilityRole="button"
@@ -1166,7 +1179,9 @@ export default function ConversationDetail() {
           >
             <Ionicons name="document-text-outline" size={17} color={managerColors.brand} />
             <Text className="flex-1 text-right text-xs leading-5 text-[#16245C]">
-              نافذة الرد مغلقة — أرسل قالبًا معتمدًا لإعادة فتح المحادثة.
+              {conv.last_inbound_at
+                ? "نافذة الرد مغلقة — أرسل قالبًا معتمدًا لإعادة فتح المحادثة."
+                : "محادثة جديدة — ابدأها بإرسال قالب معتمد."}
             </Text>
             <Text className="text-xs font-bold text-[#011F91]">إرسال قالب</Text>
           </Pressable>
@@ -1189,6 +1204,19 @@ export default function ConversationDetail() {
           onClearPendingFile={() => setPendingFile(null)}
         />
       </KeyboardAvoidingView>
+
+      <TemplateSheet
+        visible={templateOpen}
+        onClose={() => setTemplateOpen(false)}
+        conversationId={id}
+        restaurantId={restaurantId}
+        customerName={conv.customer_name}
+        onSent={() => {
+          setTemplateOpen(false);
+          qc.invalidateQueries({ queryKey });
+          qc.invalidateQueries({ queryKey: ["inbox"] });
+        }}
+      />
 
       {/* Manager reassign sheet */}
       <Modal

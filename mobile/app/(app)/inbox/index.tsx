@@ -23,6 +23,7 @@ import { supabase } from "../../../lib/supabase";
 import { displayMessageText } from "../../../lib/message-display";
 import { useSessionStore } from "../../../lib/session-store";
 import { isManager } from "../../../lib/roles";
+import { NewChatSheet } from "../../../components/new-chat-sheet";
 import {
   asArray,
   getTeamRoster,
@@ -153,6 +154,7 @@ export default function InboxScreen() {
   const [dateRange, setDateRange] = useState<DateRange>("any");
   const [labelFilterId, setLabelFilterId] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [newChatOpen, setNewChatOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [inboxLimit, setInboxLimit] = useState(INBOX_PAGE_SIZE);
   useEffect(() => {
@@ -757,7 +759,7 @@ export default function InboxScreen() {
         <FlatList
           data={items}
           keyExtractor={(c) => c.id}
-          contentContainerStyle={{ paddingTop: 4, paddingBottom: manager ? 84 : 18 }}
+          contentContainerStyle={{ paddingTop: 4, paddingBottom: 84 }}
           contentInsetAdjustmentBehavior="automatic"
           onEndReached={loadMore}
           onEndReachedThreshold={0.4}
@@ -939,17 +941,28 @@ export default function InboxScreen() {
         />
       )}
 
-      {manager ? (
-        <Pressable
-          onPress={() => router.push("/inbox/new")}
-          style={styles.newConversationFab}
-          accessibilityRole="button"
-          accessibilityLabel="محادثة جديدة بقالب"
-        >
-          <Ionicons name="create-outline" size={20} color="#FFFFFF" />
-          <Text style={styles.newConversationFabText}>محادثة جديدة</Text>
-        </Pressable>
-      ) : null}
+      <Pressable
+        onPress={() => setNewChatOpen(true)}
+        style={styles.newConversationFab}
+        accessibilityRole="button"
+        accessibilityLabel="محادثة جديدة"
+      >
+        <Ionicons name="create-outline" size={20} color="#FFFFFF" />
+        <Text style={styles.newConversationFabText}>محادثة جديدة</Text>
+      </Pressable>
+
+      <NewChatSheet
+        visible={newChatOpen}
+        onClose={() => setNewChatOpen(false)}
+        restaurantId={restaurantId}
+        onStarted={(conversationId) => {
+          setNewChatOpen(false);
+          router.push({
+            pathname: "/inbox/[id]",
+            params: { id: conversationId, template: "1" },
+          });
+        }}
+      />
 
       {/* Manager reassign sheet */}
       <Modal

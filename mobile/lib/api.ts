@@ -1029,22 +1029,53 @@ export async function findOrCreateConversationForPhone(
 }
 
 /**
- * Start (or resume) a conversation with any number by sending an approved
- * template — the only thing WhatsApp allows outside the 24h window.
- * `variables` is keyed by placeholder index ("1", "2", ...); {{1}} falls back
- * to the customer name server-side.
+ * "New chat" for any team member: resolves or creates the conversation for a
+ * phone number so the chat screen can open and send a template.
  */
-export async function startConversationWithTemplate(input: {
+export async function startNewChat(input: {
+  restaurantId: string;
   phone_number: string;
-  template_id: string;
-  variables?: Record<string, string>;
   customer_name?: string | null;
-}): Promise<{
-  conversation_id: string;
-  is_new: boolean;
-  claimed: boolean;
-}> {
-  return apiFetch(`/api/mobile/conversations/start-with-template`, {
+}): Promise<{ id: string; is_new: boolean; in_24h_window: boolean }> {
+  return apiFetch(`/api/mobile/inbox/conversations/start`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export type ChatTemplate = Pick<
+  MarketingTemplate,
+  | "id"
+  | "name"
+  | "category"
+  | "language"
+  | "body_template"
+  | "header_type"
+  | "header_text"
+  | "footer_text"
+  | "buttons"
+  | "variables"
+>;
+
+/** Approved templates for the in-chat picker (open to all agents). */
+export async function listChatTemplates(
+  restaurantId: string
+): Promise<ChatTemplate[]> {
+  return apiFetch(
+    `/api/mobile/inbox/templates?restaurantId=${encodeURIComponent(restaurantId)}`
+  );
+}
+
+/**
+ * Send an approved template on a conversation — works outside the 24h
+ * window. `variables` is keyed by placeholder index ("1", "2", ...); {{1}}
+ * falls back to the customer name server-side.
+ */
+export async function sendConversationTemplate(
+  conversationId: string,
+  input: { template_id: string; variables?: Record<string, string> }
+): Promise<{ message: unknown; claimed: boolean }> {
+  return apiFetch(`/api/mobile/inbox/conversations/${conversationId}/template`, {
     method: "POST",
     body: JSON.stringify(input),
   });

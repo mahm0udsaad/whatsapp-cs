@@ -145,3 +145,48 @@ export async function resolveCurrentRestaurantForAdmin(): Promise<
     { status: 403 }
   );
 }
+
+export interface MemberContext {
+  user: AuthedUser;
+  restaurantId: string;
+  teamMember: { id: string; role: "admin" | "agent" };
+}
+
+/**
+ * Guard for routes open to every active team member (agents and managers)
+ * of the given restaurant. Returns a 401/403 NextResponse otherwise.
+ */
+export async function assertRestaurantMember(
+  restaurantId: string | null | undefined
+): Promise<MemberContext | NextResponse> {
+  const authed = await assertAuthenticated();
+  if (authed instanceof NextResponse) return authed;
+  const { user } = authed;
+
+  if (!restaurantId) {
+    return NextResponse.json(
+      { error: "restaurantId required" },
+      { status: 400 }
+    );
+  }
+
+  const { data: tm } = await adminSupabaseClient
+    .from("team_members")
+    .select("id, role")
+    .eq("user_id", user.id)
+    .eq("restaurant_id", restaurantId)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (!tm) {
+    return NextResponse.json(
+      { error: "Forbidden: not a member of this tenant" },
+      { status: 403 }
+    );
+  }
+
+  return {
+    user,
+    restaurantId,
+    teamMember: { id: tm.id as string, role: tm.role as "admin" | "agent" },
+  };
+}
