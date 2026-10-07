@@ -36,6 +36,7 @@ import {
 } from "../../../lib/api";
 import { CustomerSatisfactionModal } from "../../../components/customer-satisfaction-modal";
 import { TemplateSheet } from "../../../components/template-sheet";
+import { FollowUpSheet } from "../../../components/follow-up-sheet";
 import { labelChipClasses, labelColorOrder } from "../../../lib/label-colors";
 import { supabase } from "../../../lib/supabase";
 import { useSessionStore } from "../../../lib/session-store";
@@ -103,6 +104,9 @@ type ConvRow = {
   assigned_to: string | null;
   unread_count: number;
   archived_at: string | null;
+  follow_up_at: string | null;
+  follow_up_note: string | null;
+  follow_up_by: string | null;
 };
 
 type PendingEscalation = {
@@ -113,7 +117,11 @@ type PendingEscalation = {
 };
 
 type ConvPayload = {
-  conversation: ConvRow & { assignee_name: string | null; is_mine: boolean };
+  conversation: ConvRow & {
+    assignee_name: string | null;
+    follow_up_by_name: string | null;
+    is_mine: boolean;
+  };
   messages: Msg[];
   pendingEscalation: PendingEscalation | null;
 };
@@ -217,6 +225,7 @@ export default function ConversationDetail() {
   const [claiming, setClaiming] = useState<"human" | "bot" | null>(null);
   const [reassignOpen, setReassignOpen] = useState(false);
   const [labelsOpen, setLabelsOpen] = useState(false);
+  const [followUpOpen, setFollowUpOpen] = useState(false);
   const [satisfactionOpen, setSatisfactionOpen] = useState(false);
   const [satisfactionResponse, setSatisfactionResponse] =
     useState<SatisfactionAnalysisResponse | null>(null);
@@ -346,14 +355,14 @@ export default function ConversationDetail() {
       const { data: conv, error: convErr } = await supabase
         .from("conversations")
         .select(
-          "id, customer_name, customer_phone, last_inbound_at, handler_mode, assigned_to, unread_count, archived_at"
+          "id, customer_name, customer_phone, last_inbound_at, handler_mode, assigned_to, unread_count, archived_at, follow_up_at, follow_up_note, follow_up_by"
         )
         .eq("id", id!)
         .maybeSingle();
       if (convErr) throw convErr;
       if (!conv) throw new Error("Conversation not found");
 
-      const [msgsRes, assigneeRes, escalationRes] = await Promise.all([
+      const [msgsRes, assigneeRes, escalationRes, followUpByRes] = await Promise.all([
         supabase
           .from("messages")
           .select("id, role, content, message_type, metadata, created_at, delivery_status")
@@ -378,6 +387,13 @@ export default function ConversationDetail() {
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
+        conv.follow_up_by
+          ? supabase
+              .from("team_members")
+              .select("full_name")
+              .eq("id", conv.follow_up_by)
+              .maybeSingle()
+          : Promise.resolve({ data: null as { full_name: string | null } | null, error: null }),
       ]);
       if (msgsRes.error) throw msgsRes.error;
 
@@ -392,6 +408,8 @@ export default function ConversationDetail() {
         conversation: {
           ...(conv as ConvRow),
           assignee_name: (assigneeRes.data?.full_name as string | null) ?? null,
+          follow_up_by_name:
+            (followUpByRes.data?.full_name as string | null) ?? null,
           is_mine: conv.assigned_to === teamMemberId,
         },
         messages: (msgsRes.data ?? []) as Msg[],
@@ -1027,6 +1045,24 @@ export default function ConversationDetail() {
               </Text>
             ) : null}
           </View>
+          <Pressable
+            onPress={() => setFollowUpOpen(true)}
+            hitSlop={10}
+            style={[
+              styles.headerIconButton,
+              conv.follow_up_at ? styles.headerIconButtonFlagged : null,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={
+              conv.follow_up_at ? "تعديل المتابعة" : "إضافة للمتابعة"
+            }
+          >
+            <Ionicons
+              name={conv.follow_up_at ? "flag" : "flag-outline"}
+              size={18}
+              color={conv.follow_up_at ? "#16245C" : "#FFFFFF"}
+            />
+          </Pressable>
           {manager ? (
             <Pressable
               onPress={openSatisfaction}
@@ -1109,7 +1145,32 @@ export default function ConversationDetail() {
           </Text>
         </View>
         <EscalationBanner escalation={pendingEscalation} />
+        {conv.follow_up_at ? (
+          <Pressable
+            onPress={() => setFollowUpOpen(true)}
+            style={styles.followUpBanner}
+            accessibilityRole="button"
+          >
+            <Ionicons name="flag" size={15} color="#8A5A00" />
+            <Text style={styles.followUpBannerText} numberOfLines={2}>
+              {conv.follow_up_note?.trim() || "هذه المحادثة للمتابعة"}
+              {conv.follow_up_by_name ? ` — ${conv.follow_up_by_name}` : ""}
+            </Text>
+            <Text style={styles.followUpBannerAction}>تعديل</Text>
+          </Pressable>
+        ) : null}
       </View>
+
+      <FollowUpSheet
+        visible={followUpOpen}
+        onClose={() => setFollowUpOpen(false)}
+        conversationId={id ?? null}
+        customerLabel={conv.customer_name ?? conv.customer_phone}
+        current={conv}
+        restaurantId={restaurantId}
+        teamMemberId={teamMemberId}
+        teamMemberName={member?.full_name}
+      />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -1408,6 +1469,32 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 999,
     backgroundColor: "rgba(255,255,255,0.14)",
+  },
+  headerIconButtonFlagged: {
+    backgroundColor: "#FCBD05",
+  },
+  followUpBanner: {
+    marginTop: 10,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 8,
+    borderRadius: 14,
+    backgroundColor: "#FFF8E1",
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  followUpBannerText: {
+    flex: 1,
+    textAlign: "right",
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "600",
+    color: "#8A5A00",
+  },
+  followUpBannerAction: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#011F91",
   },
   headerAvatar: {
     width: 40,

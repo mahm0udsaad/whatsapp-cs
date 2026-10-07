@@ -473,6 +473,25 @@ export async function setConversationArchived(
   );
 }
 
+export async function setConversationFollowUp(
+  conversationId: string,
+  followUp: boolean,
+  note?: string | null
+): Promise<{
+  id: string;
+  follow_up_at: string | null;
+  follow_up_by: string | null;
+  follow_up_note: string | null;
+}> {
+  return apiFetch(
+    `/api/mobile/inbox/conversations/${conversationId}/follow-up`,
+    {
+      method: "POST",
+      body: JSON.stringify({ follow_up: followUp, note: note ?? null }),
+    }
+  );
+}
+
 // ---- Team performance ------------------------------------------------------
 
 export interface TeamPerformanceRow {
