@@ -356,6 +356,14 @@ The menu crawler was also updated so it writes into the current menu schema shap
 
 That keeps crawl-imported menu items compatible with the live dashboard and the AI reply context builder.
 
+### 5.10 Template-Initiated Conversations (Mobile)
+
+Managers can start a WhatsApp conversation with any number (new or outside the 24h window) by sending an approved template:
+
+- `POST /api/mobile/conversations/start-with-template` (`src/app/api/mobile/conversations/start-with-template/route.ts`) — tenant-scoped, opt-out gated, upserts the number into `customers`, finds/creates the conversation, sends via Twilio Content API, persists the message as `message_type = 'template'`, and claims the conversation for the sender when unassigned.
+- Variable resolution lives in `src/lib/template-conversation.ts` (`{{1}}` = customer name with a generic fallback, same convention as campaigns).
+- Mobile entry points: inbox "محادثة جديدة" button, customer detail "إرسال قالب واتساب", and the closed-window banner inside a chat → `mobile/app/(app)/inbox/new.tsx`.
+
 ---
 
 ## 6. Migration Layer

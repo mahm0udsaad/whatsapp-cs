@@ -757,7 +757,7 @@ export default function InboxScreen() {
         <FlatList
           data={items}
           keyExtractor={(c) => c.id}
-          contentContainerStyle={{ paddingTop: 4, paddingBottom: 18 }}
+          contentContainerStyle={{ paddingTop: 4, paddingBottom: manager ? 84 : 18 }}
           contentInsetAdjustmentBehavior="automatic"
           onEndReached={loadMore}
           onEndReachedThreshold={0.4}
@@ -938,6 +938,18 @@ export default function InboxScreen() {
           )}
         />
       )}
+
+      {manager ? (
+        <Pressable
+          onPress={() => router.push("/inbox/new")}
+          style={styles.newConversationFab}
+          accessibilityRole="button"
+          accessibilityLabel="محادثة جديدة بقالب"
+        >
+          <Ionicons name="create-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.newConversationFabText}>محادثة جديدة</Text>
+        </Pressable>
+      ) : null}
 
       {/* Manager reassign sheet */}
       <Modal
@@ -1349,6 +1361,24 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "#F6F7F9",
+  },
+  newConversationFab: {
+    position: "absolute",
+    left: 16,
+    bottom: 20,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: managerColors.brand,
+    boxShadow: "0 10px 24px rgba(1, 31, 145, 0.28)",
+  },
+  newConversationFabText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700",
   },
   headerContainer: {
     borderBottomWidth: 1,

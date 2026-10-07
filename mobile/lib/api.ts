@@ -1028,6 +1028,28 @@ export async function findOrCreateConversationForPhone(
   });
 }
 
+/**
+ * Start (or resume) a conversation with any number by sending an approved
+ * template — the only thing WhatsApp allows outside the 24h window.
+ * `variables` is keyed by placeholder index ("1", "2", ...); {{1}} falls back
+ * to the customer name server-side.
+ */
+export async function startConversationWithTemplate(input: {
+  phone_number: string;
+  template_id: string;
+  variables?: Record<string, string>;
+  customer_name?: string | null;
+}): Promise<{
+  conversation_id: string;
+  is_new: boolean;
+  claimed: boolean;
+}> {
+  return apiFetch(`/api/mobile/conversations/start-with-template`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 // ---- Meta Ads manager -----------------------------------------------------
 
 export interface MetaAdsStatus {

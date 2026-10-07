@@ -199,6 +199,37 @@ export default function CustomerDetailScreen() {
 
         <Pressable
           onPress={() =>
+            router.push({
+              pathname: "/inbox/new",
+              params: {
+                phone: row.phone_number,
+                ...(row.full_name ? { name: row.full_name } : {}),
+              },
+            })
+          }
+          disabled={row.opted_out}
+          className={`mt-2 flex-row-reverse items-center justify-center gap-2 rounded-lg border py-3 ${
+            row.opted_out
+              ? "border-gray-200 bg-gray-50"
+              : "border-[#D6DDF8] bg-[#E8EEFF]"
+          }`}
+        >
+          <Ionicons
+            name="document-text-outline"
+            size={16}
+            color={row.opted_out ? managerColors.muted : managerColors.brand}
+          />
+          <Text
+            className={`font-semibold ${
+              row.opted_out ? "text-gray-400" : "text-[#011F91]"
+            }`}
+          >
+            {row.opted_out ? "العميل ألغى الاشتراك" : "إرسال قالب واتساب"}
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() =>
             Alert.alert(
               "حذف عميل",
               `هل أنت متأكد من حذف ${row.full_name ?? row.phone_number}؟`,

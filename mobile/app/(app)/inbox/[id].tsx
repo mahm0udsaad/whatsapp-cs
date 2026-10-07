@@ -1148,6 +1148,30 @@ export default function ConversationDetail() {
           }
         />
 
+        {manager && (expired || !conv.last_inbound_at) ? (
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: "/inbox/new",
+                params: {
+                  phone: conv.customer_phone,
+                  ...(conv.customer_name ? { name: conv.customer_name } : {}),
+                },
+              })
+            }
+            className="flex-row-reverse items-center gap-2 border-t px-3 py-2.5"
+            style={{ borderColor: chatTheme.line, backgroundColor: chatTheme.subtleSurface }}
+            accessibilityRole="button"
+            accessibilityLabel="إرسال قالب واتساب"
+          >
+            <Ionicons name="document-text-outline" size={17} color={managerColors.brand} />
+            <Text className="flex-1 text-right text-xs leading-5 text-[#16245C]">
+              نافذة الرد مغلقة — أرسل قالبًا معتمدًا لإعادة فتح المحادثة.
+            </Text>
+            <Text className="text-xs font-bold text-[#011F91]">إرسال قالب</Text>
+          </Pressable>
+        ) : null}
+
         <Footer
           mode={conv.handler_mode}
           isMine={conv.is_mine}
