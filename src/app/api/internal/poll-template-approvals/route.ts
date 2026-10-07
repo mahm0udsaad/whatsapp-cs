@@ -1,19 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processPendingTemplateApprovalPolls } from "@/lib/template-approval-poller";
 
-const workerSecret = process.env.AI_REPLY_WORKER_SECRET;
-
+// pg_cron (internal_cron.call_endpoint) sends the vault `cron_secret`, which
+// is CRON_SECRET — accept it like the other internal endpoints, plus the
+// legacy worker secret.
 function isAuthorized(request: NextRequest) {
-  if (!workerSecret) {
-    console.error("AI_REPLY_WORKER_SECRET not configured — denying access");
-    return false;
-  }
-
   const authorization = request.headers.get("authorization") || "";
-  const cronSecret = request.headers.get("x-cron-secret") || "";
-  return (
-    authorization === `Bearer ${workerSecret}` || cronSecret === workerSecret
-  );
+  const bearer = authorization.startsWith("Bearer ")
+    ? authorization.slice("Bearer ".length)
+    : "";
+  const headerSecret = request.headers.get("x-cron-secret") || "";
+
+  for (const secret of [
+    process.env.CRON_SECRET,
+    process.env.AI_REPLY_WORKER_SECRET,
+  ]) {
+    if (secret && (bearer === secret || headerSecret === secret)) return true;
+  }
+  return false;
 }
 
 export async function POST(request: NextRequest) {
