@@ -356,6 +356,25 @@ The menu crawler was also updated so it writes into the current menu schema shap
 
 That keeps crawl-imported menu items compatible with the live dashboard and the AI reply context builder.
 
+### 5.10 Template-Initiated Conversations (Mobile)
+
+Every team member (agents and managers) can start a WhatsApp conversation with any number, or re-open one outside the 24h window, by sending an approved template:
+
+- Flow: inbox "محادثة جديدة" → number + optional name → chat screen opens with the template bottom sheet (`mobile/components/new-chat-sheet.tsx`, `mobile/components/template-sheet.tsx`). The same sheet opens from the closed-window banner inside any chat and from customer detail.
+- `POST /api/mobile/inbox/conversations/start` — member-scoped, opt-out gated, upserts the number into `customers`, finds/creates the conversation.
+- `GET /api/mobile/inbox/templates` — approved templates for any member.
+- `POST /api/mobile/inbox/conversations/:id/template` — sends via Twilio Content API, persists the message as `message_type = 'template'`, un-archives, and hands the conversation to the sender when it was unassigned (claim RPC) or bot-handled. Blocked (409) when another agent owns it, unless the caller is a manager.
+- Variable resolution: `src/lib/template-conversation.ts` (`{{1}}` = customer name with a generic fallback, same convention as campaigns). Shared send helpers: `src/lib/template-send.ts`.
+
+### 5.11 Inbox Follow-Up (Mobile)
+
+The mobile inbox is organised around "whose turn is it":
+
+- Header is just brand bar + search + one filter button; every bucket (with counts) lives in the filter sheet, and active filters show as removable pills.
+- "بانتظار الرد" bucket: customer spoke last (within 7 days) and no team/bot reply since; sorted longest-waiting first, red after 1h.
+- "للمتابعة" flag: any member can flag a chat with an optional note (`conversations.follow_up_at/_by/_note`, `POST /api/mobile/inbox/conversations/:id/follow-up`, `mobile/components/follow-up-sheet.tsx`). Cleared manually ("تمت المتابعة").
+- `mobile_inbox_list` RPC (migration `20261007000000_conversation_follow_up.sql`, applied to prod 2026-10-07) returns the latest message of any role + sender (customer/team/bot/system + name), `last_outbound_at`, and follow-up fields, and always includes flagged and customer-last chats regardless of page size.
+
 ---
 
 ## 6. Migration Layer

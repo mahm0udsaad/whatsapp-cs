@@ -40,6 +40,7 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [pressedId, setPressedId] = useState<string | null>(null);
   const [memberships, setMemberships] = useState<TeamMemberRow[] | null>(null);
   const setActiveMember = useSessionStore((s) => s.setActiveMember);
 
@@ -108,17 +109,21 @@ export default function LoginScreen() {
               key={member.id}
               onPress={() => finalize(member)}
               disabled={loading}
-              style={({ pressed }) => ({
+              onPressIn={() => setPressedId(member.id)}
+              onPressOut={() => setPressedId(null)}
+              // Plain object style: NativeWind's Pressable wrapper drops
+              // function-form `style={({ pressed }) => …}` styles.
+              style={{
                 minHeight: 76,
                 borderRadius: 20,
                 borderWidth: 1,
-                borderColor: pressed ? colors.brand : colors.line,
+                borderColor: pressedId === member.id ? colors.brand : colors.line,
                 backgroundColor: managerColors.surface,
                 padding: 17,
                 ...softShadow,
                 opacity: loading ? 0.65 : 1,
-                transform: [{ scale: pressed ? 0.985 : 1 }],
-              })}
+                transform: [{ scale: pressedId === member.id ? 0.985 : 1 }],
+              }}
             >
               <Text selectable style={{ color: colors.ink, fontSize: 17, fontWeight: "700", textAlign: "right" }}>
                 {member.restaurant?.name ?? member.restaurant_id}
@@ -217,7 +222,11 @@ export default function LoginScreen() {
                 disabled={loading || !email.trim() || !password}
                 accessibilityRole="button"
                 accessibilityLabel="تسجيل الدخول"
-                style={({ pressed }) => ({ height: 52, borderRadius: 13, backgroundColor: colors.brand, alignItems: "center", justifyContent: "center", opacity: loading || !email.trim() || !password ? 0.55 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] })}
+                onPressIn={() => setPressedId("submit")}
+                onPressOut={() => setPressedId(null)}
+                // Plain object style: NativeWind's Pressable wrapper drops
+                // function-form `style={({ pressed }) => …}` styles.
+                style={{ height: 52, borderRadius: 13, backgroundColor: colors.brand, alignItems: "center", justifyContent: "center", opacity: loading || !email.trim() || !password ? 0.55 : 1, transform: [{ scale: pressedId === "submit" ? 0.985 : 1 }] }}
               >
                 {loading ? (
                   <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 9 }}>

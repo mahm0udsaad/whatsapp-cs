@@ -35,6 +35,8 @@ import {
   type TeamMemberRosterRow,
 } from "../../../lib/api";
 import { CustomerSatisfactionModal } from "../../../components/customer-satisfaction-modal";
+import { TemplateSheet } from "../../../components/template-sheet";
+import { FollowUpSheet } from "../../../components/follow-up-sheet";
 import { labelChipClasses, labelColorOrder } from "../../../lib/label-colors";
 import { supabase } from "../../../lib/supabase";
 import { useSessionStore } from "../../../lib/session-store";
@@ -102,6 +104,9 @@ type ConvRow = {
   assigned_to: string | null;
   unread_count: number;
   archived_at: string | null;
+  follow_up_at: string | null;
+  follow_up_note: string | null;
+  follow_up_by: string | null;
 };
 
 type PendingEscalation = {
@@ -112,7 +117,11 @@ type PendingEscalation = {
 };
 
 type ConvPayload = {
-  conversation: ConvRow & { assignee_name: string | null; is_mine: boolean };
+  conversation: ConvRow & {
+    assignee_name: string | null;
+    follow_up_by_name: string | null;
+    is_mine: boolean;
+  };
   messages: Msg[];
   pendingEscalation: PendingEscalation | null;
 };
@@ -195,7 +204,10 @@ function getOwnerLabel(conv: ConvPayload["conversation"]) {
 }
 
 export default function ConversationDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, template: templateParam } = useLocalSearchParams<{
+    id: string;
+    template?: string;
+  }>();
   const router = useRouter();
   const qc = useQueryClient();
   const member = useSessionStore((s) => s.activeMember);
@@ -213,6 +225,7 @@ export default function ConversationDetail() {
   const [claiming, setClaiming] = useState<"human" | "bot" | null>(null);
   const [reassignOpen, setReassignOpen] = useState(false);
   const [labelsOpen, setLabelsOpen] = useState(false);
+  const [followUpOpen, setFollowUpOpen] = useState(false);
   const [satisfactionOpen, setSatisfactionOpen] = useState(false);
   const [satisfactionResponse, setSatisfactionResponse] =
     useState<SatisfactionAnalysisResponse | null>(null);
@@ -221,6 +234,8 @@ export default function ConversationDetail() {
     | null
   >(null);
   const [uploading, setUploading] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const autoOpenedTemplateRef = useRef(false);
 
   const rosterQuery = useQuery({
     queryKey: qk.teamRoster(restaurantId),
@@ -340,14 +355,14 @@ export default function ConversationDetail() {
       const { data: conv, error: convErr } = await supabase
         .from("conversations")
         .select(
-          "id, customer_name, customer_phone, last_inbound_at, handler_mode, assigned_to, unread_count, archived_at"
+          "id, customer_name, customer_phone, last_inbound_at, handler_mode, assigned_to, unread_count, archived_at, follow_up_at, follow_up_note, follow_up_by"
         )
         .eq("id", id!)
         .maybeSingle();
       if (convErr) throw convErr;
       if (!conv) throw new Error("Conversation not found");
 
-      const [msgsRes, assigneeRes, escalationRes] = await Promise.all([
+      const [msgsRes, assigneeRes, escalationRes, followUpByRes] = await Promise.all([
         supabase
           .from("messages")
           .select("id, role, content, message_type, metadata, created_at, delivery_status")
@@ -372,6 +387,13 @@ export default function ConversationDetail() {
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
+        conv.follow_up_by
+          ? supabase
+              .from("team_members")
+              .select("full_name")
+              .eq("id", conv.follow_up_by)
+              .maybeSingle()
+          : Promise.resolve({ data: null as { full_name: string | null } | null, error: null }),
       ]);
       if (msgsRes.error) throw msgsRes.error;
 
@@ -386,6 +408,8 @@ export default function ConversationDetail() {
         conversation: {
           ...(conv as ConvRow),
           assignee_name: (assigneeRes.data?.full_name as string | null) ?? null,
+          follow_up_by_name:
+            (followUpByRes.data?.full_name as string | null) ?? null,
           is_mine: conv.assigned_to === teamMemberId,
         },
         messages: (msgsRes.data ?? []) as Msg[],
@@ -960,6 +984,16 @@ export default function ConversationDetail() {
     }
   }, []);
 
+  // Arriving from "new chat" (?template=1): open the template picker once the
+  // conversation has loaded, as long as this agent is allowed to send.
+  useEffect(() => {
+    if (templateParam !== "1" || !conv || autoOpenedTemplateRef.current) return;
+    autoOpenedTemplateRef.current = true;
+    if (manager || conv.handler_mode !== "human" || conv.is_mine) {
+      setTemplateOpen(true);
+    }
+  }, [templateParam, conv, manager]);
+
   if (!id) return null;
 
   if (query.isLoading || !conv) {
@@ -968,6 +1002,11 @@ export default function ConversationDetail() {
 
   const windowState = getWindowState(conv.last_inbound_at);
   const expired = windowState.expired;
+  // Templates are needed for a new number or once the 24h window closes. Any
+  // agent may send one unless another agent owns the conversation.
+  const windowClosed = expired || !conv.last_inbound_at;
+  const canSendTemplate =
+    manager || conv.handler_mode !== "human" || conv.is_mine;
 
   return (
     <SafeAreaView
@@ -1006,6 +1045,24 @@ export default function ConversationDetail() {
               </Text>
             ) : null}
           </View>
+          <Pressable
+            onPress={() => setFollowUpOpen(true)}
+            hitSlop={10}
+            style={[
+              styles.headerIconButton,
+              conv.follow_up_at ? styles.headerIconButtonFlagged : null,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={
+              conv.follow_up_at ? "تعديل المتابعة" : "إضافة للمتابعة"
+            }
+          >
+            <Ionicons
+              name={conv.follow_up_at ? "flag" : "flag-outline"}
+              size={18}
+              color={conv.follow_up_at ? "#16245C" : "#FFFFFF"}
+            />
+          </Pressable>
           {manager ? (
             <Pressable
               onPress={openSatisfaction}
@@ -1088,7 +1145,32 @@ export default function ConversationDetail() {
           </Text>
         </View>
         <EscalationBanner escalation={pendingEscalation} />
+        {conv.follow_up_at ? (
+          <Pressable
+            onPress={() => setFollowUpOpen(true)}
+            style={styles.followUpBanner}
+            accessibilityRole="button"
+          >
+            <Ionicons name="flag" size={15} color="#8A5A00" />
+            <Text style={styles.followUpBannerText} numberOfLines={2}>
+              {conv.follow_up_note?.trim() || "هذه المحادثة للمتابعة"}
+              {conv.follow_up_by_name ? ` — ${conv.follow_up_by_name}` : ""}
+            </Text>
+            <Text style={styles.followUpBannerAction}>تعديل</Text>
+          </Pressable>
+        ) : null}
       </View>
+
+      <FollowUpSheet
+        visible={followUpOpen}
+        onClose={() => setFollowUpOpen(false)}
+        conversationId={id ?? null}
+        customerLabel={conv.customer_name ?? conv.customer_phone}
+        current={conv}
+        restaurantId={restaurantId}
+        teamMemberId={teamMemberId}
+        teamMemberName={member?.full_name}
+      />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -1148,6 +1230,24 @@ export default function ConversationDetail() {
           }
         />
 
+        {windowClosed && canSendTemplate ? (
+          <Pressable
+            onPress={() => setTemplateOpen(true)}
+            className="flex-row-reverse items-center gap-2 border-t px-3 py-2.5"
+            style={{ borderColor: chatTheme.line, backgroundColor: chatTheme.subtleSurface }}
+            accessibilityRole="button"
+            accessibilityLabel="إرسال قالب واتساب"
+          >
+            <Ionicons name="document-text-outline" size={17} color={managerColors.brand} />
+            <Text className="flex-1 text-right text-xs leading-5 text-[#16245C]">
+              {conv.last_inbound_at
+                ? "نافذة الرد مغلقة — أرسل قالبًا معتمدًا لإعادة فتح المحادثة."
+                : "محادثة جديدة — ابدأها بإرسال قالب معتمد."}
+            </Text>
+            <Text className="text-xs font-bold text-[#011F91]">إرسال قالب</Text>
+          </Pressable>
+        ) : null}
+
         <Footer
           mode={conv.handler_mode}
           isMine={conv.is_mine}
@@ -1165,6 +1265,20 @@ export default function ConversationDetail() {
           onClearPendingFile={() => setPendingFile(null)}
         />
       </KeyboardAvoidingView>
+
+      <TemplateSheet
+        visible={templateOpen}
+        onClose={() => setTemplateOpen(false)}
+        conversationId={id}
+        restaurantId={restaurantId}
+        customerName={conv.customer_name}
+        senderName={member?.full_name ?? null}
+        onSent={() => {
+          setTemplateOpen(false);
+          qc.invalidateQueries({ queryKey });
+          qc.invalidateQueries({ queryKey: ["inbox"] });
+        }}
+      />
 
       {/* Manager reassign sheet */}
       <Modal
@@ -1355,6 +1469,32 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 999,
     backgroundColor: "rgba(255,255,255,0.14)",
+  },
+  headerIconButtonFlagged: {
+    backgroundColor: "#FCBD05",
+  },
+  followUpBanner: {
+    marginTop: 10,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    columnGap: 8,
+    borderRadius: 14,
+    backgroundColor: "#FFF8E1",
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  followUpBannerText: {
+    flex: 1,
+    textAlign: "right",
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "600",
+    color: "#8A5A00",
+  },
+  followUpBannerAction: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#011F91",
   },
   headerAvatar: {
     width: 40,

@@ -18,10 +18,13 @@ import {
   type CustomerDirectoryRow,
   deleteCustomer,
   findOrCreateConversationForPhone,
+  getApiErrorMessage,
   listCustomersPaginated,
+  startNewChat,
   updateCustomer,
 } from "../../../lib/api";
 import { ManagerCard, managerColors } from "../../../components/manager-ui";
+import { useSessionStore } from "../../../lib/session-store";
 
 /**
  * Mobile customer detail screen.
@@ -34,6 +37,8 @@ import { ManagerCard, managerColors } from "../../../components/manager-ui";
 export default function CustomerDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const qc = useQueryClient();
+  const restaurantId =
+    useSessionStore((s) => s.activeMember?.restaurant_id) ?? "";
 
   // Pull from any cached customers page to avoid an extra round-trip when
   // arriving from the list. Fall back to a quick API hit if the user deep-
@@ -108,6 +113,24 @@ export default function CustomerDetailScreen() {
         "تعذر فتح المحادثة",
         e instanceof Error ? e.message : "خطأ غير معروف"
       ),
+  });
+
+  // Opens the chat with the template picker already showing.
+  const templateMutation = useMutation({
+    mutationFn: () =>
+      startNewChat({
+        restaurantId,
+        phone_number: row!.phone_number,
+        customer_name: row!.full_name,
+      }),
+    onSuccess: (conv) => {
+      router.push({
+        pathname: "/inbox/[id]",
+        params: { id: conv.id, template: "1" },
+      });
+    },
+    onError: (e: unknown) =>
+      Alert.alert("تعذر فتح المحادثة", getApiErrorMessage(e)),
   });
 
   if (!row) {
@@ -196,6 +219,33 @@ export default function CustomerDetailScreen() {
             )}
           </Pressable>
         </View>
+
+        <Pressable
+          onPress={() => templateMutation.mutate()}
+          disabled={row.opted_out || templateMutation.isPending}
+          className={`mt-2 flex-row-reverse items-center justify-center gap-2 rounded-lg border py-3 ${
+            row.opted_out
+              ? "border-gray-200 bg-gray-50"
+              : "border-[#D6DDF8] bg-[#E8EEFF]"
+          }`}
+        >
+          {templateMutation.isPending ? (
+            <ActivityIndicator color={managerColors.brand} />
+          ) : (
+            <Ionicons
+              name="document-text-outline"
+              size={16}
+              color={row.opted_out ? managerColors.muted : managerColors.brand}
+            />
+          )}
+          <Text
+            className={`font-semibold ${
+              row.opted_out ? "text-gray-400" : "text-[#011F91]"
+            }`}
+          >
+            {row.opted_out ? "العميل ألغى الاشتراك" : "إرسال قالب واتساب"}
+          </Text>
+        </Pressable>
 
         <Pressable
           onPress={() =>

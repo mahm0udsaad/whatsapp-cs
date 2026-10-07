@@ -41,6 +41,8 @@ export const qk = {
     ["manager", "team-member-notes", teamMemberId] as const,
   teamMemberGoals: (teamMemberId: string) =>
     ["manager", "team-member-goals", teamMemberId] as const,
+  chatTemplates: (restaurantId: string) =>
+    ["chat-templates", restaurantId] as const,
   marketingTemplates: (restaurantId: string) =>
     ["manager", "marketing-templates", restaurantId] as const,
   marketingTemplatesAll: (restaurantId: string) =>
