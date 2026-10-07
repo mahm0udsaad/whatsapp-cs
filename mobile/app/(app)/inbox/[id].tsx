@@ -123,8 +123,14 @@ type ConvPayload = {
     is_mine: boolean;
   };
   messages: Msg[];
+  /** More history exists before messages[0]; fetched on scroll-up. */
+  hasOlder: boolean;
   pendingEscalation: PendingEscalation | null;
 };
+
+const MESSAGE_PAGE_SIZE = 50;
+const MESSAGE_COLUMNS =
+  "id, role, content, message_type, metadata, created_at, delivery_status";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const EMPTY_MESSAGES: Msg[] = [];
@@ -219,7 +225,11 @@ export default function ConversationDetail() {
   const didInitialScrollRef = useRef(false);
   const listLaidOutRef = useRef(false);
   const contentReadyRef = useRef(false);
-  const prevMsgCountRef = useRef(0);
+  // Newest message id seen at the last content-size change, so prepending
+  // older history doesn't look like a new incoming message.
+  const prevLatestIdRef = useRef<string | null>(null);
+  const loadingOlderRef = useRef(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [claiming, setClaiming] = useState<"human" | "bot" | null>(null);
@@ -363,12 +373,13 @@ export default function ConversationDetail() {
       if (!conv) throw new Error("Conversation not found");
 
       const [msgsRes, assigneeRes, escalationRes, followUpByRes] = await Promise.all([
+        // Newest page only; older history loads as the user scrolls up.
         supabase
           .from("messages")
-          .select("id, role, content, message_type, metadata, created_at, delivery_status")
+          .select(MESSAGE_COLUMNS)
           .eq("conversation_id", id!)
-          .order("created_at", { ascending: true })
-          .limit(200),
+          .order("created_at", { ascending: false })
+          .limit(MESSAGE_PAGE_SIZE),
         conv.assigned_to
           ? supabase
               .from("team_members")
@@ -397,6 +408,22 @@ export default function ConversationDetail() {
       ]);
       if (msgsRes.error) throw msgsRes.error;
 
+      const latest = ((msgsRes.data ?? []) as Msg[]).reverse();
+      // A refetch must not throw away history the user already scrolled
+      // back through: keep cached messages older than the fresh page.
+      const cached = qc.getQueryData<ConvPayload>(queryKey);
+      const oldestFetchedMs = latest[0]
+        ? new Date(latest[0].created_at).getTime()
+        : null;
+      const keptOlder =
+        cached && oldestFetchedMs !== null
+          ? cached.messages.filter(
+              (m) =>
+                !m.id.startsWith("tmp:") &&
+                new Date(m.created_at).getTime() < oldestFetchedMs
+            )
+          : [];
+
       const esc = (escalationRes.data ?? null) as {
         id: string;
         created_at: string;
@@ -412,7 +439,11 @@ export default function ConversationDetail() {
             (followUpByRes.data?.full_name as string | null) ?? null,
           is_mine: conv.assigned_to === teamMemberId,
         },
-        messages: (msgsRes.data ?? []) as Msg[],
+        messages: [...keptOlder, ...latest],
+        hasOlder:
+          keptOlder.length > 0
+            ? cached?.hasOlder ?? false
+            : latest.length === MESSAGE_PAGE_SIZE,
         pendingEscalation: esc
           ? {
               id: esc.id,
@@ -517,6 +548,39 @@ export default function ConversationDetail() {
       }
     );
   }, [conv?.archived_at, id, openAssignToMemberSheet, reassignMutation]);
+
+  const loadOlderMessages = useCallback(async () => {
+    const cached = qc.getQueryData<ConvPayload>(queryKey);
+    const oldest = cached?.messages.find((m) => !m.id.startsWith("tmp:"));
+    if (!id || !cached?.hasOlder || !oldest || loadingOlderRef.current) return;
+    loadingOlderRef.current = true;
+    setLoadingOlder(true);
+    try {
+      const { data, error } = await supabase
+        .from("messages")
+        .select(MESSAGE_COLUMNS)
+        .eq("conversation_id", id)
+        .lt("created_at", oldest.created_at)
+        .order("created_at", { ascending: false })
+        .limit(MESSAGE_PAGE_SIZE);
+      if (error) throw error;
+      const older = ((data ?? []) as Msg[]).reverse();
+      qc.setQueryData<ConvPayload>(queryKey, (prev) => {
+        if (!prev) return prev;
+        const known = new Set(prev.messages.map((m) => m.id));
+        return {
+          ...prev,
+          messages: [...older.filter((m) => !known.has(m.id)), ...prev.messages],
+          hasOlder: older.length === MESSAGE_PAGE_SIZE,
+        };
+      });
+    } catch (err) {
+      captureException(err, { source: "chat-load-older", conversationId: id });
+    } finally {
+      loadingOlderRef.current = false;
+      setLoadingOlder(false);
+    }
+  }, [id, qc, queryKey]);
 
   const displayMessages = useMemo(() => [...messages].reverse(), [messages]);
   const dateSeparatorIds = useMemo(() => {
@@ -1196,19 +1260,31 @@ export default function ConversationDetail() {
           onContentSizeChange={() => {
             contentReadyRef.current = true;
             const didInitialScroll = tryInitialScrollToLatest();
+            const latestId = messages[messages.length - 1]?.id ?? null;
             if (didInitialScroll) {
               void markReadIfAtBottom(true);
-              prevMsgCountRef.current = messages.length;
+              prevLatestIdRef.current = latestId;
               return;
             }
             // A new message pushed content height. If we were already at the
             // bottom, re-pin + clear the freshly incremented unread counter.
-            if (atBottomRef.current && messages.length > prevMsgCountRef.current) {
+            // (Older history prepended on scroll-up keeps the same latest id.)
+            if (atBottomRef.current && latestId !== prevLatestIdRef.current) {
               scrollToLatestMessage(true);
               void markReadIfAtBottom(true);
             }
-            prevMsgCountRef.current = messages.length;
+            prevLatestIdRef.current = latestId;
           }}
+          // Inverted list: the "end" is the top of the chat, i.e. older history.
+          onEndReached={() => void loadOlderMessages()}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            loadingOlder ? (
+              <View style={{ paddingVertical: 14 }}>
+                <ActivityIndicator color={managerColors.brand} />
+              </View>
+            ) : null
+          }
           renderItem={({ item }) => {
             const showDate = dateSeparatorIds.has(item.id);
             return (

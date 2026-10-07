@@ -24,8 +24,10 @@ import {
   managerColors,
 } from "../../../components/manager-ui";
 import { Pressable, SafeAreaView, Text, View } from "../../../components/tw";
+import { useScreenFocused } from "../../../hooks/use-screen-focused";
 
 export default function CampaignDetailScreen() {
+  const screenFocused = useScreenFocused();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const member = useSessionStore((s) => s.activeMember);
@@ -37,6 +39,7 @@ export default function CampaignDetailScreen() {
     enabled: !!id,
     queryFn: () => getMarketingCampaignDetail(id!),
     // While sending, poll fast; otherwise slow poll.
+    subscribed: screenFocused,
     refetchInterval: (q) => {
       const d = q.state.data as MarketingCampaignDetail | undefined;
       const s = d?.campaign.status;

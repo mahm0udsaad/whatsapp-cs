@@ -38,6 +38,7 @@ import {
   Text,
   View,
 } from "../../../components/tw";
+import { useScreenFocused } from "../../../hooks/use-screen-focused";
 
 const APP_SCHEME = "whatsapp-cs-agent";
 const META_CALLBACK_URL = `${APP_SCHEME}://meta-ads/callback`;
@@ -655,6 +656,7 @@ function Divider() {
 // ---- main screen -----------------------------------------------------------
 
 export default function AdsScreen() {
+  const screenFocused = useScreenFocused();
   const params = useLocalSearchParams<{ platform?: string }>();
   const platform: Platform = params.platform === "facebook" ? "facebook" : "instagram";
   const theme = PLATFORM_THEME[platform];
@@ -687,6 +689,7 @@ export default function AdsScreen() {
     enabled: !!restaurantId && status?.accountSelected === true,
     queryFn: listMetaCampaigns,
     staleTime: 30_000,
+    subscribed: screenFocused,
     refetchInterval: 60_000,
   });
 

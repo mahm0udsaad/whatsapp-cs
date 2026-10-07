@@ -153,7 +153,7 @@ export default function LoginScreen() {
             <View style={{ alignItems: "center", marginBottom: 28, gap: 14 }}>
               <View style={{ width: 116, height: 116, borderRadius: 34, alignItems: "center", justifyContent: "center", backgroundColor: managerColors.brandSoft, borderWidth: 1, borderColor: managerColors.border, ...softShadow }}>
                 <View style={{ width: 92, height: 92, borderRadius: 28, overflow: "hidden", backgroundColor: colors.brand }}>
-                  <Image source={require("../../assets/logo.png")} style={{ width: 92, height: 92 }} resizeMode="contain" />
+                  <Image source={require("../../assets/logo-ui.png")} style={{ width: 92, height: 92 }} resizeMode="contain" />
                 </View>
                 <View style={{ position: "absolute", right: 4, bottom: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: managerColors.bot, borderWidth: 4, borderColor: managerColors.bg }} />
               </View>

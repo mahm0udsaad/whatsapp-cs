@@ -78,7 +78,7 @@ export default function Index() {
         }}
       >
         <Image
-          source={require("../assets/logo.png")}
+          source={require("../assets/logo-ui.png")}
           style={{ width: 140, height: 140, marginBottom: 32 }}
           resizeMode="contain"
         />
