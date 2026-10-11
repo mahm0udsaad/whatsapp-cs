@@ -26,8 +26,10 @@ import {
   escalationReasonLabel,
   escalationReasonTone,
 } from "../../lib/escalation-labels";
+import { useScreenFocused } from "../../hooks/use-screen-focused";
 
 export default function ApprovalsScreen() {
+  const screenFocused = useScreenFocused();
   const member = useSessionStore((s) => s.activeMember);
   const restaurantId = member?.restaurant_id ?? "";
 
@@ -35,6 +37,7 @@ export default function ApprovalsScreen() {
     queryKey: qk.approvals(restaurantId),
     enabled: !!restaurantId,
     queryFn: getApprovals,
+    subscribed: screenFocused,
     refetchInterval: 30_000,
   });
 

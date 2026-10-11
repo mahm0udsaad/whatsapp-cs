@@ -39,6 +39,7 @@ import {
   ListSkeleton,
   managerColors,
 } from "../../../components/manager-ui";
+import { useScreenFocused } from "../../../hooks/use-screen-focused";
 
 type Filter =
   | "all"
@@ -199,6 +200,7 @@ function teamMemberIdFromMetadata(
 }
 
 export default function InboxScreen() {
+  const screenFocused = useScreenFocused();
   const member = useSessionStore((s) => s.activeMember);
   const qc = useQueryClient();
   const restaurantId = member?.restaurant_id ?? "";
@@ -310,6 +312,7 @@ export default function InboxScreen() {
   const query = useQuery({
     queryKey: inboxKey,
     enabled: !!restaurantId,
+    subscribed: screenFocused,
     refetchInterval: 20_000,
     queryFn: async (): Promise<ListItem[]> => {
       const { data, error } = await supabase.rpc("mobile_inbox_list", {
@@ -643,7 +646,7 @@ export default function InboxScreen() {
     <View style={styles.headerContainer}>
       <View style={styles.brandBar}>
         <Image
-          source={require("../../../assets/logo.png")}
+          source={require("../../../assets/logo-ui.png")}
           style={styles.brandLogo}
           resizeMode="contain"
         />

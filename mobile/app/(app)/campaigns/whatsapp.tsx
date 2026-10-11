@@ -24,8 +24,10 @@ import {
   softShadow,
 } from "../../../components/manager-ui";
 import { Image, Pressable, SafeAreaView, Text, View } from "../../../components/tw";
+import { useScreenFocused } from "../../../hooks/use-screen-focused";
 
 export default function CampaignsIndexScreen() {
+  const screenFocused = useScreenFocused();
   const member = useSessionStore((s) => s.activeMember);
   const restaurantId = member?.restaurant_id ?? "";
 
@@ -33,6 +35,7 @@ export default function CampaignsIndexScreen() {
     queryKey: qk.marketingCampaigns(restaurantId),
     enabled: !!restaurantId,
     queryFn: listMarketingCampaigns,
+    subscribed: screenFocused,
     refetchInterval: 15_000,
   });
 

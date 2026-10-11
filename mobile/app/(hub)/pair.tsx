@@ -54,7 +54,7 @@ export default function HubPairScreen() {
       >
         <View className="mb-8 items-center">
           <Image
-            source={require("../../assets/logo.png")}
+            source={require("../../assets/logo-ui.png")}
             style={{ width: 76, height: 76, marginBottom: 14 }}
             resizeMode="contain"
           />

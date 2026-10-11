@@ -37,7 +37,7 @@ export default function GatewaySelectScreen() {
               style={{ width: 116, height: 116, backgroundColor: managerColors.brandSoft, borderColor: managerColors.border, ...softShadow }}
             >
               <Image
-                source={require("../../assets/logo.png")}
+                source={require("../../assets/logo-ui.png")}
                 style={{ width: 92, height: 92, borderRadius: 28, backgroundColor: managerColors.brand }}
                 resizeMode="contain"
               />

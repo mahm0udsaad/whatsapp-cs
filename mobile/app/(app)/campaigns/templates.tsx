@@ -21,6 +21,7 @@ import {
   Text,
   View,
 } from "../../../components/tw";
+import { useScreenFocused } from "../../../hooks/use-screen-focused";
 
 type Tab = "draft" | "submitted" | "approved" | "rejected";
 
@@ -48,6 +49,7 @@ function countsByStatus(rows: MarketingTemplate[]) {
 }
 
 export default function TemplatesLibraryScreen() {
+  const screenFocused = useScreenFocused();
   const member = useSessionStore((s) => s.activeMember);
   const restaurantId = member?.restaurant_id ?? "";
   const [tab, setTab] = useState<Tab>("approved");
@@ -58,6 +60,7 @@ export default function TemplatesLibraryScreen() {
     queryFn: listAllMarketingTemplates,
     // Auto-refresh while any template is awaiting Meta decision so the UI
     // flips statuses without the user having to pull.
+    subscribed: screenFocused,
     refetchInterval: (q) => {
       const data = q.state.data as MarketingTemplate[] | undefined;
       return data?.some((t) => t.approval_status === "submitted")

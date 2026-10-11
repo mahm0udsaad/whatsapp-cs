@@ -13,9 +13,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker, {
-  type DateTimePickerEvent,
-} from "@react-native-community/datetimepicker";
+import {
+  SafeDateTimePicker as DateTimePicker,
+  type SafeDateTimePickerEvent as DateTimePickerEvent,
+} from "./safe-date-time-picker";
 import { getAiSchedule, saveAiSchedule, type AiSchedule } from "../lib/api";
 import { qk } from "../lib/query-keys";
 

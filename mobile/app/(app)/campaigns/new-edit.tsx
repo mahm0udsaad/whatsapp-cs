@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Animated, Easing, Platform } from "react-native";
-import DateTimePicker, {
-  type DateTimePickerEvent,
-} from "@react-native-community/datetimepicker";
+import {
+  SafeDateTimePicker as DateTimePicker,
+  type SafeDateTimePickerEvent as DateTimePickerEvent,
+} from "../../../components/safe-date-time-picker";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";

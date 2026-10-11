@@ -52,6 +52,7 @@ import {
   ManagerCard,
   managerColors,
 } from "../../../components/manager-ui";
+import { useScreenFocused } from "../../../hooks/use-screen-focused";
 
 type Segment = "people" | "schedule" | "performance";
 
@@ -69,6 +70,7 @@ function formatIsoWeekStart(date: Date) {
 }
 
 export default function TeamScreen() {
+  const screenFocused = useScreenFocused();
   const member = useSessionStore((s) => s.activeMember);
   const restaurantId = member?.restaurant_id ?? "";
   const [segment, setSegment] = useState<Segment>("people");
@@ -83,6 +85,7 @@ export default function TeamScreen() {
     queryKey: qk.teamRoster(restaurantId),
     enabled: !!restaurantId && segment === "people",
     queryFn: getTeamRoster,
+    subscribed: screenFocused,
     refetchInterval: 30_000,
   });
 

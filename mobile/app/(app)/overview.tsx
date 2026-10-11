@@ -49,8 +49,10 @@ import {
   managerColors,
 } from "../../components/manager-ui";
 import { ExtractedIntentCard } from "../../components/extracted-intent-card";
+import { useScreenFocused } from "../../hooks/use-screen-focused";
 
 export default function OverviewScreen() {
+  const screenFocused = useScreenFocused();
   const member = useSessionStore((s) => s.activeMember);
   const restaurantId = member?.restaurant_id ?? "";
   const canManageAi = isManager(member);
@@ -67,6 +69,7 @@ export default function OverviewScreen() {
     queryKey: qk.aiStatus(restaurantId),
     enabled: !!restaurantId,
     queryFn: getAiStatus,
+    subscribed: screenFocused,
     refetchInterval: 30_000,
   });
 
@@ -74,6 +77,7 @@ export default function OverviewScreen() {
     queryKey: qk.kpisToday(restaurantId),
     enabled: !!restaurantId,
     queryFn: getKpisToday,
+    subscribed: screenFocused,
     refetchInterval: 20_000,
   });
 
@@ -81,6 +85,7 @@ export default function OverviewScreen() {
     queryKey: qk.approvals(restaurantId),
     enabled: !!restaurantId,
     queryFn: getApprovals,
+    subscribed: screenFocused,
     refetchInterval: 30_000,
   });
 
@@ -88,6 +93,7 @@ export default function OverviewScreen() {
     queryKey: qk.whatsappHealth(restaurantId),
     enabled: !!restaurantId,
     queryFn: getWhatsAppHealth,
+    subscribed: screenFocused,
     refetchInterval: 120_000,
     staleTime: 60_000,
   });
@@ -96,6 +102,7 @@ export default function OverviewScreen() {
     queryKey: qk.teamRoster(restaurantId),
     enabled: !!restaurantId,
     queryFn: getTeamRoster,
+    subscribed: screenFocused,
     refetchInterval: 30_000,
   });
 
@@ -103,6 +110,7 @@ export default function OverviewScreen() {
     queryKey: qk.teamPerformance(restaurantId, todayRange.from, todayRange.to),
     enabled: !!restaurantId,
     queryFn: () => getTeamPerformance(todayRange.from, todayRange.to),
+    subscribed: screenFocused,
     refetchInterval: 60_000,
     staleTime: 30_000,
   });
@@ -111,6 +119,7 @@ export default function OverviewScreen() {
     queryKey: qk.marketingCampaigns(restaurantId),
     enabled: !!restaurantId,
     queryFn: listMarketingCampaigns,
+    subscribed: screenFocused,
     refetchInterval: 30_000,
     staleTime: 15_000,
   });
@@ -338,7 +347,7 @@ export default function OverviewScreen() {
             <View style={styles.heroContent}>
               <View style={styles.heroBrandRow}>
                 <Image
-                  source={require("../../assets/logo.png")}
+                  source={require("../../assets/logo-ui.png")}
                   style={{ width: 28, height: 28, borderRadius: 6 }}
                   resizeMode="cover"
                 />
