@@ -2,6 +2,50 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminSupabaseClient } from "@/lib/supabase/admin";
 import { validateTwilioRequest } from "@/lib/twilio";
 import { TwilioStatusCallback } from "@/lib/types";
+import {
+  isDeliveryFailure,
+  shouldApplyDeliveryStatus,
+} from "@/lib/delivery-status";
+
+// An instant failure (e.g. 63016, outside the 24h window) can be called back
+// before the sender has inserted the message row.
+const ROW_NOT_FOUND_RETRY_MS = 1500;
+
+/**
+ * Apply a status to the message row(s) for this SID, respecting callback
+ * ordering. Returns false when no row exists yet.
+ */
+async function applyMessageStatus(
+  messageSid: string,
+  status: string,
+  errorCode: string | undefined
+): Promise<boolean> {
+  const { data: rows, error } = await adminSupabaseClient
+    .from("messages")
+    .select("id, delivery_status")
+    .eq("external_message_sid", messageSid);
+  if (error) {
+    console.error("Failed to load message for status update:", error);
+    return true;
+  }
+  if (!rows?.length) return false;
+
+  for (const row of rows) {
+    if (!shouldApplyDeliveryStatus(row.delivery_status, status)) continue;
+    const { error: updateError } = await adminSupabaseClient
+      .from("messages")
+      .update({
+        delivery_status: status,
+        external_error_code: errorCode ?? null,
+        error_message: errorCode ? `Twilio error code: ${errorCode}` : null,
+      })
+      .eq("id", row.id);
+    if (updateError) {
+      console.error("Failed to update message status:", updateError);
+    }
+  }
+  return true;
+}
 
 /**
  * Status callback endpoint for tracking message delivery status.
@@ -64,15 +108,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     console.log("Status update received", { MessageSid, MessageStatus, ErrorCode });
 
-    const { error: messageUpdateError } = await adminSupabaseClient
-      .from("messages")
-      .update({
-        delivery_status: MessageStatus,
-        error_message: ErrorCode ? `Twilio error code: ${ErrorCode}` : null,
-      })
-      .eq("external_message_sid", MessageSid);
-    if (messageUpdateError) {
-      console.error("Failed to update message status:", messageUpdateError);
+    const found = await applyMessageStatus(MessageSid, MessageStatus, ErrorCode);
+    if (!found) {
+      await new Promise((resolve) => setTimeout(resolve, ROW_NOT_FOUND_RETRY_MS));
+      await applyMessageStatus(MessageSid, MessageStatus, ErrorCode);
     }
 
     if (MessageStatus === "delivered" || MessageStatus === "read") {
@@ -88,7 +127,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       if (updateError) {
         console.error("Failed to update campaign recipient:", updateError);
       }
-    } else if (MessageStatus === "failed") {
+    } else if (isDeliveryFailure(MessageStatus)) {
       const { error: updateError } = await adminSupabaseClient
         .from("campaign_recipients")
         .update({

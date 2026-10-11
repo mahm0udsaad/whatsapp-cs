@@ -56,6 +56,10 @@ import { setActiveConv } from "../../../lib/active-conv";
 import { captureException } from "../../../lib/observability";
 import { displayMessageText } from "../../../lib/message-display";
 import {
+  deliveryFailureReason,
+  isDeliveryFailure,
+} from "../../../lib/delivery-errors";
+import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
@@ -74,6 +78,8 @@ type TwilioStatus =
   | "delivered"
   | "read"
   | "failed"
+  // Meta refusals (marketing limit, closed 24h window) — not "failed".
+  | "undelivered"
   | null;
 
 type Msg = {
@@ -84,6 +90,7 @@ type Msg = {
   metadata?: Record<string, unknown> | null;
   created_at: string;
   delivery_status: TwilioStatus;
+  error_message?: string | null;
 };
 
 type MediaSlot = {
@@ -130,7 +137,7 @@ type ConvPayload = {
 
 const MESSAGE_PAGE_SIZE = 50;
 const MESSAGE_COLUMNS =
-  "id, role, content, message_type, metadata, created_at, delivery_status";
+  "id, role, content, message_type, metadata, created_at, delivery_status, error_message";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const EMPTY_MESSAGES: Msg[] = [];
@@ -1549,6 +1556,27 @@ const styles = StyleSheet.create({
   headerIconButtonFlagged: {
     backgroundColor: "#FCBD05",
   },
+  failureNote: {
+    maxWidth: "84%",
+    marginTop: 4,
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    columnGap: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FECDCA",
+    backgroundColor: "#FEF3F2",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  failureNoteText: {
+    flex: 1,
+    textAlign: "right",
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "600",
+    color: "#B42318",
+  },
   followUpBanner: {
     marginTop: 10,
     flexDirection: "row-reverse",
@@ -2122,6 +2150,9 @@ function MessageBubble({ message }: { message: Msg }) {
   const displayContent = displayMessageText(message);
   const hasOnlyMediaPlaceholder =
     slots.length > 0 && isMediaPlaceholderText(message.content);
+  const failureReason = isCustomer
+    ? null
+    : deliveryFailureReason(message.delivery_status, message.error_message);
   if (isSystem) {
     return (
       <View className="my-2 items-center">
@@ -2184,6 +2215,14 @@ function MessageBubble({ message }: { message: Msg }) {
           {!isCustomer ? <DeliveryTicks status={message.delivery_status} /> : null}
         </View>
       </View>
+      {failureReason ? (
+        <View style={styles.failureNote}>
+          <Ionicons name="alert-circle" size={14} color="#B42318" />
+          <Text style={styles.failureNoteText} selectable>
+            {failureReason}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -2259,9 +2298,9 @@ function formatDistanceToNowLocal(iso: string): string {
 //   sent           → single ✓
 //   delivered      → double ✓✓ (light)
 //   read           → double ✓✓ (sky blue, matches WA)
-//   failed         → red warning triangle
+//   failed/undelivered → red warning (reason shown under the bubble)
 function DeliveryTicks({ status }: { status: TwilioStatus }) {
-  if (status === "failed") {
+  if (isDeliveryFailure(status)) {
     return <Ionicons name="alert-circle" size={13} color="#FCA5A5" />;
   }
   if (status === "read") {
