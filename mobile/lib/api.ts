@@ -365,6 +365,24 @@ export async function uploadConversationMedia(
   return (await res.json()) as ReplyAttachment;
 }
 
+/**
+ * Signed URL for a stored media object in a format this device can play.
+ * WhatsApp voice notes are Ogg/Opus, which iOS can't decode — the server
+ * transcodes them once and caches the result.
+ */
+export async function getPlayableMediaUrl(
+  conversationId: string,
+  storagePath: string
+): Promise<{ url: string; contentType: string }> {
+  return apiFetch(
+    `/api/mobile/inbox/conversations/${conversationId}/media/playable`,
+    {
+      method: "POST",
+      body: JSON.stringify({ storagePath }),
+    }
+  );
+}
+
 // ---- Manager surface ------------------------------------------------------
 
 export interface AiStatus {

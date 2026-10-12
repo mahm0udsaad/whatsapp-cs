@@ -2,7 +2,7 @@
   "expo": {
     "name": "Nehgz Bot",
     "slug": "whatsapp-cs-agent",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "orientation": "portrait",
     "scheme": "whatsapp-cs-agent",
     "userInterfaceStyle": "automatic",
@@ -21,7 +21,8 @@
           "remote-notification"
         ],
         "ITSAppUsesNonExemptEncryption": false,
-        "NSPhotoLibraryUsageDescription": "نحتاج إذنك للوصول إلى صورك حتى تتمكن من إرفاق الصور في محادثات الواتساب مع عملائك وفي حملاتك التسويقية."
+        "NSPhotoLibraryUsageDescription": "نحتاج إذنك للوصول إلى صورك حتى تتمكن من إرفاق الصور في محادثات الواتساب مع عملائك وفي حملاتك التسويقية.",
+        "NSMicrophoneUsageDescription": "نحتاج إذنك لاستخدام الميكروفون حتى تتمكن من تسجيل وإرسال رسائل صوتية لعملائك في محادثات الواتساب."
       }
     },
     "android": {
@@ -46,7 +47,7 @@
         {
           "photosPermission": "نحتاج إذنك للوصول إلى صورك حتى تتمكن من إرفاق الصور في محادثات الواتساب مع عملائك.",
           "cameraPermission": false,
-          "microphonePermission": false
+          "microphonePermission": "نحتاج إذنك لاستخدام الميكروفون حتى تتمكن من تسجيل وإرسال رسائل صوتية لعملائك في محادثات الواتساب."
         }
       ],
       [
@@ -61,6 +62,12 @@
       ],
       "expo-web-browser",
       "expo-video",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "نحتاج إذنك لاستخدام الميكروفون حتى تتمكن من تسجيل وإرسال رسائل صوتية لعملائك في محادثات الواتساب."
+        }
+      ],
       "@react-native-community/datetimepicker"
     ],
     "extra": {

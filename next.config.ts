@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // WASM Opus decoder (voice-note transcoding) — load from node_modules at
+  // runtime instead of bundling its inline wasm + worker shims.
+  serverExternalPackages: ["ogg-opus-decoder"],
   async headers() {
     return [
       {

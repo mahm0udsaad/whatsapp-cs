@@ -27,6 +27,7 @@ import {
   setConversationArchived,
   setConversationLabels,
   uploadConversationMedia,
+  getPlayableMediaUrl,
   getApiErrorMessage,
   type SatisfactionAnalysisResponse,
   type ConversationLabel,
@@ -37,6 +38,15 @@ import {
 import { CustomerSatisfactionModal } from "../../../components/customer-satisfaction-modal";
 import { TemplateSheet } from "../../../components/template-sheet";
 import { FollowUpSheet } from "../../../components/follow-up-sheet";
+import {
+  VoiceNoteLoading,
+  VoiceNotePlayer,
+} from "../../../components/voice-note-player";
+import {
+  useVoiceRecorder,
+  VoiceRecordingBar,
+  type RecordedVoiceNote,
+} from "../../../components/voice-recorder";
 import { labelChipClasses, labelColorOrder } from "../../../lib/label-colors";
 import { supabase } from "../../../lib/supabase";
 import { useSessionStore } from "../../../lib/session-store";
@@ -101,6 +111,8 @@ type MediaSlot = {
   delivery_status?: "stored" | "too_large" | "failed";
   error?: string;
 };
+
+type PendingFile = { uri: string; name: string; type: string; sizeBytes?: number };
 
 type ConvRow = {
   id: string;
@@ -246,10 +258,7 @@ export default function ConversationDetail() {
   const [satisfactionOpen, setSatisfactionOpen] = useState(false);
   const [satisfactionResponse, setSatisfactionResponse] =
     useState<SatisfactionAnalysisResponse | null>(null);
-  const [pendingFile, setPendingFile] = useState<
-    | { uri: string; name: string; type: string; sizeBytes?: number }
-    | null
-  >(null);
+  const [pendingFile, setPendingFile] = useState<PendingFile | null>(null);
   const [uploading, setUploading] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
   const autoOpenedTemplateRef = useRef(false);
@@ -907,10 +916,13 @@ export default function ConversationDetail() {
     [id, qc, queryKey, teamMemberId, member?.restaurant_id]
   );
 
-  const onSend = useCallback(async () => {
+  const sendMessage = useCallback(async (
+    body: string,
+    file: PendingFile | null,
+    source: "composer" | "voice"
+  ) => {
     if (!id) return;
-    const body = text.trim();
-    if (!body && !pendingFile) return;
+    if (!body && !file) return;
 
     // --- Optimistic append ---------------------------------------------------
     // Insert a placeholder message into the cache immediately so the bubble
@@ -921,7 +933,13 @@ export default function ConversationDetail() {
     // from the socket won't double-render.
     const tempId = `tmp:${Date.now()}`;
     const hadText = body.length > 0;
-    const hadAttachment = !!pendingFile;
+    const fileKind = !file
+      ? "text"
+      : file.type.startsWith("image/")
+      ? "image"
+      : file.type.startsWith("audio/")
+      ? "audio"
+      : "document";
     const optimisticMsg: Msg = {
       id: tempId,
       role: "agent",
@@ -929,16 +947,14 @@ export default function ConversationDetail() {
       // line so the bubble isn't empty. The server will replace it.
       content: hadText
         ? body
-        : pendingFile
-        ? pendingFile.type.startsWith("image/")
-          ? "📷 صورة"
-          : "📎 ملف"
+        : fileKind === "image"
+        ? "📷 صورة"
+        : fileKind === "audio"
+        ? "🎤 رسالة صوتية"
+        : fileKind === "document"
+        ? "📎 ملف"
         : "",
-      message_type: pendingFile
-        ? pendingFile.type.startsWith("image/")
-          ? "image"
-          : "document"
-        : "text",
+      message_type: fileKind,
       created_at: new Date().toISOString(),
       delivery_status: "sending",
     };
@@ -949,18 +965,20 @@ export default function ConversationDetail() {
 
     // Clear input/attachment right away so the UX feels snappy. If the send
     // fails we restore the text.
-    setText("");
-    setPendingFile(null);
+    if (source === "composer") {
+      setText("");
+      setPendingFile(null);
+    }
     setSending(true);
 
     try {
       let attachment: ReplyAttachment | undefined;
-      if (hadAttachment && pendingFile) {
+      if (file) {
         setUploading(true);
         attachment = await uploadConversationMedia(id, {
-          uri: pendingFile.uri,
-          name: pendingFile.name,
-          type: pendingFile.type,
+          uri: file.uri,
+          name: file.name,
+          type: file.type,
         });
         setUploading(false);
       }
@@ -987,7 +1005,7 @@ export default function ConversationDetail() {
             }
           : prev
       );
-      if (hadText) setText(body);
+      if (hadText && source === "composer") setText(body);
       // We can't restore the picker result (uri may be stale), so just warn
       // the user the attachment was dropped.
       const err = e as { message?: string };
@@ -999,7 +1017,22 @@ export default function ConversationDetail() {
       setSending(false);
       setUploading(false);
     }
-  }, [id, text, pendingFile, qc, queryKey]);
+  }, [id, qc, queryKey]);
+
+  const onSend = useCallback(() => {
+    void sendMessage(text.trim(), pendingFile, "composer");
+  }, [sendMessage, text, pendingFile]);
+
+  const onSendVoice = useCallback(
+    (note: RecordedVoiceNote) => {
+      void sendMessage(
+        "",
+        { uri: note.uri, name: note.name, type: note.type },
+        "voice"
+      );
+    },
+    [sendMessage]
+  );
 
   const pickImage = useCallback(async () => {
     try {
@@ -1341,6 +1374,7 @@ export default function ConversationDetail() {
           setText={setText}
           onClaim={onClaim}
           onSend={onSend}
+          onSendVoice={onSendVoice}
           expired={expired}
           pendingFile={pendingFile}
           onPickImage={pickImage}
@@ -1989,7 +2023,30 @@ function isMediaPlaceholderText(content: string | null | undefined) {
     normalized === "[image]" ||
     normalized === "[photo]" ||
     normalized === "image" ||
-    normalized === "photo"
+    normalized === "photo" ||
+    normalized === "[ملف صوتي]" ||
+    normalized === "[audio]" ||
+    normalized === "[voice]" ||
+    normalized === "🎤 رسالة صوتية"
+  );
+}
+
+function isAudioSlot(slot: MediaSlot, messageType: string) {
+  return (
+    messageType === "voice" ||
+    messageType === "audio" ||
+    (slot.content_type ?? "").toLowerCase().startsWith("audio/")
+  );
+}
+
+// iOS (AVPlayer) can't decode Ogg/Opus — WhatsApp's voice-note format.
+function needsPlayableCopy(slot: MediaSlot) {
+  const ct = (slot.content_type ?? "").toLowerCase().split(";")[0].trim();
+  return (
+    Platform.OS === "ios" &&
+    (ct === "audio/ogg" ||
+      ct === "audio/opus" ||
+      /\.(ogg|opus)$/i.test(slot.storage_path ?? ""))
   );
 }
 
@@ -2005,12 +2062,27 @@ function MediaAttachment({
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const isAudio = isAudioSlot(slot, messageType);
+  const transcode = isAudio && needsPlayableCopy(slot);
 
   useEffect(() => {
     let cancelled = false;
     if (!slot.storage_path) return;
     const storagePath = slot.storage_path;
     (async () => {
+      if (transcode) {
+        // Path convention: <restaurantId>/<conversationId>/...
+        const conversationId = storagePath.split("/")[1] ?? "";
+        try {
+          const res = await getPlayableMediaUrl(conversationId, storagePath);
+          if (!cancelled) setUrl(res.url);
+        } catch (e: unknown) {
+          if (!cancelled) {
+            setError(e instanceof Error ? e.message : "تعذّر تحميل الملف");
+          }
+        }
+        return;
+      }
       const { data, error } = await supabase.storage
         .from(WHATSAPP_MEDIA_BUCKET)
         .createSignedUrl(storagePath, 60 * 60);
@@ -2024,7 +2096,7 @@ function MediaAttachment({
     return () => {
       cancelled = true;
     };
-  }, [slot.storage_path]);
+  }, [slot.storage_path, transcode]);
 
   if (slot.delivery_status === "too_large") {
     return (
@@ -2054,6 +2126,10 @@ function MediaAttachment({
     );
   }
 
+  if (!url && isAudio) {
+    return <VoiceNoteLoading tone={bubbleTone} />;
+  }
+
   if (!url) {
     return (
       <View className="flex-row-reverse items-center gap-2 rounded-2xl px-3 py-2">
@@ -2063,6 +2139,10 @@ function MediaAttachment({
         </Text>
       </View>
     );
+  }
+
+  if (isAudio) {
+    return <VoiceNotePlayer url={url} tone={bubbleTone} />;
   }
 
   if (messageType === "image") {
@@ -2326,6 +2406,7 @@ function Footer({
   setText,
   onClaim,
   onSend,
+  onSendVoice,
   expired,
   pendingFile,
   onPickImage,
@@ -2341,13 +2422,9 @@ function Footer({
   setText: (v: string) => void;
   onClaim: (m: "human" | "bot") => void;
   onSend: () => void;
+  onSendVoice: (note: RecordedVoiceNote) => void;
   expired: boolean;
-  pendingFile: {
-    uri: string;
-    name: string;
-    type: string;
-    sizeBytes?: number;
-  } | null;
+  pendingFile: PendingFile | null;
   onPickImage: () => void;
   onPickDocument: () => void;
   onClearPendingFile: () => void;
@@ -2395,102 +2472,19 @@ function Footer({
   }
 
   if (mode === "human" && isMine) {
-    const canSend = !!pendingFile || text.trim().length > 0;
-    const isImage = pendingFile?.type.startsWith("image/");
     return (
-      <View
-        className="border-t px-3 pb-4 pt-3"
-        style={{ borderColor: chatTheme.line, backgroundColor: chatTheme.composerBg }}
-      >
-        {expired && (
-          <View className="mb-2 flex-row-reverse items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-            <Ionicons name="warning-outline" size={17} color={managerColors.warning} />
-            <Text className="flex-1 text-right text-xs leading-5 text-amber-800">
-              انتهت نافذة الرد المجاني. تأكد من سياسة قوالب واتساب قبل الإرسال.
-            </Text>
-          </View>
-        )}
-        {pendingFile && (
-          <View
-            className="mb-2 flex-row-reverse items-center gap-2 rounded-[18px] border px-3 py-2"
-            style={{ borderColor: chatTheme.line, backgroundColor: chatTheme.subtleSurface }}
-          >
-            <Ionicons
-              name={isImage ? "image-outline" : "document-outline"}
-              size={18}
-              color={managerColors.muted}
-            />
-            <Text
-              className="flex-1 text-right text-xs text-[#344054]"
-              numberOfLines={1}
-            >
-              {pendingFile.name}
-            </Text>
-            <Pressable
-              onPress={onClearPendingFile}
-              disabled={sending}
-              hitSlop={8}
-            >
-              <Ionicons name="close-circle" size={18} color={managerColors.muted} />
-            </Pressable>
-          </View>
-        )}
-        <View
-          className="flex-row-reverse items-end gap-2 rounded-[24px] border px-2 py-2"
-          style={{ borderColor: chatTheme.line, backgroundColor: "#FFFFFF" }}
-        >
-          <Pressable
-            onPress={onPickImage}
-            disabled={sending || !!pendingFile}
-            hitSlop={6}
-            className="h-10 w-10 items-center justify-center rounded-full"
-            style={{ backgroundColor: chatTheme.subtleSurface }}
-          >
-            <Ionicons
-              name="image-outline"
-              size={19}
-              color={sending || !!pendingFile ? "#A8A29E" : managerColors.muted}
-            />
-          </Pressable>
-          <Pressable
-            onPress={onPickDocument}
-            disabled={sending || !!pendingFile}
-            hitSlop={6}
-            className="h-10 w-10 items-center justify-center rounded-full"
-            style={{ backgroundColor: chatTheme.subtleSurface }}
-          >
-            <Ionicons
-              name="attach-outline"
-              size={19}
-              color={sending || !!pendingFile ? "#A8A29E" : managerColors.muted}
-            />
-          </Pressable>
-          <TextInput
-            value={text}
-            onChangeText={setText}
-            placeholder={pendingFile ? "أضف تعليقًا (اختياري)..." : "اكتب ردك..."}
-            placeholderTextColor="#98A2B3"
-            className="min-h-11 max-h-28 flex-1 px-2 py-2 text-right text-[#16245C]"
-            multiline
-          />
-          <Pressable
-            onPress={onSend}
-            disabled={sending || !canSend}
-            className="h-11 w-11 items-center justify-center rounded-full"
-            style={
-              sending || !canSend
-                ? { backgroundColor: "#D0D5DD" }
-                : [softShadow, { backgroundColor: managerColors.brand }]
-            }
-          >
-            {sending ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Ionicons name="arrow-up" size={18} color="#FFFFFF" />
-            )}
-          </Pressable>
-        </View>
-      </View>
+      <Composer
+        sending={sending}
+        text={text}
+        setText={setText}
+        onSend={onSend}
+        onSendVoice={onSendVoice}
+        expired={expired}
+        pendingFile={pendingFile}
+        onPickImage={onPickImage}
+        onPickDocument={onPickDocument}
+        onClearPendingFile={onClearPendingFile}
+      />
     );
   }
 
@@ -2544,6 +2538,175 @@ function Footer({
           هذه المحادثة مستلمة من موظف آخر. يمكنك المتابعة للقراءة فقط.
         </Text>
       </View>
+    </View>
+  );
+}
+
+// Reply composer for the agent who owns the conversation. With nothing typed
+// the send button becomes a mic: tap to record a voice note, then send or
+// discard it from the recording bar.
+function Composer({
+  sending,
+  text,
+  setText,
+  onSend,
+  onSendVoice,
+  expired,
+  pendingFile,
+  onPickImage,
+  onPickDocument,
+  onClearPendingFile,
+}: {
+  sending: boolean;
+  text: string;
+  setText: (v: string) => void;
+  onSend: () => void;
+  onSendVoice: (note: RecordedVoiceNote) => void;
+  expired: boolean;
+  pendingFile: PendingFile | null;
+  onPickImage: () => void;
+  onPickDocument: () => void;
+  onClearPendingFile: () => void;
+}) {
+  const voice = useVoiceRecorder();
+
+  const startRecording = async () => {
+    try {
+      await voice.start();
+    } catch (e: unknown) {
+      Alert.alert(
+        "تعذّر بدء التسجيل",
+        e instanceof Error ? e.message : "حاول مرة أخرى"
+      );
+    }
+  };
+
+  const sendRecording = async () => {
+    try {
+      const note = await voice.finish();
+      if (note) onSendVoice(note);
+    } catch (e: unknown) {
+      Alert.alert(
+        "تعذّر حفظ التسجيل",
+        e instanceof Error ? e.message : "حاول مرة أخرى"
+      );
+    }
+  };
+
+  const canSend = !!pendingFile || text.trim().length > 0;
+  const isImage = pendingFile?.type.startsWith("image/");
+  return (
+    <View
+      className="border-t px-3 pb-4 pt-3"
+      style={{ borderColor: chatTheme.line, backgroundColor: chatTheme.composerBg }}
+    >
+      {expired && (
+        <View className="mb-2 flex-row-reverse items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+          <Ionicons name="warning-outline" size={17} color={managerColors.warning} />
+          <Text className="flex-1 text-right text-xs leading-5 text-amber-800">
+            انتهت نافذة الرد المجاني. تأكد من سياسة قوالب واتساب قبل الإرسال.
+          </Text>
+        </View>
+      )}
+      {pendingFile && (
+        <View
+          className="mb-2 flex-row-reverse items-center gap-2 rounded-[18px] border px-3 py-2"
+          style={{ borderColor: chatTheme.line, backgroundColor: chatTheme.subtleSurface }}
+        >
+          <Ionicons
+            name={isImage ? "image-outline" : "document-outline"}
+            size={18}
+            color={managerColors.muted}
+          />
+          <Text
+            className="flex-1 text-right text-xs text-[#344054]"
+            numberOfLines={1}
+          >
+            {pendingFile.name}
+          </Text>
+          <Pressable
+            onPress={onClearPendingFile}
+            disabled={sending}
+            hitSlop={8}
+          >
+            <Ionicons name="close-circle" size={18} color={managerColors.muted} />
+          </Pressable>
+        </View>
+      )}
+      {voice.active ? (
+        <VoiceRecordingBar
+          durationMs={voice.durationMs}
+          onCancel={() => void voice.cancel()}
+          onSend={() => void sendRecording()}
+        />
+      ) : (
+        <View
+          className="flex-row-reverse items-end gap-2 rounded-[24px] border px-2 py-2"
+          style={{ borderColor: chatTheme.line, backgroundColor: "#FFFFFF" }}
+        >
+          <Pressable
+            onPress={onPickImage}
+            disabled={sending || !!pendingFile}
+            hitSlop={6}
+            className="h-10 w-10 items-center justify-center rounded-full"
+            style={{ backgroundColor: chatTheme.subtleSurface }}
+          >
+            <Ionicons
+              name="image-outline"
+              size={19}
+              color={sending || !!pendingFile ? "#A8A29E" : managerColors.muted}
+            />
+          </Pressable>
+          <Pressable
+            onPress={onPickDocument}
+            disabled={sending || !!pendingFile}
+            hitSlop={6}
+            className="h-10 w-10 items-center justify-center rounded-full"
+            style={{ backgroundColor: chatTheme.subtleSurface }}
+          >
+            <Ionicons
+              name="attach-outline"
+              size={19}
+              color={sending || !!pendingFile ? "#A8A29E" : managerColors.muted}
+            />
+          </Pressable>
+          <TextInput
+            value={text}
+            onChangeText={setText}
+            placeholder={pendingFile ? "أضف تعليقًا (اختياري)..." : "اكتب ردك..."}
+            placeholderTextColor="#98A2B3"
+            className="min-h-11 max-h-28 flex-1 px-2 py-2 text-right text-[#16245C]"
+            multiline
+          />
+          {canSend || sending ? (
+            <Pressable
+              onPress={onSend}
+              disabled={sending}
+              className="h-11 w-11 items-center justify-center rounded-full"
+              style={
+                sending
+                  ? { backgroundColor: "#D0D5DD" }
+                  : [softShadow, { backgroundColor: managerColors.brand }]
+              }
+            >
+              {sending ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Ionicons name="arrow-up" size={18} color="#FFFFFF" />
+              )}
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => void startRecording()}
+              accessibilityLabel="تسجيل رسالة صوتية"
+              className="h-11 w-11 items-center justify-center rounded-full"
+              style={[softShadow, { backgroundColor: managerColors.brand }]}
+            >
+              <Ionicons name="mic" size={20} color="#FFFFFF" />
+            </Pressable>
+          )}
+        </View>
+      )}
     </View>
   );
 }

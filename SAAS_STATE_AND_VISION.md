@@ -375,6 +375,13 @@ The mobile inbox is organised around "whose turn is it":
 - "للمتابعة" flag: any member can flag a chat with an optional note (`conversations.follow_up_at/_by/_note`, `POST /api/mobile/inbox/conversations/:id/follow-up`, `mobile/components/follow-up-sheet.tsx`). Cleared manually ("تمت المتابعة").
 - `mobile_inbox_list` RPC (migration `20261007000000_conversation_follow_up.sql`, applied to prod 2026-10-07) returns the latest message of any role + sender (customer/team/bot/system + name), `last_outbound_at`, and follow-up fields, and always includes flagged and customer-last chats regardless of page size.
 
+### 5.12 Voice Notes (Mobile)
+
+- Playback: audio attachments render as an inline player (play/pause, seek, 1x/1.5x/2x) in the chat bubble (`mobile/components/voice-note-player.tsx`) instead of an external file link.
+- iOS can't decode WhatsApp's Ogg/Opus voice notes, so on iOS the app calls `POST /api/mobile/inbox/conversations/:id/media/playable` — member-scoped, path must sit under the conversation's tenant prefix. It decodes with a WASM Opus decoder (`src/lib/audio-transcode.ts`, no ffmpeg) to mono 24 kHz WAV and caches it next to the original as `<path>.playable.wav`. Android plays the original directly.
+- Recording: with an empty composer the send button is a mic; tap to record, then send or discard (`mobile/components/voice-recorder.tsx`, `expo-audio`). Recorded as AAC `.m4a` (`audio/mp4`) and sent through the existing upload + reply routes.
+- `expo-audio` is a new native module — needs a new binary (app version 1.0.7); OTA updates don't reach 1.0.6 builds.
+
 ---
 
 ## 6. Migration Layer
