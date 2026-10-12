@@ -308,9 +308,26 @@ export async function replyToConversation(
   });
 }
 
+// Loaded on first use rather than at startup: every screen imports this file,
+// so a native module that fails to load must not take the whole app down.
+function loadFileSystem() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require("expo-file-system/legacy") as typeof import("expo-file-system/legacy");
+}
+
 /**
- * Upload a file to the conversation via multipart/form-data. Returns the
- * storage metadata to pass to replyToConversation().
+ * WhatsApp rejects media above 16 MB. Mirrors MAX_OUTBOUND_MEDIA_BYTES on the
+ * backend, which enforces it again at send time.
+ */
+export const MAX_ATTACHMENT_BYTES = 16 * 1024 * 1024;
+export const ATTACHMENT_TOO_LARGE_MESSAGE =
+  "حجم الملف أكبر من الحد المسموح في واتساب (16 م.ب). صغّر الملف أو قصّه ثم أعد المحاولة.";
+
+/**
+ * Upload a file for the conversation and return the storage metadata to pass
+ * to replyToConversation(). The file is streamed from disk straight to storage
+ * through a signed URL — the backend caps request bodies at a few MB, which
+ * is too small for videos.
  */
 export async function uploadConversationMedia(
   conversationId: string,
@@ -320,49 +337,42 @@ export async function uploadConversationMedia(
     type: string;
   }
 ): Promise<ReplyAttachment> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const FileSystem = loadFileSystem();
 
-  const form = new FormData();
-  // React Native's FormData accepts { uri, name, type } blobs directly.
-  form.append(
-    "file",
-    {
-      uri: file.uri,
-      name: file.name,
-      type: file.type,
-    } as unknown as Blob
-  );
-
-  const url = `${BASE}/api/mobile/inbox/conversations/${conversationId}/upload`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), DEFAULT_MUTATION_TIMEOUT_MS);
-  let res: Response;
+  let sizeBytes: number | undefined;
   try {
-    res = await fetch(url, {
+    const info = await FileSystem.getInfoAsync(file.uri);
+    if (info.exists) sizeBytes = info.size;
+  } catch {
+    // Size is best-effort here; the backend checks the stored object.
+  }
+  if (sizeBytes !== undefined && sizeBytes > MAX_ATTACHMENT_BYTES) {
+    throw new Error(ATTACHMENT_TOO_LARGE_MESSAGE);
+  }
+
+  const target = (await apiFetch(
+    `/api/mobile/inbox/conversations/${conversationId}/upload-url`,
+    {
       method: "POST",
-      body: form,
-      headers: session?.access_token
-        ? { Authorization: `Bearer ${session.access_token}` }
-        : {},
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
-  }
-  if (!res.ok) {
-    let body: unknown;
-    try {
-      body = await res.json();
-    } catch {
-      body = await res.text().catch(() => "");
+      body: JSON.stringify({ contentType: file.type, sizeBytes }),
     }
-    throw new Error(
-      `[${res.status}] ${(body as { error?: string })?.error ?? res.statusText}`
-    );
+  )) as { storagePath: string; signedUrl: string };
+
+  const res = await FileSystem.uploadAsync(target.signedUrl, file.uri, {
+    httpMethod: "PUT",
+    uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+    headers: { "content-type": file.type },
+  });
+  if (res.status < 200 || res.status >= 300) {
+    throw new Error(`تعذّر رفع الملف (${res.status}).`);
   }
-  return (await res.json()) as ReplyAttachment;
+
+  return {
+    storagePath: target.storagePath,
+    contentType: file.type,
+    sizeBytes,
+    originalFilename: file.name,
+  };
 }
 
 /**

@@ -21,6 +21,9 @@ export const WHATSAPP_MEDIA_BUCKET = "whatsapp-media";
 /** 20 MB hard cap on inbound Twilio media downloads. */
 export const MAX_INBOUND_MEDIA_BYTES = 20 * 1024 * 1024;
 
+/** WhatsApp rejects outbound media above 16 MB (Twilio WhatsApp limit). */
+export const MAX_OUTBOUND_MEDIA_BYTES = 16 * 1024 * 1024;
+
 /** Download fetch timeout for Twilio media (ms). */
 export const TWILIO_MEDIA_DOWNLOAD_TIMEOUT_MS = 15_000;
 
@@ -265,6 +268,42 @@ export async function createMediaSignedUrl(
   }
 
   return data.signedUrl;
+}
+
+/**
+ * Create a signed upload URL so a client can PUT a file straight into the
+ * whatsapp-media bucket. Serverless routes cap request bodies at a few MB, so
+ * anything video-sized has to bypass the backend.
+ */
+export async function createMediaSignedUploadUrl(
+  storagePath: string
+): Promise<{ signedUrl: string; token: string }> {
+  const { data, error } = await adminSupabaseClient.storage
+    .from(WHATSAPP_MEDIA_BUCKET)
+    .createSignedUploadUrl(storagePath);
+
+  if (error || !data?.signedUrl) {
+    throw new Error(
+      `Failed to create signed upload URL: ${error?.message || "no signedUrl returned"}`
+    );
+  }
+
+  return { signedUrl: data.signedUrl, token: data.token };
+}
+
+/**
+ * Size of a stored media object as storage reports it, or null when it can't
+ * be read (missing object, transient storage error).
+ */
+export async function getStoredMediaSize(
+  storagePath: string
+): Promise<number | null> {
+  const { data, error } = await adminSupabaseClient.storage
+    .from(WHATSAPP_MEDIA_BUCKET)
+    .info(storagePath);
+
+  if (error || !data || typeof data.size !== "number") return null;
+  return data.size;
 }
 
 /**

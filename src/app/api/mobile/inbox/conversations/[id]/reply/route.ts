@@ -19,6 +19,8 @@ import { adminSupabaseClient } from "@/lib/supabase/admin";
 import { sendWhatsAppMessage, sendWhatsAppMedia } from "@/lib/twilio";
 import {
   createMediaSignedUrl,
+  getStoredMediaSize,
+  MAX_OUTBOUND_MEDIA_BYTES,
   messageTypeFromContentType,
   parseMediaStoragePath,
 } from "@/lib/storage-media";
@@ -159,6 +161,20 @@ export async function POST(
           },
           { status: 403 }
         );
+      }
+      // Direct-to-storage uploads skip the upload route's size check, so use
+      // the size storage reports rather than what the client claims.
+      const storedSize = await getStoredMediaSize(attachment.storagePath);
+      if (storedSize !== null) {
+        if (storedSize > MAX_OUTBOUND_MEDIA_BYTES) {
+          return NextResponse.json(
+            {
+              error: `File too large for WhatsApp (${storedSize} > ${MAX_OUTBOUND_MEDIA_BYTES} bytes)`,
+            },
+            { status: 413 }
+          );
+        }
+        attachment.sizeBytes = storedSize;
       }
       try {
         attachmentSignedUrl = await createMediaSignedUrl(
