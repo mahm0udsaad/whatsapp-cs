@@ -3,20 +3,17 @@
 //
 // Recording is AAC in an .m4a (audio/mp4) container on both platforms — a
 // format WhatsApp accepts for outbound media.
+//
+// expo-audio is a native module that older installed binaries don't have, and
+// this file ships over OTA. So it never imports expo-audio statically: when the
+// native module is missing, useVoiceRecorder is a no-op and the composer hides
+// the mic button.
 
-import { useCallback, useState } from "react";
+import { requireOptionalNativeModule } from "expo";
 import { Ionicons } from "@expo/vector-icons";
-import {
-  RecordingPresets,
-  requestRecordingPermissionsAsync,
-  setAudioModeAsync,
-  useAudioRecorder,
-  useAudioRecorderState,
-  type RecordingOptions,
-} from "expo-audio";
 import { Pressable, Text, View } from "./tw";
 import { managerColors, softShadow } from "./manager-ui";
-import { formatClock } from "./voice-note-player";
+import { formatClock } from "../lib/format-clock";
 
 export type RecordedVoiceNote = {
   uri: string;
@@ -25,68 +22,39 @@ export type RecordedVoiceNote = {
   durationMs: number;
 };
 
-const VOICE_RECORDING_OPTIONS: RecordingOptions = {
-  ...RecordingPresets.HIGH_QUALITY,
-  numberOfChannels: 1,
-  bitRate: 64000,
+export type VoiceRecorder = {
+  supported: boolean;
+  active: boolean;
+  durationMs: number;
+  start: () => Promise<boolean>;
+  cancel: () => Promise<void>;
+  /** Stop and return the recorded file, or null if it was too short. */
+  finish: () => Promise<RecordedVoiceNote | null>;
 };
 
-/** Shorter taps are treated as accidental and discarded. */
-const MIN_DURATION_MS = 800;
+export const voiceRecordingSupported =
+  requireOptionalNativeModule("ExpoAudio") != null;
 
-export function useVoiceRecorder() {
-  const recorder = useAudioRecorder(VOICE_RECORDING_OPTIONS);
-  const state = useAudioRecorderState(recorder, 250);
-  const [active, setActive] = useState(false);
+const UNSUPPORTED: VoiceRecorder = {
+  supported: false,
+  active: false,
+  durationMs: 0,
+  start: async () => false,
+  cancel: async () => undefined,
+  finish: async () => null,
+};
 
-  const start = useCallback(async (): Promise<boolean> => {
-    // Respect the user's decision — if they denied microphone access, do
-    // nothing (App Store guideline 5.1.1(iv)).
-    const perm = await requestRecordingPermissionsAsync();
-    if (!perm.granted) return false;
-    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-    await recorder.prepareToRecordAsync();
-    recorder.record();
-    setActive(true);
-    return true;
-  }, [recorder]);
-
-  const stopRecorder = useCallback(async () => {
-    try {
-      await recorder.stop();
-    } finally {
-      setActive(false);
-      // Route playback back to the speaker.
-      await setAudioModeAsync({ allowsRecording: false }).catch(() => undefined);
-    }
-  }, [recorder]);
-
-  const cancel = useCallback(async () => {
-    await stopRecorder();
-  }, [stopRecorder]);
-
-  /** Stop and return the recorded file, or null if it was too short. */
-  const finish = useCallback(async (): Promise<RecordedVoiceNote | null> => {
-    const durationMs = recorder.getStatus().durationMillis;
-    await stopRecorder();
-    const uri = recorder.uri;
-    if (!uri || durationMs < MIN_DURATION_MS) return null;
-    return {
-      uri,
-      name: `voice-${Date.now()}.m4a`,
-      type: "audio/mp4",
-      durationMs,
-    };
-  }, [recorder, stopRecorder]);
-
-  return {
-    active,
-    durationMs: state.durationMillis,
-    start,
-    cancel,
-    finish,
-  };
+function useUnsupportedVoiceRecorder(): VoiceRecorder {
+  return UNSUPPORTED;
 }
+
+// Chosen once at load; the binary can't change at runtime, so hook order is
+// stable.
+export const useVoiceRecorder: () => VoiceRecorder = voiceRecordingSupported
+  ? // eslint-disable-next-line @typescript-eslint/no-require-imports
+    (require("./voice-recorder-native") as typeof import("./voice-recorder-native"))
+      .useVoiceRecorder
+  : useUnsupportedVoiceRecorder;
 
 export function VoiceRecordingBar({
   durationMs,

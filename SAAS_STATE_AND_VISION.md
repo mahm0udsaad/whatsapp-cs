@@ -377,10 +377,10 @@ The mobile inbox is organised around "whose turn is it":
 
 ### 5.12 Voice Notes (Mobile)
 
-- Playback: audio attachments render as an inline player (play/pause, seek, 1x/1.5x/2x) in the chat bubble (`mobile/components/voice-note-player.tsx`) instead of an external file link.
+- Playback: audio attachments render as an inline player (play/pause, seek, 1x/1.5x/2x) in the chat bubble (`mobile/components/voice-note-player.tsx`) instead of an external file link. Built on `expo-video`'s player (already in shipped binaries) so it goes out over OTA.
 - iOS can't decode WhatsApp's Ogg/Opus voice notes, so on iOS the app calls `POST /api/mobile/inbox/conversations/:id/media/playable` — member-scoped, path must sit under the conversation's tenant prefix. It decodes with a WASM Opus decoder (`src/lib/audio-transcode.ts`, no ffmpeg) to mono 24 kHz WAV and caches it next to the original as `<path>.playable.wav`. Android plays the original directly.
-- Recording: with an empty composer the send button is a mic; tap to record, then send or discard (`mobile/components/voice-recorder.tsx`, `expo-audio`). Recorded as AAC `.m4a` (`audio/mp4`) and sent through the existing upload + reply routes.
-- `expo-audio` is a new native module — needs a new binary (app version 1.0.7); OTA updates don't reach 1.0.6 builds.
+- Recording: with an empty composer the send button is a mic; tap to record, then send or discard (`mobile/components/voice-recorder.tsx`). Recorded as AAC `.m4a` (`audio/mp4`) and sent through the existing upload + reply routes.
+- Recording needs `expo-audio` (native) + the mic permission, which only new binaries have. `voice-recorder.tsx` detects the `ExpoAudio` native module and only then lazy-loads `voice-recorder-native.ts`; on older binaries the mic button is hidden, so the same JS is OTA-safe.
 
 ---
 

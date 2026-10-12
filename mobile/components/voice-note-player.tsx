@@ -1,27 +1,23 @@
 // Inline player for voice notes / audio attachments in the chat thread.
 // Only one note plays at a time — starting another pauses the previous one.
+//
+// Built on expo-video's player (audio-only sources play fine without a
+// VideoView) because it already ships in the installed binaries, so this can
+// go out over OTA. On iOS it uses the .playback audio session, which plays
+// through the speaker even with the ringer switch on silent.
 
 import { useEffect, useState } from "react";
 import { I18nManager, type LayoutChangeEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import {
-  setAudioModeAsync,
-  useAudioPlayer,
-  useAudioPlayerStatus,
-  type AudioPlayer,
-} from "expo-audio";
+import { useEvent, useEventListener } from "expo";
+import { useVideoPlayer, type VideoPlayer } from "expo-video";
 import { ActivityIndicator, Pressable, Text, View } from "./tw";
 import { managerColors } from "./manager-ui";
+import { formatClock } from "../lib/format-clock";
 
 const RATES = [1, 1.5, 2] as const;
 
-let activePlayer: AudioPlayer | null = null;
-
-export function formatClock(seconds: number): string {
-  const s = Math.max(0, Math.floor(seconds || 0));
-  const m = Math.floor(s / 60);
-  return `${m}:${String(s % 60).padStart(2, "0")}`;
-}
+let activePlayer: VideoPlayer | null = null;
 
 export function VoiceNotePlayer({
   url,
@@ -30,10 +26,28 @@ export function VoiceNotePlayer({
   url: string;
   tone: "customer" | "agent";
 }) {
-  const player = useAudioPlayer({ uri: url }, { updateInterval: 200 });
-  const status = useAudioPlayerStatus(player);
+  const player = useVideoPlayer({ uri: url }, (p) => {
+    p.loop = false;
+    p.timeUpdateEventInterval = 0.2;
+  });
+  const { isPlaying } = useEvent(player, "playingChange", {
+    isPlaying: player.playing,
+  });
+  const { status } = useEvent(player, "statusChange", {
+    status: player.status,
+  });
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [trackWidth, setTrackWidth] = useState(0);
   const [rateIndex, setRateIndex] = useState(0);
+
+  useEventListener(player, "timeUpdate", (e) => setCurrentTime(e.currentTime));
+  useEventListener(player, "sourceLoad", (e) => setDuration(e.duration));
+  useEventListener(player, "playToEnd", () => {
+    player.pause();
+    player.currentTime = 0;
+    setCurrentTime(0);
+  });
 
   useEffect(() => {
     return () => {
@@ -41,22 +55,15 @@ export function VoiceNotePlayer({
     };
   }, [player]);
 
-  useEffect(() => {
-    if (status.didJustFinish) {
-      player.pause();
-      void player.seekTo(0);
-    }
-  }, [status.didJustFinish, player]);
-
-  const duration = status.duration || 0;
-  const current = Math.min(status.currentTime || 0, duration || Infinity);
+  const isLoaded = status === "readyToPlay" || duration > 0;
+  const current = Math.min(currentTime, duration || Infinity);
   const progress = duration > 0 ? current / duration : 0;
   const isCustomer = tone === "customer";
   const accent = isCustomer ? managerColors.brand : "#FFFFFF";
   const trackBg = isCustomer ? "#D6DDF8" : "rgba(255,255,255,0.28)";
 
-  const togglePlay = async () => {
-    if (status.playing) {
+  const togglePlay = () => {
+    if (isPlaying) {
       player.pause();
       return;
     }
@@ -68,14 +75,8 @@ export function VoiceNotePlayer({
       }
     }
     activePlayer = player;
-    // Play through the speaker even when the ringer switch is on silent, and
-    // drop any record-mode routing left over from a recording.
-    await setAudioModeAsync({
-      playsInSilentMode: true,
-      allowsRecording: false,
-    }).catch(() => undefined);
     if (duration > 0 && current >= duration - 0.1) {
-      await player.seekTo(0);
+      player.currentTime = 0;
     }
     player.play();
   };
@@ -83,13 +84,15 @@ export function VoiceNotePlayer({
   const onSeek = (x: number) => {
     if (!trackWidth || !duration) return;
     const ratio = Math.min(1, Math.max(0, x / trackWidth));
-    void player.seekTo((I18nManager.isRTL ? 1 - ratio : ratio) * duration);
+    const target = (I18nManager.isRTL ? 1 - ratio : ratio) * duration;
+    player.currentTime = target;
+    setCurrentTime(target);
   };
 
   const cycleRate = () => {
     const next = (rateIndex + 1) % RATES.length;
     setRateIndex(next);
-    player.setPlaybackRate(RATES[next]);
+    player.playbackRate = RATES[next];
   };
 
   return (
@@ -99,22 +102,29 @@ export function VoiceNotePlayer({
     >
       <Pressable
         onPress={togglePlay}
+        disabled={status === "error"}
         hitSlop={6}
         accessibilityRole="button"
-        accessibilityLabel={status.playing ? "إيقاف مؤقت" : "تشغيل الرسالة الصوتية"}
+        accessibilityLabel={isPlaying ? "إيقاف مؤقت" : "تشغيل الرسالة الصوتية"}
         className="h-10 w-10 items-center justify-center rounded-full"
         style={{
           backgroundColor: isCustomer ? managerColors.brand : "#FFFFFF",
         }}
       >
-        {!status.isLoaded ? (
+        {status === "error" ? (
+          <Ionicons
+            name="alert-circle-outline"
+            size={20}
+            color={isCustomer ? "#FFFFFF" : managerColors.danger}
+          />
+        ) : !isLoaded ? (
           <ActivityIndicator
             size="small"
             color={isCustomer ? "#FFFFFF" : managerColors.brand}
           />
         ) : (
           <Ionicons
-            name={status.playing ? "pause" : "play"}
+            name={isPlaying ? "pause" : "play"}
             size={18}
             color={isCustomer ? "#FFFFFF" : managerColors.brand}
           />
@@ -151,7 +161,7 @@ export function VoiceNotePlayer({
               isCustomer ? "text-[#5E6A99]" : "text-white/80"
             }`}
           >
-            {status.playing || current > 0
+            {isPlaying || current > 0
               ? formatClock(current)
               : formatClock(duration)}
           </Text>

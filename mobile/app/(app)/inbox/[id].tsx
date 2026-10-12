@@ -2678,13 +2678,13 @@ function Composer({
             className="min-h-11 max-h-28 flex-1 px-2 py-2 text-right text-[#16245C]"
             multiline
           />
-          {canSend || sending ? (
+          {canSend || sending || !voice.supported ? (
             <Pressable
               onPress={onSend}
-              disabled={sending}
+              disabled={sending || !canSend}
               className="h-11 w-11 items-center justify-center rounded-full"
               style={
-                sending
+                sending || !canSend
                   ? { backgroundColor: "#D0D5DD" }
                   : [softShadow, { backgroundColor: managerColors.brand }]
               }
