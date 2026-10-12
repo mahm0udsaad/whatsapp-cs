@@ -27,6 +27,8 @@ import {
   setConversationArchived,
   setConversationLabels,
   uploadConversationMedia,
+  ATTACHMENT_TOO_LARGE_MESSAGE,
+  MAX_ATTACHMENT_BYTES,
   getPlayableMediaUrl,
   getApiErrorMessage,
   type SatisfactionAnalysisResponse,
@@ -1074,6 +1076,13 @@ export default function ConversationDetail() {
       });
       if (res.canceled || !res.assets?.[0]) return;
       const a = res.assets[0];
+      if (a.size && a.size > MAX_ATTACHMENT_BYTES) {
+        Alert.alert(
+          "الملف كبير",
+          `${ATTACHMENT_TOO_LARGE_MESSAGE}\n\nحجم الملف: ${formatBytes(a.size)}`
+        );
+        return;
+      }
       setPendingFile({
         uri: a.uri,
         name: a.name,

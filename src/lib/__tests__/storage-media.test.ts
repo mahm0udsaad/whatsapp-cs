@@ -21,6 +21,15 @@ vi.mock("@/lib/supabase/admin", () => ({
           data: { signedUrl: "https://signed.example" },
           error: null,
         })),
+        createSignedUploadUrl: vi.fn(async (path: string) => ({
+          data: { signedUrl: `https://upload.example/${path}`, token: "tok", path },
+          error: null,
+        })),
+        info: vi.fn(async (path: string) =>
+          path.endsWith("missing.mp4")
+            ? { data: null, error: new Error("Object not found") }
+            : { data: { size: 5_000_000 }, error: null }
+        ),
       }),
     },
   },
@@ -34,6 +43,8 @@ import {
   MAX_INBOUND_MEDIA_BYTES,
   buildMediaStoragePath,
   parseMediaStoragePath,
+  createMediaSignedUploadUrl,
+  getStoredMediaSize,
 } from "@/lib/storage-media";
 
 function okResponse(buf: ArrayBuffer, contentType = "image/jpeg"): Response {
@@ -102,6 +113,21 @@ describe("storage-media", () => {
       );
       expect(parsed.restaurantId).toBe("r1");
       expect(parsed.conversationId).toBe("c1");
+    });
+  });
+
+  describe("direct-to-storage uploads", () => {
+    it("returns a signed upload URL for the given path", async () => {
+      const result = await createMediaSignedUploadUrl("r1/c1/2026/10/abc.mp4");
+      expect(result).toEqual({
+        signedUrl: "https://upload.example/r1/c1/2026/10/abc.mp4",
+        token: "tok",
+      });
+    });
+
+    it("reports the stored object's size, or null when it can't be read", async () => {
+      expect(await getStoredMediaSize("r1/c1/2026/10/abc.mp4")).toBe(5_000_000);
+      expect(await getStoredMediaSize("r1/c1/2026/10/missing.mp4")).toBeNull();
     });
   });
 

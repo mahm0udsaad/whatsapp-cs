@@ -382,6 +382,11 @@ The mobile inbox is organised around "whose turn is it":
 - Recording: with an empty composer the send button is a mic; tap to record, then send or discard (`mobile/components/voice-recorder.tsx`). Recorded as AAC `.m4a` (`audio/mp4`) and sent through the existing upload + reply routes.
 - Recording needs `expo-audio` (native) + the mic permission, which only new binaries have. `voice-recorder.tsx` detects the `ExpoAudio` native module and only then lazy-loads `voice-recorder-native.ts`; on older binaries the mic button is hidden, so the same JS is OTA-safe.
 
+### 5.13 Chat Attachments Upload (Mobile)
+
+- The app uploads chat attachments (files, videos, voice notes) straight to the `whatsapp-media` bucket: `POST /api/mobile/inbox/conversations/:id/upload-url` (same claim checks as reply) returns a signed upload URL for a server-chosen tenant/conversation path, the phone PUTs the file from disk, then calls the reply route with the `storagePath`. The older multipart `upload` route stays for app bundles that predate this; it cannot take video-sized files because serverless request bodies are capped at a few MB.
+- WhatsApp's 16 MB media limit (`MAX_OUTBOUND_MEDIA_BYTES`) is checked in the app at pick/upload time and again in the reply route against the size storage reports.
+
 ---
 
 ## 6. Migration Layer
