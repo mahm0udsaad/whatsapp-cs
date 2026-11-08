@@ -1,6 +1,6 @@
 # Nehgz Hub attendance (HR) — progress summary
 
-Date: 2026-11-08 · Branch: `codex/nehgz-hub-hr-demo` · Status: **not committed**
+Date: 2026-11-08 · Branch: `codex/nehgz-hub-hr-demo` · Status: **committed and preview published**
 
 This summarizes the work done against [nehgz-hub-hr-ui-plan.md](nehgz-hub-hr-ui-plan.md). The employee UI still runs on **local demo data only** while the native camera and hardware-key work is pending. The published HR API is now verified and a production-safe client adapter is implemented behind the UI boundary.
 
@@ -102,6 +102,14 @@ Two check-in frames (fingerprint confirm and "08:05") are stills from screenshot
 - Checked on the iOS simulator (iPhone 16e, Expo Go): Arabic RTL, English LTR, dark mode, activation, check-in, history, account, demo controls
 - **Not checked:** Android, large text sizes, the in-Hub tab with a real signed-in manager/agent
 
+## Publication
+
+- Git branch: `codex/nehgz-hub-hr-demo`.
+- EAS Update preview group: `2ff750b2-3912-4bf8-9fd1-ced7e8e2ed5d` (Android and iOS, runtime `1.0.6`).
+- Fresh Android preview build: `259a7f85-cf56-4153-afa6-f90beb1c6fc9` (queued on 2026-11-08).
+- A fresh iOS internal preview could not be created non-interactively because the Expo project has no suitable internal-distribution provisioning credentials. Existing iOS runtime `1.0.6` builds can receive the preview OTA, but the new native `nehgz://` scheme requires a newly signed iOS build.
+- EAS archive contents were inspected before the build. The final archive is about 12 MB and excludes the repository `.git`, server `.env.local`, backend sources, generated bundles and video output.
+
 ## Open issues / next steps
 
 1. **Firebase app IDs don't match.** The app is `com.nehgz.nehgzbot`; the files are for `com.hr.app` (Android) and `com.nehgz.app` (iOS). New Firebase files are needed before push can be wired. The files were not added.
@@ -111,8 +119,9 @@ Two check-in frames (fingerprint confirm and "08:05") are stills from screenshot
 5. **Identity link:** how HR employees map to Nehgz app accounts is undecided.
 6. Dark-mode switch stopped responding once during recording; worth re-checking.
 7. Test on Android and with large text.
-8. Commit the work and open a PR (nothing committed yet).
-9. Optional: Arabic captions or voiceover for the demo video.
+8. Open and review the PR, then merge after the preview is accepted.
+9. Configure iOS internal-distribution credentials before producing a signed iOS preview with the `nehgz://` scheme.
+10. Optional: Arabic captions or voiceover for the demo video.
 
 ## Files touched
 
