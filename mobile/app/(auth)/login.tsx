@@ -10,7 +10,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams, type Href } from "expo-router";
+import { loginDestination } from "../../lib/navigation";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { signInWithPassword, loadTeamMemberships } from "../../lib/auth";
 import {
@@ -35,6 +36,7 @@ const colors = {
 };
 
 export default function LoginScreen() {
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -83,7 +85,8 @@ export default function LoginScreen() {
     } catch (e) {
       captureException(e, { source: "push-registration", teamMemberId: member.id });
     }
-    router.replace("/(gateway)/select");
+    useSessionStore.getState().setActiveGateway("hub");
+    router.replace(loginDestination(returnTo) as Href);
   }
 
   if (memberships) {

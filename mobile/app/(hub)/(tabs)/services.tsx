@@ -1,3 +1,4 @@
+import { HubMerchantGate } from "../../../components/hub-merchant-gate";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, FlatList, RefreshControl } from "react-native";
 import { Pressable, Text, View } from "../../../components/tw";
@@ -19,6 +20,10 @@ import {
 import { EmptyState, ErrorState } from "../../../components/list-state";
 
 export default function HubServicesScreen() {
+  return <HubMerchantGate><HubServicesScreenContent /></HubMerchantGate>;
+}
+
+function HubServicesScreenContent() {
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: ["hub", "services"],

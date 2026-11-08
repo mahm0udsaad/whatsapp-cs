@@ -1,8 +1,16 @@
-import { Tabs } from "expo-router";
+import { Tabs, router, useSegments } from "expo-router";
+import { Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { managerColors } from "../../../components/manager-ui";
 
+import { useSessionStore } from "../../../lib/session-store";
+import { isManager } from "../../../lib/roles";
+
 export default function HubTabsLayout() {
+  const member = useSessionStore((state) => state.activeMember);
+  const manager = isManager(member);
+  const segments = useSegments() as string[];
+  const hideTabs = segments.includes("hr") && ["scan", "activate", "first-scan", "waiting", "result"].some((screen) => segments.includes(screen));
   return (
     <Tabs
       screenOptions={{
@@ -14,6 +22,7 @@ export default function HubTabsLayout() {
         headerStyle: { backgroundColor: managerColors.surface },
         headerShadowVisible: false,
         tabBarStyle: {
+          display: hideTabs ? "none" : "flex",
           backgroundColor: "#FFFFFF",
           borderTopColor: "#E7EBFB",
           height: 82,
@@ -41,6 +50,7 @@ export default function HubTabsLayout() {
       <Tabs.Screen
         name="bookings"
         options={{
+          href: manager ? "/(hub)/(tabs)/bookings" : null,
           title: "الحجوزات",
           tabBarLabel: "الحجوزات",
           headerShown: false,
@@ -54,22 +64,21 @@ export default function HubTabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="services"
+        name="hr"
         options={{
-          title: "الخدمات",
-          tabBarLabel: "الخدمات",
+          title: "الحضور",
+          tabBarLabel: "الحضور",
+          headerShown: false,
+          tabBarButtonTestID: "hub-tab-hr",
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name={focused ? "pricetags" : "pricetags-outline"}
-              color={color}
-              size={size}
-            />
+            <Ionicons name={focused ? "finger-print" : "finger-print-outline"} color={color} size={size} />
           ),
         }}
       />
       <Tabs.Screen
         name="staff"
         options={{
+          href: manager ? "/(hub)/(tabs)/staff" : null,
           title: "فريق العمل",
           tabBarLabel: "الفريق",
           tabBarIcon: ({ color, size, focused }) => (
@@ -95,6 +104,7 @@ export default function HubTabsLayout() {
           ),
         }}
       />
+      <Tabs.Screen name="services" options={{ title: "الخدمات", href: null, headerLeft: () => <Pressable testID="hub-services-back" accessibilityRole="button" accessibilityLabel="العودة إلى المزيد" onPress={() => router.replace("/(hub)/(tabs)/more")} style={{ minWidth: 48, minHeight: 48, alignItems: "center", justifyContent: "center" }}><Ionicons name="chevron-forward" size={24} color={managerColors.brand} /></Pressable> }} />
     </Tabs>
   );
 }

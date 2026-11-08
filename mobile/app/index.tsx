@@ -4,20 +4,13 @@ import { Redirect } from "expo-router";
 import { supabase } from "../lib/supabase";
 import { loadTeamMemberships } from "../lib/auth";
 import {
-  loadActiveGateway,
   loadActiveTenant,
   persistActiveTenant,
   useSessionStore,
 } from "../lib/session-store";
-import { isManager } from "../lib/roles";
 import { captureException } from "../lib/observability";
 
-type Dest =
-  | "(auth)/login"
-  | "(gateway)/select"
-  | "(app)/inbox"
-  | "(app)/overview"
-  | "(hub)";
+type Dest = "(auth)/login" | "(hub)";
 
 // Matches splash backgroundColor in app.json — keeps the boot transition
 // flicker-free while we resolve the persisted Supabase session.
@@ -47,19 +40,9 @@ export default function Index() {
         setActiveMember(match);
         await persistActiveTenant(match.id);
 
-        const manager = isManager(match);
-        const gateway = await loadActiveGateway();
-        // Hub is manager-only; an agent with a stale "hub" choice falls back
-        // to the gateway picker.
-        if (gateway === "hub" && manager) {
-          setActiveGateway("hub");
-          setDest("(hub)");
-        } else if (gateway === "bot") {
-          setActiveGateway("bot");
-          setDest(manager ? "(app)/overview" : "(app)/inbox");
-        } else {
-          setDest("(gateway)/select");
-        }
+        // A persisted Bot choice must not override Hub as the launch destination.
+        setActiveGateway("hub");
+        setDest("(hub)");
       } catch (err) {
         captureException(err, { source: "session-bootstrap" });
         setDest("(auth)/login");

@@ -4,15 +4,33 @@
     {
       "name": "nextjs",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["next", "dev"],
+      "runtimeArgs": [
+        "next",
+        "dev"
+      ],
       "port": 3000,
       "autoPort": false
     },
     {
       "name": "nextjs-preview",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["next", "dev", "--port", "3100"],
+      "runtimeArgs": [
+        "next",
+        "dev",
+        "--port",
+        "3100"
+      ],
       "port": 3100,
+      "autoPort": false
+    },
+    {
+      "name": "mobile-expo",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd mobile && npx expo start --port 8090"
+      ],
+      "port": 8090,
       "autoPort": false
     }
   ]

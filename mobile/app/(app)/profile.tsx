@@ -339,7 +339,6 @@ export default function ProfileScreen() {
         </Pressable>
       ) : null}
 
-      {manager ? (
         <Pressable
           onPress={async () => {
             await persistActiveGateway("hub");
@@ -352,14 +351,13 @@ export default function ProfileScreen() {
             <Ionicons name="calendar" size={22} color="#FFFFFF" />
           </View>
           <View style={styles.switchBody}>
-            <Text style={styles.switchTitle}>التبديل إلى نِحجز هَب</Text>
+            <Text style={styles.switchTitle}>العودة إلى نِحجز هَب</Text>
             <Text style={styles.switchSubtitle}>
               الحجوزات والخدمات والمواعيد وفريق العمل
             </Text>
           </View>
           <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
         </Pressable>
-      ) : null}
 
       <Pressable
         onPress={onLogout}
