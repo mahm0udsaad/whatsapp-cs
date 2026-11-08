@@ -1,3 +1,27 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Light defaults for the semantic tokens; keep in sync with components/ui/theme.tsx. */
+:root {
+  --background: 245 247 252;
+  --foreground: 15 26 61;
+  --card: 255 255 255;
+  --border: 227 231 241;
+  --input: 214 220 235;
+  --ring: 1 31 145;
+  --muted: 238 241 248;
+  --muted-foreground: 88 100 130;
+  --primary: 1 31 145;
+  --primary-foreground: 255 255 255;
+  --secondary: 232 237 255;
+  --secondary-foreground: 1 31 145;
+  --accent: 252 189 5;
+  --accent-foreground: 61 46 0;
+  --success: 14 120 80;
+  --success-soft: 226 245 236;
+  --warning: 146 96 0;
+  --warning-soft: 255 244 214;
+  --destructive: 190 30 60;
+  --destructive-soft: 253 232 236;
+}

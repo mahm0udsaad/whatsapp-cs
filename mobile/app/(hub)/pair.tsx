@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
+import { isManager } from "../../lib/roles";
+import { useSessionStore } from "../../lib/session-store";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -22,6 +24,7 @@ export default function HubPairScreen() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const member = useSessionStore((state) => state.activeMember);
 
   const canSubmit = email.trim().length > 3 && code.trim().length >= 4;
 
@@ -40,10 +43,12 @@ export default function HubPairScreen() {
     }
   }
 
+  if (!isManager(member)) return <Redirect href="/(hub)/(tabs)/dashboard" />;
+
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: managerColors.bg }}>
       <View className="flex-row-reverse items-center px-4 py-3">
-        <Pressable onPress={() => router.replace("/(gateway)/select")} hitSlop={8}>
+        <Pressable testID="hub-pair-back" accessibilityRole="button" accessibilityLabel="العودة إلى نِحجز هَب" onPress={() => router.replace("/(hub)/(tabs)/dashboard")} hitSlop={8}>
           <Ionicons name="chevron-forward" size={26} color={managerColors.ink} />
         </Pressable>
       </View>

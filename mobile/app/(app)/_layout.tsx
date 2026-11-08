@@ -10,7 +10,7 @@ export default function AppLayout() {
   // Guard: if the active member was cleared (e.g. by sign-out), bounce to
   // the login stack so the (app) group never renders without a session.
   const member = useSessionStore((s) => s.activeMember);
-  const segments = useSegments();
+  const segments = useSegments() as string[];
   // Must run BEFORE any early return so hook order stays stable; no-op when
   // restaurantId is null.
   useInAppToasts(member?.restaurant_id ?? null);

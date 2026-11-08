@@ -1,6 +1,6 @@
 import "../global.css";
-import { useEffect } from "react";
-import { Stack, router } from "expo-router";
+import { useEffect, useRef } from "react";
+import { Stack, router, useRootNavigationState } from "expo-router";
 import * as Notifications from "expo-notifications";
 import * as Updates from "expo-updates";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -10,6 +10,7 @@ import { I18nManager } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { notificationHandler } from "../lib/push";
 import { ErrorBoundary } from "../components/error-boundary";
+import { presenceCheckDestination } from "../lib/hr-notifications";
 import {
   captureException,
   captureMessage,
@@ -76,17 +77,30 @@ async function checkForOTAUpdate() {
 }
 
 function RootLayout() {
+  const navigation = useRootNavigationState();
+  const handledResponse = useRef<string | null>(null);
   useEffect(() => {
     checkForOTAUpdate();
-    const sub = Notifications.addNotificationResponseReceivedListener((resp) => {
+  }, []);
+
+  useEffect(() => {
+    if (!navigation?.key) return;
+    const handleResponse = (resp: Notifications.NotificationResponse) => {
+      const responseId = `${resp.notification.request.identifier}:${resp.actionIdentifier}`;
+      if (handledResponse.current === responseId) return;
+      handledResponse.current = responseId;
       const data = resp.notification.request.content.data as {
         type?: string;
         event?: string;
         conversationId?: string;
         orderId?: string;
         bookingId?: string;
+        presence_check_id?: string;
       };
-      if (data?.type === "new_conversation" && data.conversationId) {
+      const presence = presenceCheckDestination(data ?? {});
+      if (presence) {
+        router.push(presence);
+      } else if (data?.type === "new_conversation" && data.conversationId) {
         router.push(`/inbox/${data.conversationId}`);
       } else if (data?.type === "assigned_message" && data.conversationId) {
         router.push(`/inbox/${data.conversationId}`);
@@ -112,9 +126,15 @@ function RootLayout() {
       } else if (data?.orderId) {
         router.push(`/inbox/${data.orderId}`);
       }
-    });
-    return () => sub.remove();
-  }, []);
+      void Notifications.clearLastNotificationResponseAsync().catch(() => {});
+    };
+    const sub = Notifications.addNotificationResponseReceivedListener(handleResponse);
+    let mounted = true;
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (mounted && response) handleResponse(response);
+    }).catch(() => {});
+    return () => { mounted = false; sub.remove(); };
+  }, [navigation?.key]);
 
   return (
     <ErrorBoundary>
@@ -128,6 +148,8 @@ function RootLayout() {
               <Stack.Screen name="(gateway)" />
               <Stack.Screen name="(app)" />
               <Stack.Screen name="(hub)" />
+              <Stack.Screen name="activate" />
+              <Stack.Screen name="hr-preview" />
             </Stack>
           </QueryClientProvider>
         </SafeAreaProvider>

@@ -1,3 +1,4 @@
+import { HubMerchantGate } from "../../../components/hub-merchant-gate";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { RefreshControl } from "react-native";
@@ -53,6 +54,10 @@ function bookingDayKey(b: HubBooking): string | null {
 }
 
 export default function HubDashboardScreen() {
+  return <HubMerchantGate><HubDashboardScreenContent /></HubMerchantGate>;
+}
+
+function HubDashboardScreenContent() {
   const [rangeKey, setRangeKey] = useState<RangeKey>("current");
   const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | null>(
     null

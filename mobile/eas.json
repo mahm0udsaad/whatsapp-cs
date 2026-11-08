@@ -9,7 +9,8 @@
       "distribution": "internal",
       "ios": { "simulator": true },
       "env": {
-        "EXPO_PUBLIC_APP_BASE_URL": "http://localhost:3000"
+        "EXPO_PUBLIC_APP_BASE_URL": "http://localhost:3000",
+        "EXPO_PUBLIC_HR_API_URL": "https://nehgzhub-hr.com/api/v1"
       }
     },
     "preview": {
@@ -20,7 +21,9 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_APP_BASE_URL": "https://www.nehgzbot.com"
+        "EXPO_PUBLIC_APP_BASE_URL": "https://www.nehgzbot.com",
+        "EXPO_PUBLIC_HR_API_URL": "https://nehgzhub-hr.com/api/v1",
+        "EXPO_PUBLIC_HR_DEMO_CONTROLS": "1"
       }
     },
     "production": {
@@ -30,7 +33,8 @@
         "image": "latest"
       },
       "env": {
-        "EXPO_PUBLIC_APP_BASE_URL": "https://www.nehgzbot.com"
+        "EXPO_PUBLIC_APP_BASE_URL": "https://www.nehgzbot.com",
+        "EXPO_PUBLIC_HR_API_URL": "https://nehgzhub-hr.com/api/v1"
       }
     }
   },

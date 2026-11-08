@@ -1,8 +1,10 @@
+import { HubMerchantGate } from "../../../../components/hub-merchant-gate";
 import { Stack } from "expo-router";
 import { managerColors } from "../../../../components/manager-ui";
 
 export default function HubBookingsLayout() {
   return (
+    <HubMerchantGate>
     <Stack
       screenOptions={{
         headerTintColor: managerColors.ink,
@@ -19,5 +21,6 @@ export default function HubBookingsLayout() {
       />
       <Stack.Screen name="[id]" options={{ title: "تفاصيل الحجز" }} />
     </Stack>
+    </HubMerchantGate>
   );
 }
