@@ -1,17 +1,11 @@
-.git/
-.next/
+# The Expo app is standalone inside this monorepo. Upload only its directory.
+/*
+!/mobile/
+!/mobile/**
+
+.git
 node_modules/
 **/node_modules/
-public/
-fixtures/
-src/
-supabase/
-wa-export/
-docs/
-knowledge/
-knowledge-base/
-kiara-kowndge-base/
-scripts/
 coverage/
 mobile/.expo/
 mobile/dist/
